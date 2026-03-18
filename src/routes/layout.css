@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/* Mengatur font agar lebih mirip dengan desain modern UI */
+:global(body) {
+	font-family: 'Inter', sans-serif;
+}

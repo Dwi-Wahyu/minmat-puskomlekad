@@ -1,0 +1,84 @@
+import { db } from '$lib/server/db';
+import { warehouse, equipment, inventoryStock } from '$lib/server/db/schema';
+import { error, fail, redirect } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
+import { eq } from 'drizzle-orm';
+
+export const load: PageServerLoad = async ({ params, locals }) => {
+	const [existingEquipment] = await db
+		.select()
+		.from(equipment)
+		.leftJoin(inventoryStock, eq(equipment.id, inventoryStock.equipmentId))
+		.where(eq(equipment.id, params.id))
+		.limit(1);
+
+	if (!existingEquipment) {
+		throw error(404, 'Alat tidak ditemukan');
+	}
+
+	const warehouses = await db.select().from(warehouse);
+
+	return {
+		equipment: existingEquipment.equipment,
+		currentStock: existingEquipment.inventory_stock,
+		warehouses
+	};
+};
+
+export const actions: Actions = {
+	update: async ({ request, params }) => {
+		const formData = await request.formData();
+		const { id, type } = params;
+
+		const name = formData.get('name') as string;
+		const serialNumber = formData.get('serialNumber') as string;
+		const brand = formData.get('brand') as string;
+		const category = formData.get('category') as string;
+		const condition = formData.get('condition') as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT';
+		const warehouseId = formData.get('warehouseId') as string;
+		const quantity = parseInt(formData.get('quantity') as string);
+
+		if (!id || !name || !warehouseId || isNaN(quantity)) {
+			return fail(400, { message: 'Data tidak lengkap' });
+		}
+
+		try {
+			await db.transaction(async (tx) => {
+				await tx
+					.update(equipment)
+					.set({
+						name,
+						serialNumber,
+						brand,
+						type: type as 'ALKOMLEK' | 'PERNIKA_LEK',
+						category,
+						condition,
+						updatedAt: new Date()
+					})
+					.where(eq(equipment.id, id));
+
+				const [targetWarehouse] = await tx
+					.select()
+					.from(warehouse)
+					.where(eq(warehouse.id, warehouseId))
+					.limit(1);
+
+				if (!targetWarehouse) throw new Error('Gudang tidak ditemukan');
+
+				await tx
+					.update(inventoryStock)
+					.set({
+						warehouseId,
+						quantity,
+						stockStatus: targetWarehouse.category
+					})
+					.where(eq(inventoryStock.equipmentId, id));
+			});
+
+			return { success: true, message: 'Data alat berhasil diperbarui' };
+		} catch (e) {
+			console.error(e);
+			return fail(500, { message: 'Gagal memperbarui data' });
+		}
+	}
+};
