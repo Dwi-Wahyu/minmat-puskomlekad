@@ -5,8 +5,8 @@
 	let isLoading = $state(false);
 </script>
 
-<div class="mx-auto max-w-4xl p-6">
-	<div class="mb-8">
+<div class="mx-auto max-w-4xl">
+	<div class="mb-4">
 		<h1 class="text-2xl font-bold text-gray-800">Input Data Alat Baru</h1>
 		<p class="text-sm text-gray-500">Tambahkan peralatan baru ke dalam inventaris gudang.</p>
 	</div>

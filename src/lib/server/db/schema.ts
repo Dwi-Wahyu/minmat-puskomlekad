@@ -86,10 +86,29 @@ export const lending = mysqlTable('lending', {
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+export const warehouseRelations = relations(warehouse, ({ many, one }) => ({
+	equipments: many(equipment),
+	organization: one(organization)
+}));
+
 export const equipmentRelations = relations(equipment, ({ many, one }) => ({
 	warehouse: one(warehouse, { fields: [equipment.warehouseId], references: [warehouse.id] }),
 	maintenances: many(maintenance),
 	lendings: many(lending)
+}));
+
+export const maintenanceRelations = relations(maintenance, ({ one }) => ({
+	equipment: one(equipment, {
+		fields: [maintenance.equipmentId],
+		references: [equipment.id]
+	})
+}));
+
+export const lendingRelations = relations(lending, ({ one }) => ({
+	equipment: one(equipment, {
+		fields: [lending.equipmentId],
+		references: [equipment.id]
+	})
 }));
 
 export * from './auth.schema';

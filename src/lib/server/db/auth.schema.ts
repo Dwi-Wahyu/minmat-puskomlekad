@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { mysqlTable, varchar, text, timestamp, boolean, index } from 'drizzle-orm/mysql-core';
+import { warehouse } from './schema';
 
 export const user = mysqlTable('user', {
 	id: varchar('id', { length: 36 }).primaryKey(),
@@ -114,9 +115,13 @@ export const member = mysqlTable('member', {
 		onDelete: 'cascade'
 	}),
 	userId: varchar('user_id', { length: 36 }).references(() => user.id, { onDelete: 'cascade' }),
-	role: varchar('role', { length: 50 }).notNull(), // 'owner', 'admin', 'member'
+	role: varchar('role', { length: 50 }).notNull(),
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
+
+export const organizationRelations = relations(organization, ({ many }) => ({
+	warehouses: many(warehouse)
+}));
 
 export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),

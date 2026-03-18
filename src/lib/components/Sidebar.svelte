@@ -26,16 +26,16 @@
 			name: 'Stock Gudang',
 			icon: '<path d="M21 8l-9-4-9 4 9 4 9-4zM3 12l9 4 9-4M3 16l9 4 9-4"/>',
 			isDropdown: true,
-			path: getPath('/stok-gudang'),
+			path: getPath('/gudang'),
 			children: [
-				{ name: 'Komunity', path: getPath('/stok-gudang/komunity') },
-				{ name: 'Transito', path: getPath('/stok-gudang/transito') },
-				{ name: 'Balkir', path: getPath('/stok-gudang/balkir') }
+				{ name: 'Komunity', path: getPath('/gudang/komunity') },
+				{ name: 'Transito', path: getPath('/gudang/transito') },
+				{ name: 'Balkir', path: getPath('/gudang/balkir') }
 			]
 		},
 		{
 			name: 'LAP BTK – 16',
-			path: getPath('/dashboard'),
+			path: getPath('/lab'),
 			icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
 			isDropdown: false,
 			children: []

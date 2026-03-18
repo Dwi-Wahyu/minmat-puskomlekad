@@ -63,23 +63,11 @@
 				class="rounded-lg border bg-white p-2.5 outline-none focus:ring-2 focus:ring-[#2D5A43]"
 			>
 				{#each data.warehouses as wh}
-					<option value={wh.id} selected={wh.id === data.currentStock?.warehouseId}>
+					<option value={wh.id} selected={wh.id === data.equipment.warehouseId}>
 						{wh.name} ({wh.category})
 					</option>
 				{/each}
 			</select>
-		</div>
-
-		<div class="flex flex-col gap-2">
-			<label for="quantity" class="text-sm font-semibold text-gray-700">Jumlah</label>
-			<input
-				type="number"
-				name="quantity"
-				id="quantity"
-				required
-				value={data.currentStock?.quantity}
-				class="rounded-lg border p-2.5 outline-none focus:ring-2 focus:ring-[#2D5A43]"
-			/>
 		</div>
 
 		<div class="mt-4 flex gap-3 md:col-span-2">

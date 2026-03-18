@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { warehouse, equipment, inventoryStock } from '$lib/server/db/schema';
+import { warehouse, equipment } from '$lib/server/db/schema';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { eq } from 'drizzle-orm';
@@ -8,7 +8,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const [existingEquipment] = await db
 		.select()
 		.from(equipment)
-		.leftJoin(inventoryStock, eq(equipment.id, inventoryStock.equipmentId))
 		.where(eq(equipment.id, params.id))
 		.limit(1);
 
@@ -19,8 +18,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const warehouses = await db.select().from(warehouse);
 
 	return {
-		equipment: existingEquipment.equipment,
-		currentStock: existingEquipment.inventory_stock,
+		equipment: existingEquipment,
 		warehouses
 	};
 };
@@ -44,6 +42,14 @@ export const actions: Actions = {
 
 		try {
 			await db.transaction(async (tx) => {
+				const [targetWarehouse] = await tx
+					.select()
+					.from(warehouse)
+					.where(eq(warehouse.id, warehouseId))
+					.limit(1);
+
+				if (!targetWarehouse) throw new Error('Gudang tidak ditemukan');
+
 				await tx
 					.update(equipment)
 					.set({
@@ -56,23 +62,6 @@ export const actions: Actions = {
 						updatedAt: new Date()
 					})
 					.where(eq(equipment.id, id));
-
-				const [targetWarehouse] = await tx
-					.select()
-					.from(warehouse)
-					.where(eq(warehouse.id, warehouseId))
-					.limit(1);
-
-				if (!targetWarehouse) throw new Error('Gudang tidak ditemukan');
-
-				await tx
-					.update(inventoryStock)
-					.set({
-						warehouseId,
-						quantity,
-						stockStatus: targetWarehouse.category
-					})
-					.where(eq(inventoryStock.equipmentId, id));
 			});
 
 			return { success: true, message: 'Data alat berhasil diperbarui' };
