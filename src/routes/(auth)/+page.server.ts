@@ -48,7 +48,7 @@ export const actions: Actions = {
 			}
 		});
 
-		if (!userResult) return fail(500, { message: 'Unexpected error' });
+		if (!userResult) return fail(400, { message: 'User tidak ditemukan' });
 
 		return redirect(302, `${userResult.members[0].organization?.slug}/dashboard`);
 	}

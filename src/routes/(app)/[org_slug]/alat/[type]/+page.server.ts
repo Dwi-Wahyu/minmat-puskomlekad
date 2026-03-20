@@ -14,7 +14,8 @@ export const load: PageServerLoad = async ({ url, params }) => {
 	const offset = (page - 1) * limit;
 
 	const filters = [];
-	if (searchQuery) filters.push(like(equipment.name, `%${searchQuery}%`));
+
+	// if (searchQuery) filters.push(like(equipment.name, `%${searchQuery}%`));
 
 	filters.push(eq(equipment.type, uppercasedType as 'ALKOMLEK' | 'PERNIKA_LEK'));
 

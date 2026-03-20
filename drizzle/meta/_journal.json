@@ -57,6 +57,13 @@
       "when": 1773913708008,
       "tag": "0007_fancy_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1773977866921,
+      "tag": "0008_elite_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }
