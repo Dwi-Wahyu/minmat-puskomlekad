@@ -35,10 +35,13 @@
 		},
 		{
 			name: 'Barang Habis Pakai',
-			path: getPath('/barang'),
 			icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
-			isDropdown: false,
-			children: []
+			isDropdown: true,
+			path: getPath('/barang'),
+			children: [
+				{ name: 'Daftar Barang Habis Pakai', path: getPath('/barang') },
+				{ name: 'Input Barang Habis Pakai Baru', path: getPath('/barang/create') }
+			]
 		},
 		{
 			name: 'LAP BTK - 16',
@@ -49,17 +52,23 @@
 		},
 		{
 			name: 'Data Alkomlek',
-			path: getPath('/alat/alkomlek'),
 			icon: '<path d="M12 20h.01M7 16.31V16.3a5 5 0 0 1 10 0v.01M5 12.18a9 9 0 0 1 14 0M3 8.1a13 13 0 0 1 18 0"/>',
-			isDropdown: false,
-			children: []
+			isDropdown: true,
+			path: getPath('/alat/alkomlek'),
+			children: [
+				{ name: 'Daftar Alkomlek', path: getPath('/alat/alkomlek') },
+				{ name: 'Input Alkomlek Baru', path: getPath('/alat/alkomlek/create') }
+			]
 		},
 		{
 			name: 'Data Alpernika & Lek',
-			path: getPath('/alat/pernika_lek'),
 			icon: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h10"/>',
-			isDropdown: false,
-			children: []
+			isDropdown: true,
+			path: getPath('/alat/pernika_lek'),
+			children: [
+				{ name: 'Daftar Alpernika & Lek', path: getPath('/alat/pernika_lek') },
+				{ name: 'Input Pernika & Lek Baru', path: getPath('/alat/pernika_lek/create') }
+			]
 		},
 		{
 			name: 'Pemeliharaan',
