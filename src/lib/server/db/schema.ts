@@ -26,7 +26,6 @@ export const equipment = mysqlTable(
 	'equipment',
 	{
 		id: varchar('id', { length: 36 }).primaryKey(),
-		name: varchar('name', { length: 255 }).notNull(),
 		serialNumber: varchar('serial_number', { length: 100 }).unique(),
 		brand: varchar('brand', { length: 100 }),
 
@@ -36,11 +35,7 @@ export const equipment = mysqlTable(
 
 		itemId: varchar('item_id', { length: 36 })
 			.notNull()
-			.references(() => item.id),
-
-		type: mysqlEnum('type', ['ALKOMLEK', 'PERNIKA_LEK']).notNull(),
-
-		category: varchar('category', { length: 100 }).notNull(),
+			.references(() => item.id), // Ensure item.type = 'ASSET'
 
 		condition: mysqlEnum('condition', ['BAIK', 'RUSAK_RINGAN', 'RUSAK_BERAT'])
 			.default('BAIK')
@@ -52,8 +47,8 @@ export const equipment = mysqlTable(
 		updatedAt: timestamp('updated_at').onUpdateNow()
 	},
 	(table) => [
-		index('equipment_type_idx').on(table.type),
-		index('equipment_condition_idx').on(table.condition)
+		index('equipment_condition_idx').on(table.condition),
+		index('equipment_item_id_idx').on(table.itemId) // Add index for itemId
 	]
 );
 
@@ -62,7 +57,10 @@ export const item = mysqlTable('item', {
 
 	name: varchar('name', { length: 255 }).notNull(),
 
-	type: mysqlEnum('type', ['ASSET', 'CONSUMABLE']).notNull(),
+	type: mysqlEnum('type', ['ASSET', 'CONSUMABLE']).notNull(), // ASSET = individual, CONSUMABLE = quantity-based
+
+	// Only applicable if type is ASSET
+	equipmentType: mysqlEnum('equipment_type', ['ALKOMLEK', 'PERNIKA_LEK']),
 
 	baseUnit: mysqlEnum('base_unit', ['PCS', 'BOX', 'METER', 'ROLL', 'UNIT']).notNull(),
 
@@ -108,74 +106,84 @@ export const stock = mysqlTable(
 	]
 );
 
-export const stockMovement = mysqlTable(
-	'stock_movement',
-	{
-		id: varchar('id', { length: 36 }).primaryKey(),
-
-		itemId: varchar('item_id', { length: 36 }).references(() => item.id),
-
-		warehouseId: varchar('warehouse_id', { length: 36 }).references(() => warehouse.id),
-
-		fromWarehouseId: varchar('from_warehouse_id', { length: 36 }).references(() => warehouse.id),
-
-		toWarehouseId: varchar('to_warehouse_id', { length: 36 }).references(() => warehouse.id),
-
-		movementType: mysqlEnum('movement_type', ['IN', 'OUT', 'ADJUSTMENT', 'TRANSFER']).notNull(),
-
-		qty: int('qty').notNull(),
-
-		unit: varchar('unit', { length: 20 }).notNull(), // PCS / BOX
-
-		referenceId: varchar('reference_id', { length: 36 }), // link ke transaksi
-
-		note: text('note'),
-
-		createdBy: varchar('created_by', { length: 36 }),
-		createdAt: timestamp('created_at').defaultNow().notNull()
-	},
-	(table) => [index('stock_movement_item_idx').on(table.itemId)]
-);
+export const movementEventTypeEnum = mysqlEnum('movement_event_type', [
+	'RECEIVE', // Incoming stock/equipment (IN, MASUK)
+	'ISSUE', // Outgoing stock/equipment (OUT, KELUAR)
+	'ADJUSTMENT', // Stock adjustment
+	'TRANSFER_OUT', // Transfer out of a warehouse/org
+	'TRANSFER_IN', // Transfer into a warehouse/org
+	'LOAN_OUT', // Equipment loaned out (PINJAM)
+	'LOAN_RETURN', // Equipment returned from loan (KEMBALI)
+	'DISTRIBUTE_OUT', // Equipment/Item distributed out
+	'DISTRIBUTE_IN', // Equipment/Item received from distribution
+	'MAINTENANCE_IN', // Equipment sent for maintenance
+	'MAINTENANCE_OUT' // Equipment returned from maintenance
+]);
 
 export const movementClassificationEnum = mysqlEnum('movement_classification', [
 	'BALKIR', // Barang Terkirim (dalam pengiriman/ekspedisi)
 	'KOMUNITY', // Masuk ke komunitas/satuan pemakai (serah terima)
-	'TRANSITO' // Gudang Transit / Penyimpanan Sementara (seperti di UI)
+	'TRANSITO' // Gudang Transit / Penyimpanan Sementara
 ]);
 
-export const inventoryMovement = mysqlTable('inventory_movement', {
-	id: varchar('id', { length: 36 })
-		.primaryKey()
-		.$defaultFn(() => crypto.randomUUID()),
-	equipmentId: varchar('equipment_id', { length: 36 }).notNull(), // UUID ke equipment
+export const movementReferenceTypeEnum = mysqlEnum('movement_reference_type', [
+	'LENDING',
+	'DISTRIBUTION',
+	'MAINTENANCE'
+]);
 
-	// Klasifikasi utama: BALKIR, KOMUNITY, atau TRANSITO
-	classification: movementClassificationEnum.notNull(),
+export const movement = mysqlTable(
+	'movement',
+	{
+		id: varchar('id', { length: 36 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
 
-	// Detail nama lokasi (misal: "Gudang Transit 2" di UI, "Truk Ekspedisi A", "Yonif 201")
-	specificLocationName: varchar('specific_location_name', { length: 255 }).notNull(),
+		// Link to either item (for consumables) or equipment (for assets)
+		itemId: varchar('item_id', { length: 36 }).references(() => item.id),
+		equipmentId: varchar('equipment_id', { length: 36 }).references(() => equipment.id),
 
-	// Tipe pergerakan teknis (Sesuai Dokumen MINMAT poin 3.1)
-	movementType: mysqlEnum('movement_type', [
-		'MASUK',
-		'KELUAR',
-		'DISTRIBUSI',
-		'PINJAM',
-		'KEMBALI'
-	]).notNull(),
+		// Type of movement event
+		eventType: movementEventTypeEnum.notNull(),
 
-	// Gudang asal/tujuan fisik (jika relevan, misal untuk Transito)
-	fromWarehouseId: varchar('from_warehouse_id', { length: 36 }),
-	toWarehouseId: varchar('to_warehouse_id', { length: 36 }),
+		// Quantity for consumable items (default 1 for assets)
+		qty: int('qty').notNull().default(1),
 
-	quantity: int('quantity').notNull().default(1), // Untuk asset biasanya 1
-	keterangan: text('keterangan'), // Contoh di UI: "Robek kecil", "Normal"
+		// Unit for consumable items (e.g., "PCS", "BOX")
+		unit: varchar('unit', { length: 20 }),
 
-	// Info Penanggung Jawab dari UI
-	penanggungJawab: varchar('penanggung_jawab', { length: 255 }),
+		// Classification for asset movements (BALKIR, KOMUNITY, TRANSITO)
+		classification: movementClassificationEnum,
 
-	createdAt: timestamp('created_at').defaultNow().notNull()
-});
+		// Specific location name (e.g., "Truk Ekspedisi A", "Yonif 201")
+		specificLocationName: varchar('specific_location_name', { length: 255 }),
+
+		// Source and Destination warehouses for transfers/movements
+		fromWarehouseId: varchar('from_warehouse_id', { length: 36 }).references(() => warehouse.id),
+		toWarehouseId: varchar('to_warehouse_id', { length: 36 }).references(() => warehouse.id),
+
+		// Organization initiating or affected by the movement
+		organizationId: varchar('organization_id', { length: 36 }).references(() => organization.id),
+
+		notes: text('notes'), // Combines description/keterangan/note
+
+		picId: varchar('pic_id', { length: 36 }).references(() => user.id), // Person in Charge (createdBy, penanggungJawab)
+
+		// Reference to other transactions
+		referenceType: movementReferenceTypeEnum,
+		referenceId: varchar('reference_id', { length: 36 }),
+
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(table) => [
+		index('movement_item_idx').on(table.itemId),
+		index('movement_equipment_idx').on(table.equipmentId),
+		index('movement_from_warehouse_idx').on(table.fromWarehouseId),
+		index('movement_to_warehouse_idx').on(table.toWarehouseId),
+		index('movement_organization_idx').on(table.organizationId),
+		index('movement_reference_idx').on(table.referenceId)
+	]
+);
 
 export const distribution = mysqlTable('distribution', {
 	id: varchar('id', { length: 36 }).primaryKey(),
@@ -328,7 +336,8 @@ export const equipmentRelations = relations(equipment, ({ many, one }) => ({
 	}),
 	warehouse: one(warehouse, { fields: [equipment.warehouseId], references: [warehouse.id] }),
 	maintenances: many(maintenance),
-	lendingItems: many(lendingItem)
+	lendingItems: many(lendingItem),
+	movements: many(movement)
 }));
 
 export const maintenanceRelations = relations(maintenance, ({ one }) => ({
@@ -394,7 +403,7 @@ export const lendingItemRelations = relations(lendingItem, ({ one }) => ({
 
 export const itemRelations = relations(item, ({ many }) => ({
 	stocks: many(stock),
-	movements: many(stockMovement),
+	movements: many(movement),
 	unitConversions: many(itemUnitConversion)
 }));
 
@@ -416,31 +425,32 @@ export const stockRelations = relations(stock, ({ one }) => ({
 	})
 }));
 
-export const stockMovementRelations = relations(stockMovement, ({ one }) => ({
+export const movementRelations = relations(movement, ({ one }) => ({
 	item: one(item, {
-		fields: [stockMovement.itemId],
+		fields: [movement.itemId],
 		references: [item.id]
 	}),
-	warehouse: one(warehouse, {
-		fields: [stockMovement.warehouseId],
-		references: [warehouse.id]
-	})
-}));
-
-export const inventoryMovementRelations = relations(inventoryMovement, ({ one }) => ({
 	equipment: one(equipment, {
-		fields: [inventoryMovement.equipmentId],
+		fields: [movement.equipmentId],
 		references: [equipment.id]
 	}),
 	fromWarehouse: one(warehouse, {
-		fields: [inventoryMovement.fromWarehouseId],
+		fields: [movement.fromWarehouseId],
 		references: [warehouse.id],
-		relationName: 'from_warehouse_movement'
+		relationName: 'movement_from_warehouse'
 	}),
 	toWarehouse: one(warehouse, {
-		fields: [inventoryMovement.toWarehouseId],
+		fields: [movement.toWarehouseId],
 		references: [warehouse.id],
-		relationName: 'to_warehouse_movement'
+		relationName: 'movement_to_warehouse'
+	}),
+	organization: one(organization, {
+		fields: [movement.organizationId],
+		references: [organization.id]
+	}),
+	pic: one(user, {
+		fields: [movement.picId],
+		references: [user.id]
 	})
 }));
 
