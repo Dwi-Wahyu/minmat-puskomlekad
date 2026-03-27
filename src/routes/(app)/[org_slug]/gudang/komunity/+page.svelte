@@ -41,7 +41,7 @@
 	}
 </script>
 
-<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-6 p-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<CardTitle class="text-2xl font-bold">Gudang Komunity</CardTitle>
 		<div class="flex flex-wrap gap-3">
@@ -57,129 +57,131 @@
 		</div>
 	</div>
 
-	<div class="overflow-x-auto">
-		<Table.Table class="w-full border-collapse">
-			<Table.Header class="sticky top-0">
-				<!-- First header row -->
-				<Table.Row class="border-b-2 border-gray-300">
-					<!-- <Table.Head rowspan={2} class="border-r border-gray-200 text-center font-bold"
-						>MATKOMPLEK</Table.Head
-					> -->
-					<Table.Head rowspan={2} class="border-r border-gray-200 text-center font-bold"
-						>Barang</Table.Head
-					>
-					<Table.Head rowspan={2} class="border-r border-gray-200 text-center  font-bold"
-						>Stok</Table.Head
-					>
-					<Table.Head rowspan={2} class="border-r border-gray-200 text-center  font-bold"
-						>Masuk</Table.Head
-					>
-					<Table.Head rowspan={2} class="border-r border-gray-200 text-center  font-bold"
-						>Keluar</Table.Head
-					>
-					<Table.Head class="border-r border-gray-200 text-center font-bold" colspan={3}
-						>Sisa</Table.Head
-					>
-					<Table.Head rowspan={2} class="border-r border-gray-200 text-center  font-bold"
-						>Ket</Table.Head
-					>
-					<Table.Head rowspan={2} class=" font-bold">Tahun</Table.Head>
-				</Table.Row>
-
-				<!-- Second header row (sub-headers) -->
-				<Table.Row class="border-b-2 border-gray-300 bg-gray-50">
-					<Table.Head class="border-r border-gray-200 text-center font-semibold">B</Table.Head>
-					<Table.Head class="border-r border-gray-200 text-center font-semibold">RR</Table.Head>
-					<Table.Head class="border-r border-gray-200 text-center font-semibold">RB</Table.Head>
-				</Table.Row>
-			</Table.Header>
-
-			<Table.Body>
-				{#if paginatedItems.length === 0}
-					<Table.Row>
-						<Table.Cell colspan={12} class="border py-8 text-center text-gray-500">
-							Tidak ada data
-						</Table.Cell>
+	<div class="rounded-lg bg-card shadow-sm">
+		<div class="overflow-x-auto">
+			<Table.Table class="w-full border-collapse">
+				<Table.Header class="sticky top-0 ">
+					<!-- First header row -->
+					<Table.Row class="border-b-2 border-gray-300">
+						<!-- <Table.Head rowspan={2} class="border-r border-gray-200 text-center font-bold"
+							>MATKOMPLEK</Table.Head
+						> -->
+						<Table.Head rowspan={2} class="border-r border-gray-200 text-center font-bold"
+							>Barang</Table.Head
+						>
+						<Table.Head rowspan={2} class="border-r border-gray-200 text-center  font-bold"
+							>Stok</Table.Head
+						>
+						<Table.Head rowspan={2} class="border-r border-gray-200 text-center  font-bold"
+							>Masuk</Table.Head
+						>
+						<Table.Head rowspan={2} class="border-r border-gray-200 text-center  font-bold"
+							>Keluar</Table.Head
+						>
+						<Table.Head class="border-r border-gray-200 text-center font-bold" colspan={3}
+							>Sisa</Table.Head
+						>
+						<Table.Head rowspan={2} class="border-r border-gray-200 text-center  font-bold"
+							>Ket</Table.Head
+						>
+						<Table.Head rowspan={2} class=" font-bold">Tahun</Table.Head>
 					</Table.Row>
-				{:else}
-					{#each paginatedItems as item, idx}
-						<Table.Row class="border-b border-gray-200 hover:bg-gray-50">
-							<!-- <Table.Cell class="border-r border-gray-200 font-mono text-sm">
-								{item.matkomplek}
-							</Table.Cell> -->
 
-							<Table.Cell class="border-r border-gray-200">
-								<div class="font-semibold">{item.namaBarang}</div>
-								<div class="text-xs text-muted-foreground">
-									<!-- {getEquipmentTypeLabel(item.equipmentType)} -->
-									{item.matkomplek}
-								</div>
-							</Table.Cell>
+					<!-- Second header row (sub-headers) -->
+					<Table.Row class="border-b-2 border-gray-300 bg-gray-50">
+						<Table.Head class="border-r border-gray-200 text-center font-semibold">B</Table.Head>
+						<Table.Head class="border-r border-gray-200 text-center font-semibold">RR</Table.Head>
+						<Table.Head class="border-r border-gray-200 text-center font-semibold">RB</Table.Head>
+					</Table.Row>
+				</Table.Header>
 
-							<Table.Cell class="border-r border-gray-200  font-semibold">
-								{item.stok}
-							</Table.Cell>
-
-							<Table.Cell class="border-r border-gray-200  text-green-600">
-								{item.masuk}
-							</Table.Cell>
-
-							<Table.Cell class="border-r border-gray-200  text-red-600">
-								{item.keluar}
-							</Table.Cell>
-
-							<Table.Cell class="border-r border-gray-200 text-center font-semibold">
-								{item.sisaBaik}
-							</Table.Cell>
-
-							<Table.Cell class="border-r border-gray-200 text-center text-yellow-600">
-								{item.sisaRR}
-							</Table.Cell>
-
-							<Table.Cell class="border-r border-gray-200 text-center text-red-600">
-								{item.sisaRB}
-							</Table.Cell>
-
-							<Table.Cell class="border-r border-gray-200">
-								{item.keterangan}
-							</Table.Cell>
-
-							<Table.Cell class="">
-								{item.tahun}
+				<Table.Body>
+					{#if paginatedItems.length === 0}
+						<Table.Row>
+							<Table.Cell colspan={12} class="border py-8 text-center text-gray-500">
+								Tidak ada data
 							</Table.Cell>
 						</Table.Row>
-					{/each}
-				{/if}
-			</Table.Body>
-		</Table.Table>
-	</div>
+					{:else}
+						{#each paginatedItems as item, idx}
+							<Table.Row class="border-b border-gray-200 hover:bg-gray-50">
+								<!-- <Table.Cell class="border-r border-gray-200 font-mono text-sm">
+									{item.matkomplek}
+								</Table.Cell> -->
 
-	<!-- Pagination -->
-	{#if totalPages > 0}
-		<div class="flex items-center justify-between border-t bg-gray-50 px-6 py-4">
-			<div class="text-sm text-gray-600">
-				Menampilkan <span class="font-semibold">{(currentPage - 1) * itemsPerPage + 1}</span> -
-				<span class="font-semibold">{Math.min(currentPage * itemsPerPage, totalItems)}</span>
-				dari <span class="font-semibold">{totalItems}</span> data
-			</div>
-			<div class="flex gap-2">
-				<button
-					class="rounded-md border px-3 py-1 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-					onclick={() => (currentPage = Math.max(1, currentPage - 1))}
-					disabled={currentPage === 1}
-				>
-					<ChevronLeft class="mr-1 inline h-4 w-4" />
-					Sebelumnya
-				</button>
-				<button
-					class="rounded-md border px-3 py-1 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-					onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))}
-					disabled={currentPage === totalPages}
-				>
-					Selanjutnya
-					<ChevronRight class="ml-1 inline h-4 w-4" />
-				</button>
-			</div>
+								<Table.Cell class="border-r border-gray-200">
+									<div class="font-semibold">{item.namaBarang}</div>
+									<div class="text-xs text-muted-foreground">
+										<!-- {getEquipmentTypeLabel(item.equipmentType)} -->
+										{item.matkomplek}
+									</div>
+								</Table.Cell>
+
+								<Table.Cell class="border-r border-gray-200  font-semibold">
+									{item.stok}
+								</Table.Cell>
+
+								<Table.Cell class="border-r border-gray-200  text-green-600">
+									{item.masuk}
+								</Table.Cell>
+
+								<Table.Cell class="border-r border-gray-200  text-red-600">
+									{item.keluar}
+								</Table.Cell>
+
+								<Table.Cell class="border-r border-gray-200 text-center font-semibold">
+									{item.sisaBaik}
+								</Table.Cell>
+
+								<Table.Cell class="border-r border-gray-200 text-center text-yellow-600">
+									{item.sisaRR}
+								</Table.Cell>
+
+								<Table.Cell class="border-r border-gray-200 text-center text-red-600">
+									{item.sisaRB}
+								</Table.Cell>
+
+								<Table.Cell class="border-r border-gray-200">
+									{item.keterangan}
+								</Table.Cell>
+
+								<Table.Cell class="">
+									{item.tahun}
+								</Table.Cell>
+							</Table.Row>
+						{/each}
+					{/if}
+				</Table.Body>
+			</Table.Table>
 		</div>
-	{/if}
+
+		<!-- Pagination -->
+		{#if totalPages > 0}
+			<div class="flex items-center justify-between rounded-b-lg border-t px-6 py-4">
+				<div class="text-sm text-gray-600">
+					Menampilkan <span class="font-semibold">{(currentPage - 1) * itemsPerPage + 1}</span> -
+					<span class="font-semibold">{Math.min(currentPage * itemsPerPage, totalItems)}</span>
+					dari <span class="font-semibold">{totalItems}</span> data
+				</div>
+				<div class="flex gap-2">
+					<button
+						class="rounded-md border px-3 py-1 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+						onclick={() => (currentPage = Math.max(1, currentPage - 1))}
+						disabled={currentPage === 1}
+					>
+						<ChevronLeft class="mr-1 inline h-4 w-4" />
+						Sebelumnya
+					</button>
+					<button
+						class="rounded-md border px-3 py-1 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+						onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))}
+						disabled={currentPage === totalPages}
+					>
+						Selanjutnya
+						<ChevronRight class="ml-1 inline h-4 w-4" />
+					</button>
+				</div>
+			</div>
+		{/if}
+	</div>
 </div>

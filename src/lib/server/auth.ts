@@ -15,6 +15,7 @@ import {
 } from './auth.roles';
 
 import * as schema from '$lib/server/db/schema';
+import { apiKey } from '@better-auth/api-key';
 
 export const auth = betterAuth({
 	baseURL: env.ORIGIN,
@@ -24,6 +25,9 @@ export const auth = betterAuth({
 	session: {
 		expiresIn: 60 * 60 * 24 * 7, // 7 days
 		updateAge: 60 * 60 * 24 // 1 day (every 1 day the session expiration is updated)
+	},
+	advanced: {
+		disableOriginCheck: true
 	},
 	databaseHooks: {
 		session: {
@@ -47,6 +51,7 @@ export const auth = betterAuth({
 	},
 	plugins: [
 		admin(),
+		apiKey(),
 		organization({
 			ac: accessControl,
 			roles: {

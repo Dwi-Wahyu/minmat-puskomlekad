@@ -12,6 +12,7 @@
 	import { Tabs, TabsContent, TabsList, TabsTrigger } from '$lib/components/ui/tabs';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
+	import { cn } from '$lib/utils';
 	import {
 		ChevronLeft,
 		CheckCircle2,
@@ -22,7 +23,9 @@
 		User,
 		AlertCircle,
 		PlayCircle,
-		RotateCcw
+		RotateCcw,
+		Download,
+		FileText
 	} from '@lucide/svelte';
 
 	let { data } = $props();
@@ -35,6 +38,10 @@
 	let approveDialogOpen = $state(false);
 	let approveLoading = $state(false);
 
+	let overrideDialogOpen = $state(false);
+	let overrideLoading = $state(false);
+	let overrideReason = $state('');
+
 	let rejectDialogOpen = $state(false);
 	let rejectLoading = $state(false);
 	let rejectReason = $state('');
@@ -44,6 +51,9 @@
 
 	let returnDialogOpen = $state(false);
 	let returnLoading = $state(false);
+
+	let deleteDialogOpen = $state(false);
+	let deleteLoading = $state(false);
 
 	const statusConfig = {
 		DRAFT: {
@@ -57,6 +67,11 @@
 			icon: CheckCircle2
 		},
 		REJECTED: { label: 'Ditolak', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
+		PERINTAH_LANGSUNG: {
+			label: 'Perintah Langsung',
+			color: 'bg-orange-100 text-orange-700 border-orange-200',
+			icon: AlertCircle
+		},
 		DIPINJAM: {
 			label: 'Sedang Dipinjam',
 			color: 'bg-purple-100 text-purple-700 border-purple-200',
@@ -70,6 +85,17 @@
 	};
 
 	const currentStatus = $derived(statusConfig[data.lending.status as keyof typeof statusConfig]);
+
+	const steps = $derived([
+		{ status: 'DRAFT', label: 'Draft', icon: Clock },
+		{
+			status: data.lending.status === 'PERINTAH_LANGSUNG' ? 'PERINTAH_LANGSUNG' : 'APPROVED',
+			label: data.lending.status === 'PERINTAH_LANGSUNG' ? 'Perintah' : 'Disetujui',
+			icon: data.lending.status === 'PERINTAH_LANGSUNG' ? AlertCircle : CheckCircle2
+		},
+		{ status: 'DIPINJAM', label: 'Dipinjam', icon: Package },
+		{ status: 'KEMBALI', label: 'Kembali', icon: RotateCcw }
+	]);
 
 	function formatDate(date: any) {
 		if (!date) return '-';
@@ -103,6 +129,26 @@
 		</div>
 
 		<div class="flex gap-2">
+			{#if data.canDelete}
+				<Button
+					variant="outline"
+					class="border-red-200 text-red-600 hover:bg-red-50"
+					onclick={() => (deleteDialogOpen = true)}
+				>
+					Hapus Pengajuan
+				</Button>
+			{/if}
+
+			{#if data.canOverride}
+				<Button
+					variant="outline"
+					class="border-orange-200 text-orange-600 hover:bg-orange-50"
+					onclick={() => (overrideDialogOpen = true)}
+				>
+					Perintah Langsung
+				</Button>
+			{/if}
+
 			{#if data.canApprove}
 				<Button
 					variant="outline"
@@ -119,19 +165,73 @@
 				</Button>
 			{/if}
 
-			{#if data.lending.status === 'APPROVED' && data.userId === data.lending.requestedBy}
+			{#if data.canExecute}
 				<Button class="bg-blue-600 hover:bg-blue-700" onclick={() => (startDialogOpen = true)}>
 					<PlayCircle class="mr-2 size-4" />
 					Barang Diambil
 				</Button>
 			{/if}
 
-			{#if data.lending.status === 'DIPINJAM' && data.userId === data.lending.requestedBy}
+			{#if data.canReturn}
 				<Button class="bg-purple-600 hover:bg-purple-700" onclick={() => (returnDialogOpen = true)}>
 					<RotateCcw class="mr-2 size-4" />
 					Kembalikan Barang
 				</Button>
 			{/if}
+		</div>
+	</div>
+
+	<!-- Stepper -->
+	<div class="mb-2">
+		<div class="grid grid-cols-4 gap-2 rounded-xl border bg-card p-4 shadow-sm md:p-6">
+			{#each steps as step, i (step.status)}
+				{@const statusOrder = ['DRAFT', 'APPROVED', 'PERINTAH_LANGSUNG', 'DIPINJAM', 'KEMBALI']}
+				{@const currentIndex = statusOrder.indexOf(data.lending.status)}
+				{@const stepIndex = statusOrder.indexOf(step.status)}
+				{@const isCompleted =
+					data.lending.status === 'REJECTED' ? false : currentIndex >= stepIndex}
+				{@const isActive = data.lending.status === step.status}
+
+				<div class="relative flex flex-col items-center gap-2">
+					<div
+						class={cn(
+							'z-10 flex size-10 items-center justify-center rounded-full border-2 transition-all duration-300 md:size-12',
+							isActive
+								? 'border-primary bg-primary text-primary-foreground shadow-lg ring-4 ring-primary/20'
+								: isCompleted
+									? 'border-green-500 bg-green-500 text-white'
+									: 'border-muted bg-muted text-muted-foreground'
+						)}
+					>
+						{#if data.lending.status === 'REJECTED' && i === 1}
+							<XCircle class="size-5 md:size-6" />
+						{:else if isCompleted && !isActive}
+							<CheckCircle2 class="size-5 md:size-6" />
+						{:else}
+							<step.icon class="size-5 md:size-6" />
+						{/if}
+					</div>
+					<span
+						class={cn(
+							'text-[10px] font-bold tracking-tight md:text-xs',
+							isActive ? 'text-primary' : isCompleted ? 'text-green-600' : 'text-muted-foreground'
+						)}
+					>
+						{step.label}
+					</span>
+
+					{#if i < steps.length - 1}
+						<div
+							class={cn(
+								'absolute top-5 left-[calc(50%+25px)] h-0.5 w-[calc(100%-50px)] md:top-6',
+								isCompleted && statusOrder.indexOf(data.lending.status) > statusOrder.indexOf(step.status)
+									? 'bg-green-500'
+									: 'bg-muted'
+							)}
+						></div>
+					{/if}
+				</div>
+			{/each}
 		</div>
 	</div>
 
@@ -173,6 +273,38 @@
 							<Label class="text-xs text-muted-foreground uppercase">Satuan Pemilik Aset</Label>
 							<p class="text-sm font-semibold">{data.lending.organization?.name}</p>
 						</div>
+
+						{#if data.lending.attachmentPath}
+							<Separator />
+							<div class="space-y-2">
+								<Label class="text-xs text-muted-foreground uppercase">Dokumen Pendukung</Label>
+								<div
+									class="flex items-center justify-between rounded-md border bg-muted/50 p-3 transition-colors hover:bg-muted"
+								>
+									<div class="flex items-center gap-3 overflow-hidden">
+										<div class="rounded bg-background p-2 text-primary shadow-sm">
+											<FileText class="size-5" />
+										</div>
+										<div class="overflow-hidden">
+											<p class="truncate text-sm font-medium">
+												{data.lending.attachmentName || 'Dokumen Peminjaman'}
+											</p>
+											<p class="text-[10px] text-muted-foreground uppercase">PDF / DOCX</p>
+										</div>
+									</div>
+									<Button
+										variant="outline"
+										size="sm"
+										href={data.lending.attachmentPath}
+										download={data.lending.attachmentName}
+										class="shrink-0"
+									>
+										<Download class="mr-2 size-4" />
+										Unduh
+									</Button>
+								</div>
+							</div>
+						{/if}
 					</Card.Content>
 				</Card.Root>
 
@@ -200,6 +332,19 @@
 									Alasan Penolakan
 								</div>
 								<p class="text-sm text-red-600">{data.lending.rejectedReason}</p>
+							</div>
+						{/if}
+
+						{#if data.lending.status === 'PERINTAH_LANGSUNG'}
+							<div class="rounded-lg border border-orange-200 bg-orange-50 p-4">
+								<div class="mb-1 flex items-center gap-2 font-bold text-orange-700">
+									<AlertCircle class="size-4" />
+									Perintah Langsung (Command Override)
+								</div>
+								<p class="text-sm text-orange-600">{data.lending.overrideReason}</p>
+								<p class="mt-2 text-xs font-medium text-orange-700 italic">
+									Oleh: {data.lending.overrideByUser?.name || 'Pimpinan'}
+								</p>
 							</div>
 						{/if}
 
@@ -232,7 +377,7 @@
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
-						{#each data.lending.items as item}
+						{#each data.lending.items as item (item.id)}
 							<Table.Row>
 								<Table.Cell class="font-medium">{item.equipment.item.name}</Table.Cell>
 								<Table.Cell
@@ -253,7 +398,7 @@
 			<Card.Root>
 				<Card.Content class="pt-6">
 					<div class="space-y-6">
-						{#each data.lending.approvals as log}
+						{#each data.lending.approvals as log (log.id)}
 							<div class="flex gap-4">
 								<div class="flex flex-col items-center">
 									<div class={log.status === 'APPROVED' ? 'text-green-500' : 'text-red-500'}>
@@ -289,6 +434,33 @@
 
 <!-- ACTIONS FORMS -->
 <form
+	id="override-form"
+	method="POST"
+	action="?/override"
+	use:enhance={() => {
+		overrideLoading = true;
+		return ({ result }) => {
+			overrideLoading = false;
+			overrideDialogOpen = false;
+			if (result.type === 'success') {
+				notificationMsg = result.data?.message;
+				notificationType = 'success';
+				notificationOpen = true;
+				invalidateAll();
+			} else if (result.type === 'failure') {
+				notificationMsg = result.data?.message || 'Gagal melakukan override perintah langsung';
+				notificationType = 'error';
+				notificationOpen = true;
+			}
+		};
+	}}
+	hidden
+>
+	<input type="hidden" name="id" value={data.lending.id} />
+	<input type="hidden" name="reason" value={overrideReason} />
+</form>
+
+<form
 	id="approve-form"
 	method="POST"
 	action="?/approve"
@@ -302,6 +474,10 @@
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
+			} else if (result.type === 'failure') {
+				notificationMsg = result.data?.message || 'Gagal menyetujui peminjaman';
+				notificationType = 'error';
+				notificationOpen = true;
 			}
 		};
 	}}
@@ -324,6 +500,10 @@
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
+			} else if (result.type === 'failure') {
+				notificationMsg = result.data?.message || 'Gagal menolak peminjaman';
+				notificationType = 'error';
+				notificationOpen = true;
 			}
 		};
 	}}
@@ -347,6 +527,10 @@
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
+			} else if (result.type === 'failure') {
+				notificationMsg = result.data?.message || 'Gagal memproses pengambilan barang';
+				notificationType = 'error';
+				notificationOpen = true;
 			}
 		};
 	}}
@@ -369,6 +553,10 @@
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
+			} else if (result.type === 'failure') {
+				notificationMsg = result.data?.message || 'Gagal memproses pengembalian barang';
+				notificationType = 'error';
+				notificationOpen = true;
 			}
 		};
 	}}
@@ -378,6 +566,44 @@
 </form>
 
 <!-- DIALOGS -->
+<form
+	id="delete-form"
+	method="POST"
+	action="?/delete"
+	use:enhance={() => {
+		deleteLoading = true;
+		return ({ result }) => {
+			deleteLoading = false;
+			deleteDialogOpen = false;
+			if (result.type === 'success') {
+				notificationMsg = 'Pengajuan telah dihapus';
+				notificationType = 'success';
+				notificationOpen = true;
+				setTimeout(() => {
+					window.location.href = `/${page.params.org_slug}/peminjaman`;
+				}, 1500);
+			} else if (result.type === 'failure') {
+				notificationMsg = result.data?.message || 'Gagal menghapus pengajuan';
+				notificationType = 'error';
+				notificationOpen = true;
+			}
+		};
+	}}
+	hidden
+>
+	<input type="hidden" name="id" value={data.lending.id} />
+</form>
+
+<ConfirmationDialog
+	bind:open={deleteDialogOpen}
+	loading={deleteLoading}
+	type="error"
+	title="Hapus Pengajuan"
+	description="Apakah Anda yakin ingin menghapus pengajuan peminjaman ini? Tindakan ini tidak dapat dibatalkan."
+	actionLabel="Hapus"
+	onAction={() => document.getElementById('delete-form').requestSubmit()}
+/>
+
 <ConfirmationDialog
 	bind:open={approveDialogOpen}
 	loading={approveLoading}
@@ -387,6 +613,29 @@
 	actionLabel="Setujui"
 	onAction={() => document.getElementById('approve-form').requestSubmit()}
 />
+
+<ConfirmationDialog
+	bind:open={overrideDialogOpen}
+	loading={overrideLoading}
+	type="info"
+	title="Perintah Langsung (Command Override)"
+	description="Gunakan fitur ini hanya untuk instruksi mendesak atau operasi militer khusus yang melompati jalur persetujuan normal."
+	actionLabel="Konfirmasi Perintah"
+	onAction={() => {
+		if (!overrideReason) return alert('Alasan perintah harus diisi');
+		document.getElementById('override-form').requestSubmit();
+	}}
+>
+	<div class="mt-4">
+		<Label for="overrideReason">Alasan Perintah / Keterangan Operasi</Label>
+		<Textarea
+			bind:value={overrideReason}
+			placeholder="Contoh: Perintah Ops Darurat Mabes TNI..."
+			class="mt-2"
+			required
+		/>
+	</div>
+</ConfirmationDialog>
 
 <ConfirmationDialog
 	bind:open={rejectDialogOpen}

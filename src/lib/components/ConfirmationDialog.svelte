@@ -69,8 +69,10 @@
 		</div>
 
 		<div class="px-6 pt-12 pb-6 text-center">
-			<AlertDialog.Header>
-				<AlertDialog.Title class={cn('mb-2 text-center text-2xl font-bold', config.color)}>
+			<AlertDialog.Header
+				class="w-full place-items-center text-center sm:place-items-center sm:text-center"
+			>
+				<AlertDialog.Title class={cn('mb-2 w-full text-center text-2xl font-bold', config.color)}>
 					{displayTitle}
 				</AlertDialog.Title>
 				<AlertDialog.Description class="text-center text-base text-muted-foreground">

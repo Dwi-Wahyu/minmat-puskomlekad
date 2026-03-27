@@ -193,7 +193,7 @@ export const distribution = mysqlTable('distribution', {
 
 	toOrganizationId: varchar('to_org_id', { length: 36 }).references(() => organization.id),
 
-	status: mysqlEnum('status', ['DRAFT', 'APPROVED', 'SHIPPED', 'RECEIVED']).default('DRAFT'),
+	status: mysqlEnum('status', ['DRAFT', 'VALIDATED', 'APPROVED', 'SHIPPED', 'RECEIVED']).default('DRAFT'),
 
 	requestedBy: varchar('requested_by', { length: 36 }).references(() => user.id),
 
@@ -248,17 +248,28 @@ export const lending = mysqlTable('lending', {
 	id: varchar('id', { length: 36 }).primaryKey(),
 
 	unit: varchar('unit', { length: 100 }).notNull(),
-	purpose: mysqlEnum('purpose', ['OPERASI', 'LATIHAN']).notNull(),
+	purpose: mysqlEnum('purpose', ['OPERASI', 'LATIHAN', 'PERINTAH_LANGSUNG']).notNull(),
 
-	status: mysqlEnum('status', ['DRAFT', 'APPROVED', 'REJECTED', 'DIPINJAM', 'KEMBALI']).default(
-		'DRAFT'
-	),
+	status: mysqlEnum('status', [
+		'DRAFT',
+		'APPROVED',
+		'REJECTED',
+		'PERINTAH_LANGSUNG',
+		'DIPINJAM',
+		'KEMBALI'
+	]).default('DRAFT'),
 	rejectedReason: text('rejected_reason'),
+
+	overrideReason: text('override_reason'),
+	overrideBy: varchar('override_by', { length: 36 }).references(() => user.id),
 
 	requestedBy: varchar('requested_by', { length: 36 }).references(() => user.id),
 	organizationId: varchar('organization_id', { length: 36 }).references(() => organization.id),
 
 	approvedBy: varchar('approved_by', { length: 36 }).references(() => user.id),
+
+	attachmentPath: text('attachment_path'),
+	attachmentName: varchar('attachment_name', { length: 255 }),
 
 	startDate: timestamp('start_date').notNull(),
 	endDate: timestamp('end_date'),
@@ -414,8 +425,24 @@ export const approvalRelations = relations(approval, ({ one }) => ({
 	})
 }));
 
-export const distributionRelations = relations(distribution, ({ many }) => ({
-	items: many(distributionItem)
+export const distributionRelations = relations(distribution, ({ many, one }) => ({
+	items: many(distributionItem),
+	fromOrganization: one(organization, {
+		fields: [distribution.fromOrganizationId],
+		references: [organization.id]
+	}),
+	toOrganization: one(organization, {
+		fields: [distribution.toOrganizationId],
+		references: [organization.id]
+	}),
+	requestedByUser: one(user, {
+		fields: [distribution.requestedBy],
+		references: [user.id]
+	}),
+	approvedByUser: one(user, {
+		fields: [distribution.approvedBy],
+		references: [user.id]
+	})
 }));
 
 export const distributionItemRelations = relations(distributionItem, ({ one }) => ({
@@ -444,6 +471,10 @@ export const lendingRelations = relations(lending, ({ many, one }) => ({
 	}),
 	approvedByUser: one(user, {
 		fields: [lending.approvedBy],
+		references: [user.id]
+	}),
+	overrideByUser: one(user, {
+		fields: [lending.overrideBy],
 		references: [user.id]
 	}),
 	approvals: many(approval),

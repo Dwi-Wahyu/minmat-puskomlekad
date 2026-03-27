@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -15,7 +16,8 @@
 		Pencil,
 		Trash2,
 		ArrowRightLeft,
-		Package
+		Package,
+		Ellipsis
 	} from '@lucide/svelte';
 
 	let { data } = $props();
@@ -116,18 +118,21 @@
 						</Table.Cell>
 						<Table.Cell class="text-right">
 							<DropdownMenu.Root>
-								<DropdownMenu.Trigger asChild>
-									<MoreHorizontal class="size-4" />
+								<DropdownMenu.Trigger>
+									<Ellipsis class="size-4" />
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content align="end" class="w-40">
 									<DropdownMenu.Item onclick={() => openMutate(item.id)} class="gap-2">
 										<ArrowRightLeft class="size-4" /> Mutasi Stok
 									</DropdownMenu.Item>
-									<DropdownMenu.Item>
-										<a class="flex gap-2" href="/{page.params.org_slug}/barang/edit/{item.id}">
-											<Pencil class="size-4" /> Edit Data
-										</a>
+
+									<DropdownMenu.Item
+										onclick={() => goto(`/${page.params.org_slug}/barang/edit/${item.id}`)}
+										class="gap-2"
+									>
+										<Pencil class="size-4" /> Edit Data
 									</DropdownMenu.Item>
+
 									<DropdownMenu.Separator />
 									<DropdownMenu.Item
 										onclick={() => confirmDelete(item.id)}

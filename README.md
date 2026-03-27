@@ -54,3 +54,13 @@ You can preview the production build with `npm run preview`.
 - Run `bun run db:push` to update your database
 - Check ORIGIN & BETTER_AUTH_SECRET in .env and adjust it to your needs
 - Visit /demo/better-auth route to view the demo
+
+┌────────────────┬────────┬───────────────────────────┐
+│ Aksi           │ Method │ URL Endpoint              │
+├────────────────┼────────┼───────────────────────────┤
+│ Login          │ POST   │ /api/auth/sign-in/email   │
+│ Register       │ POST   │ /api/auth/sign-up/email   │
+│ Logout         │ POST   │ /api/auth/sign-out        │
+│ Cek Session    │ GET    │ /api/auth/get-session     │
+│ Ganti Password │ POST   │ /api/auth/change-password │
+└────────────────┴────────┴───────────────────────────┘

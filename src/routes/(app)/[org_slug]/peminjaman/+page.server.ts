@@ -1,25 +1,30 @@
 import { db } from '$lib/server/db';
-import { lending, organization, user } from '$lib/server/db/schema';
-import { eq, or, desc, and, like } from 'drizzle-orm';
+import { lending, member } from '$lib/server/db/schema';
+import { eq, or, desc, and, like, inArray } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals, url }) => {
-	const { org_slug } = params;
+export const load: PageServerLoad = async ({ locals, url }) => {
 	const { user: currentUser } = locals;
 
-	if (!currentUser) return { status: 401 };
+	if (!currentUser || !currentUser.organization) return { status: 401 };
 
 	const searchQuery = url.searchParams.get('q') || '';
 	const statusFilter = url.searchParams.get('status') || 'ALL';
 
+	// Dapatkan semua user ID yang berada di organisasi yang sama dengan currentUser
+	const orgUserIdsSubquery = db
+		.select({ id: member.userId })
+		.from(member)
+		.where(eq(member.organizationId, currentUser.organization.id));
+
 	// Query peminjaman dimana organisasi user adalah:
-	// 1. Pemohon (requestedBy adalah user ini atau organisasi peminjam adalah organisasi ini)
-	// 2. Pemberi pinjaman (organizationId adalah organisasi ini)
-	
+	// 1. Pemberi pinjaman (organizationId adalah organisasi ini)
+	// 2. Pemohon (requestedBy berasal dari anggota organisasi ini)
+
 	const filters = [
 		or(
 			eq(lending.organizationId, currentUser.organization.id),
-			eq(lending.requestedBy, currentUser.id)
+			inArray(lending.requestedBy, orgUserIdsSubquery)
 		)
 	];
 

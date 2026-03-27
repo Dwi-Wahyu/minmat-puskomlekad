@@ -1,12 +1,16 @@
 <script lang="ts">
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import NotificationBell from '$lib/components/NotificationBell.svelte';
+	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import { LogOut, Menu } from '@lucide/svelte';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { setSidebarState } from '$lib/components/ui/sidebar/context.svelte.ts';
+	import { goto } from '$app/navigation';
 
 	let { data, children } = $props();
 	const sidebar = setSidebarState();
+
+	let isLogoutDialogOpen = $state(false);
 
 	const toTitleCase = (str: string) => {
 		return str
@@ -17,6 +21,10 @@
 	};
 
 	const orgName = $derived(data.user.organization.name ?? '');
+
+	function handleLogout() {
+		goto('/logout');
+	}
 </script>
 
 <div class="flex h-screen bg-[#F8F9FA]">
@@ -49,9 +57,13 @@
 					</Avatar.Root>
 				</a>
 
-				<a href="/logout" title="Logout" class="text-gray-500 hover:text-destructive">
+				<button 
+					onclick={() => isLogoutDialogOpen = true} 
+					title="Logout" 
+					class="text-gray-500 hover:text-destructive transition-colors p-2 rounded-lg hover:bg-red-50"
+				>
 					<LogOut size={20} />
-				</a>
+				</button>
 
 				<NotificationBell
 					notifications={data.notifications}
@@ -66,3 +78,13 @@
 		</div>
 	</main>
 </div>
+
+<ConfirmationDialog
+	bind:open={isLogoutDialogOpen}
+	type="info"
+	title="Konfirmasi Keluar"
+	description="Apakah Anda yakin ingin keluar dari sistem? Anda akan diminta login kembali untuk mengakses data."
+	actionLabel="Keluar"
+	cancelLabel="Batal"
+	onAction={handleLogout}
+/>

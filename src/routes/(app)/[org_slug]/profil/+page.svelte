@@ -49,7 +49,7 @@
 	}
 </script>
 
-<div class="mx-auto max-w-5xl space-y-8 p-8">
+<div class="space-y-6 p-6">
 	<div>
 		<h1 class="text-2xl font-bold tracking-tight">Profil Saya</h1>
 		<p class="text-muted-foreground">Kelola informasi akun dan keamanan Anda.</p>
@@ -65,7 +65,7 @@
 		</div>
 	{/if}
 
-	<div class="grid gap-8 md:grid-cols-3">
+	<div class="grid gap-6 md:grid-cols-3">
 		<!-- Profil User -->
 		<Card.Root class="h-fit md:col-span-1">
 			<Card.Header class="pb-2 text-center">
@@ -79,23 +79,22 @@
 					{/if}
 				</div>
 				<Card.Title>{data.user.name}</Card.Title>
-				<Card.Description
-					>{data.user.role.toUpperCase()} - {data.user.organization.name}</Card.Description
-				>
+				<Card.Description>{data.user.email}</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-4 border-t pt-4">
 				<div class="space-y-1">
-					<Label class="text-xs text-muted-foreground uppercase">Email</Label>
+					<Label class="text-xs text-muted-foreground uppercase">Hak Akses</Label>
+
 					<div class="flex items-center gap-2 text-sm">
-						<Mail class="h-4 w-4 text-muted-foreground" />
-						{data.user.email}
+						<Lock class="h-4 w-4 text-muted-foreground" />
+						{data.user.role.toUpperCase()}
 					</div>
 				</div>
 				<div class="space-y-1">
-					<Label class="text-xs text-muted-foreground uppercase">Daftar Pada</Label>
+					<Label class="text-xs text-muted-foreground uppercase">Kesatuan</Label>
 					<div class="flex items-center gap-2 text-sm">
-						<Calendar class="h-4 w-4 text-muted-foreground" />
-						{formatDate(data.user.createdAt)}
+						<Mail class="h-4 w-4 text-muted-foreground" />
+						{data.user.organization.name}
 					</div>
 				</div>
 			</Card.Content>

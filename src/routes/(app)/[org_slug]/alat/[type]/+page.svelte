@@ -284,9 +284,9 @@
 				bind:value={mutateClass}
 				class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
 			>
-				<option value="TRANSITO">Transito (Gudang)</option>
-				<option value="KOMUNITY">Komunity (Satuan Pemakai)</option>
-				<option value="BALKIR">Balkir (Dalam Pengiriman)</option>
+				<option value="TRANSITO">Transito</option>
+				<option value="KOMUNITY">Komunity</option>
+				<option value="BALKIR">Balkir</option>
 			</select>
 		</div>
 		<div class="space-y-2">

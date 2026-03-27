@@ -16,11 +16,20 @@ const maintenanceSchema = z.object({
 	technicianId: z.string().uuid().optional().nullable()
 });
 
-export const load: PageServerLoad = async ({ locals }) => {
-	const { user: loggedInUser } = locals;
+export const load: PageServerLoad = async ({ params, locals }) => {
+	const { org_slug } = params;
+
+	// Ambil ID organisasi berdasarkan slug dari URL
+	const org = await db.query.organization.findFirst({
+		where: (org, { eq }) => eq(org.slug, org_slug)
+	});
+
+	if (!org) {
+		throw error(404, 'Organization not found');
+	}
 
 	const equipmentList = await db.query.equipment.findMany({
-		where: eq(equipment.organizationId, loggedInUser.organization.id),
+		where: eq(equipment.organizationId, org.id),
 		columns: { id: true, serialNumber: true },
 		with: {
 			item: {
@@ -31,37 +40,49 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}
 	});
 
+	// Urutkan berdasarkan nama item
+	const sortedEquipment = [...equipmentList].sort((a, b) =>
+		(a.item?.name || '').localeCompare(b.item?.name || '')
+	);
+
 	const technicianList = await db.query.user.findMany({
-		where: eq(user.id, loggedInUser.organization.id),
 		columns: { id: true, name: true, email: true },
 		orderBy: (user, { asc }) => [asc(user.name)]
 	});
 
-	return { equipment: equipmentList, technicians: technicianList };
+	return {
+		equipment: sortedEquipment,
+		technicians: technicianList,
+		org_slug
+	};
 };
 
 export const actions = {
-	default: async ({ request }) => {
+	default: async ({ request, params }) => {
+		const { org_slug } = params;
 		const formData = await request.formData();
 
-		// Ambil string mentah dari form
 		const rawScheduledDate = formData.get('scheduledDate')?.toString();
 		const rawCompletionDate = formData.get('completionDate')?.toString();
+		const rawTechnicianId = formData.get('technicianId')?.toString();
 
 		const data = {
 			equipmentId: formData.get('equipmentId')?.toString(),
 			maintenanceType: formData.get('maintenanceType')?.toString(),
 			description: formData.get('description')?.toString(),
-			// Konversi ke Date object atau ISO string yang valid sebelum parse
-			scheduledDate: rawScheduledDate ? new Date(rawScheduledDate).toISOString() : null,
-			completionDate: rawCompletionDate ? new Date(rawCompletionDate).toISOString() : null,
+			scheduledDate:
+				rawScheduledDate && rawScheduledDate !== ''
+					? new Date(rawScheduledDate).toISOString()
+					: null,
+			completionDate:
+				rawCompletionDate && rawCompletionDate !== ''
+					? new Date(rawCompletionDate).toISOString()
+					: null,
 			status: formData.get('status')?.toString() || 'PENDING',
-			technicianId: formData.get('technicianId')?.toString() || null
+			technicianId: rawTechnicianId && rawTechnicianId !== '' ? rawTechnicianId : null
 		};
 
 		try {
-			// Pastikan maintenanceSchema Anda menggunakan z.string().datetime()
-			// atau z.preprocess untuk menangani string dari input HTML
 			const validated = maintenanceSchema.parse(data);
 
 			await db.insert(maintenance).values({
@@ -71,12 +92,9 @@ export const actions = {
 				description: validated.description,
 				status: validated.status,
 				technicianId: validated.technicianId,
-				// Drizzle mysql-core timestamp menerima objek Date
 				scheduledDate: new Date(validated.scheduledDate),
 				completionDate: validated.completionDate ? new Date(validated.completionDate) : null
 			});
-
-			return { success: true };
 		} catch (err) {
 			console.error(err);
 
@@ -85,5 +103,7 @@ export const actions = {
 			}
 			return fail(500, { message: 'Kesalahan server internal' });
 		}
+
+		throw redirect(303, `/${org_slug}/pemeliharaan`);
 	}
 };

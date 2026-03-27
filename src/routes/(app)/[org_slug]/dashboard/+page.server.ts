@@ -1,26 +1,39 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { equipment, stock, movement, warehouse, item, lending, lendingItem } from '$lib/server/db/schema';
+import {
+	equipment,
+	stock,
+	movement,
+	warehouse,
+	item,
+	lending,
+	lendingItem,
+	organization
+} from '$lib/server/db/schema';
 import { eq, and, count, sum, gte, desc, sql } from 'drizzle-orm';
+import { error } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	if (!locals.user || !locals.user.organization) {
-		return {
-			summary: { activeInventory: 0, warehouseStock: 0, damagedItems: 0, monthlyMovements: 0 },
-			transito: { incoming: 0, outgoing: 0, pending: 0 },
-			komoditi: { active: 0, outgoing: 0, damaged: 0 },
-			balkir: { total: 0, used: 0, ready: 0, damaged: 0 },
-			recentEquipments: []
-		};
+export const load: PageServerLoad = async ({ locals, params }) => {
+	if (!locals.user) {
+		throw error(401, 'Unauthorized');
 	}
 
-	const orgId = locals.user.organization.id;
+	// Ambil ID organisasi berdasarkan slug dari URL
+	const org = await db.query.organization.findFirst({
+		where: eq(organization.slug, params.org_slug)
+	});
+
+	if (!org) {
+		throw error(404, 'Organization not found');
+	}
+
+	const orgId = org.id;
 
 	// Periode Bulan Ini
 	const now = new Date();
 	const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-	// 1. Ringkasan Stats (Top Cards)
+	// Ringkasan Stats (Top Cards)
 	const [activeInventoryCount] = await db
 		.select({ count: count() })
 		.from(equipment)
@@ -35,24 +48,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const [damagedItemsCount] = await db
 		.select({ count: count() })
 		.from(equipment)
-		.where(
-			and(
-				eq(equipment.organizationId, orgId),
-				sql`${equipment.condition} != 'BAIK'`
-			)
-		);
+		.where(and(eq(equipment.organizationId, orgId), sql`${equipment.condition} != 'BAIK'`));
 
 	const [monthlyMovementsCount] = await db
 		.select({ count: count() })
 		.from(movement)
-		.where(
-			and(
-				eq(movement.organizationId, orgId),
-				gte(movement.createdAt, firstDayOfMonth)
-			)
-		);
+		.where(and(eq(movement.organizationId, orgId), gte(movement.createdAt, firstDayOfMonth)));
 
-	// 2. Transito Stats
+	// Transito Stats
 	const [transitoIncoming] = await db
 		.select({ count: count() })
 		.from(movement)
@@ -80,23 +83,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const [transitoPending] = await db
 		.select({ count: count() })
 		.from(equipment)
-		.where(
-			and(
-				eq(equipment.organizationId, orgId),
-				eq(equipment.status, 'TRANSIT')
-			)
-		);
+		.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'TRANSIT')));
 
-	// 3. Komoditi Stats
+	// Komoditi Stats
 	const [komoditiActive] = await db
 		.select({ count: count() })
 		.from(equipment)
-		.where(
-			and(
-				eq(equipment.organizationId, orgId),
-				eq(equipment.status, 'IN_USE')
-			)
-		);
+		.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'IN_USE')));
 
 	const [komoditiOutgoing] = await db
 		.select({ count: count() })
@@ -110,16 +103,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 			)
 		);
 
-	// 4. Balkir Stats (Ready Stock/Main Inventory)
+	// Balkir Stats (Ready Stock/Main Inventory)
 	const [balkirTotal] = await db
 		.select({ count: count() })
 		.from(equipment)
-		.where(
-			and(
-				eq(equipment.organizationId, orgId),
-				eq(equipment.status, 'READY')
-			)
-		);
+		.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'READY')));
 
 	const [balkirDamaged] = await db
 		.select({ count: count() })
@@ -132,7 +120,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			)
 		);
 
-	// 5. Daftar Alat Terbaru (Sesuai mock sebelumnya)
+	// Daftar Alat Terbaru
 	const recentEquipments = await db.query.equipment.findMany({
 		where: (equipment, { eq }) => eq(equipment.organizationId, orgId),
 		with: {
@@ -144,27 +132,28 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	// Transformasi data agar sesuai dengan UI
 	return {
+		org_slug: params.org_slug,
 		summary: {
-			activeInventory: activeInventoryCount.count || 0,
-			warehouseStock: Number(warehouseStockSum.total) || 0,
-			damagedItems: damagedItemsCount.count || 0,
-			monthlyMovements: monthlyMovementsCount.count || 0
+			activeInventory: Number(activeInventoryCount?.count) || 0,
+			warehouseStock: Number(warehouseStockSum?.total) || 0,
+			damagedItems: Number(damagedItemsCount?.count) || 0,
+			monthlyMovements: Number(monthlyMovementsCount?.count) || 0
 		},
 		transito: {
-			incoming: transitoIncoming.count || 0,
-			outgoing: transitoOutgoing.count || 0,
-			pending: transitoPending.count || 0
+			incoming: Number(transitoIncoming?.count) || 0,
+			outgoing: Number(transitoOutgoing?.count) || 0,
+			pending: Number(transitoPending?.count) || 0
 		},
 		komoditi: {
-			active: komoditiActive.count || 0,
-			outgoing: komoditiOutgoing.count || 0,
-			damaged: 0 // Statik atau perlu query spesifik per gudang
+			active: Number(komoditiActive?.count) || 0,
+			outgoing: Number(komoditiOutgoing?.count) || 0,
+			damaged: 0
 		},
 		balkir: {
-			total: balkirTotal.count || 0,
-			used: komoditiActive.count || 0, // Menggunakan mapping status
-			ready: balkirTotal.count || 0,
-			damaged: balkirDamaged.count || 0
+			total: Number(balkirTotal?.count) || 0,
+			used: Number(komoditiActive?.count) || 0,
+			ready: Number(balkirTotal?.count) || 0,
+			damaged: Number(balkirDamaged?.count) || 0
 		},
 		recentEquipments: recentEquipments.map((e) => ({
 			id: e.id,
@@ -177,4 +166,3 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}))
 	};
 };
-

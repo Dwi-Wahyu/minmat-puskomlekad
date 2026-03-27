@@ -4,26 +4,48 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Input } from '$lib/components/ui/input';
 	import * as Table from '$lib/components/ui/table';
-	import { 
-		Search, 
-		Plus, 
-		Eye, 
-		Clock, 
-		CheckCircle2, 
-		XCircle, 
-		Package, 
+	import {
+		Search,
+		Plus,
+		Eye,
+		Clock,
+		CheckCircle2,
+		XCircle,
+		Package,
 		RotateCcw,
-		Filter
+		Filter,
+		AlertCircle
 	} from '@lucide/svelte';
 
 	let { data } = $props();
 
 	const statusConfig = {
-		DRAFT: { label: 'Menunggu', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock },
-		APPROVED: { label: 'Disetujui', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle2 },
+		DRAFT: {
+			label: 'Menunggu',
+			color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+			icon: Clock
+		},
+		APPROVED: {
+			label: 'Disetujui',
+			color: 'bg-blue-100 text-blue-700 border-blue-200',
+			icon: CheckCircle2
+		},
 		REJECTED: { label: 'Ditolak', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
-		DIPINJAM: { label: 'Dipinjam', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Package },
-		KEMBALI: { label: 'Kembali', color: 'bg-green-100 text-green-700 border-green-200', icon: RotateCcw }
+		PERINTAH_LANGSUNG: {
+			label: 'Perintah',
+			color: 'bg-orange-100 text-orange-700 border-orange-200',
+			icon: AlertCircle
+		},
+		DIPINJAM: {
+			label: 'Dipinjam',
+			color: 'bg-purple-100 text-purple-700 border-purple-200',
+			icon: Package
+		},
+		KEMBALI: {
+			label: 'Kembali',
+			color: 'bg-green-100 text-green-700 border-green-200',
+			icon: RotateCcw
+		}
 	};
 
 	function formatDate(date: any) {
@@ -47,9 +69,9 @@
 		</Button>
 	</div>
 
-	<div class="flex flex-col md:flex-row items-center gap-4 rounded-lg border bg-card p-4 shadow-sm">
-		<div class="relative flex-1 w-full">
-			<Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+	<div class="flex flex-col items-center gap-4 rounded-lg border bg-card p-4 shadow-sm md:flex-row">
+		<div class="relative w-full flex-1">
+			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 			<form method="GET" class="w-full">
 				<Input
 					name="q"
@@ -62,12 +84,12 @@
 		<div class="flex items-center gap-2">
 			<Filter class="size-4 text-muted-foreground" />
 			<div class="flex gap-1">
-				{#each ['ALL', 'DRAFT', 'APPROVED', 'DIPINJAM', 'KEMBALI', 'REJECTED'] as status}
-					<Button 
-						variant={data.filters.status === status ? 'default' : 'outline'} 
+				{#each ['ALL', 'DRAFT', 'APPROVED', 'PERINTAH_LANGSUNG', 'DIPINJAM', 'KEMBALI', 'REJECTED'] as status}
+					<Button
+						variant={data.filters.status === status ? 'default' : 'outline'}
 						size="sm"
 						href="?status={status}&q={data.filters.q}"
-						class="text-[10px] h-7 px-2"
+						class="h-7 px-2 text-[10px]"
 					>
 						{status}
 					</Button>
@@ -76,7 +98,7 @@
 		</div>
 	</div>
 
-	<div class="rounded-lg border bg-card shadow-sm overflow-hidden">
+	<div class="overflow-hidden rounded-lg border bg-card shadow-sm">
 		<Table.Root>
 			<Table.Header>
 				<Table.Row class="bg-muted/50">
@@ -91,15 +113,17 @@
 			<Table.Body>
 				{#each data.lendingList as item (item.id)}
 					{@const config = statusConfig[item.status as keyof typeof statusConfig]}
-					<Table.Row class="hover:bg-muted/30 transition-colors">
+					<Table.Row class="transition-colors hover:bg-muted/30">
 						<Table.Cell>
 							<div class="flex flex-col">
 								<span class="font-bold">{item.unit}</span>
-								<span class="text-xs text-muted-foreground">Oleh: {item.requestedByUser?.name}</span>
+								<span class="text-xs text-muted-foreground">Oleh: {item.requestedByUser?.name}</span
+								>
 							</div>
 						</Table.Cell>
 						<Table.Cell>
-							<Badge variant="outline" class="text-[10px] uppercase font-bold">{item.purpose}</Badge>
+							<Badge variant="outline" class="text-[10px] font-bold uppercase">{item.purpose}</Badge
+							>
 						</Table.Cell>
 						<Table.Cell>
 							<span class="text-sm font-medium">{item.organization?.name}</span>
@@ -112,12 +136,16 @@
 						</Table.Cell>
 						<Table.Cell>
 							<Badge variant="outline" class={config.color}>
-								<config.icon class="size-3 mr-1" />
+								<config.icon class="mr-1 size-3" />
 								{config.label}
 							</Badge>
 						</Table.Cell>
 						<Table.Cell class="text-right">
-							<Button variant="ghost" size="icon" href="/{page.params.org_slug}/peminjaman/{item.id}">
+							<Button
+								variant="ghost"
+								size="icon"
+								href="/{page.params.org_slug}/peminjaman/{item.id}"
+							>
 								<Eye class="size-4 text-blue-600" />
 							</Button>
 						</Table.Cell>

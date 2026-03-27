@@ -1,3 +1,141 @@
+<!-- <script lang="ts">
+	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import Button from '@/components/ui/button/button.svelte';
+	import { ArrowLeft } from '@lucide/svelte';
+	let { data, form } = $props();
+	import * as Card from '$lib/components/ui/card';
+	import Input from '@/components/ui/input/input.svelte';
+	import Textarea from '@/components/ui/textarea/textarea.svelte';
+	import * as Select from '$lib/components/ui/select/index.js';
+	import { Label } from '@/components/ui/label';
+
+	let isLoading = $state(false);
+
+	// State untuk dialog notifikasi
+	let showNotification = $state(false);
+	let notificationType: 'success' | 'error' | 'info' = $state('success');
+	let notificationTitle = $state('');
+	let notificationDescription = $state('');
+	let notificationActionLabel = $state('OK');
+
+	// Handler untuk menampilkan notifikasi
+	function showSuccessNotification() {
+		notificationType = 'success';
+		notificationTitle = 'Berhasil!';
+		notificationDescription = 'Data pemeliharaan berhasil disimpan.';
+		notificationActionLabel = 'OK';
+		showNotification = true;
+	}
+
+	function showErrorNotification(message: string) {
+		notificationType = 'error';
+		notificationTitle = 'Gagal!';
+		notificationDescription = message || 'Terjadi kesalahan saat menyimpan data.';
+		notificationActionLabel = 'Coba Lagi';
+		showNotification = true;
+	}
+
+	// Handler untuk aksi setelah notifikasi
+	function handleNotificationAction() {
+		showNotification = false;
+		if (notificationType === 'success') {
+			goto(`/${data.org_slug}/barang`);
+		}
+	}
+</script>
+
+<div class="mx-auto max-w-4xl space-y-8 p-8">
+	<div class="flex items-center justify-between">
+		<div class="flex items-center gap-4">
+			<Button
+				variant="outline"
+				size="icon"
+				href="/{data.org_slug}/barang"
+				class="rounded-full shadow-sm"
+			>
+				<ArrowLeft size={18} />
+			</Button>
+			<div>
+				<h1 class="flex items-center gap-2 text-2xl font-bold text-slate-900">
+					Tambah Barang Habis Pakai
+				</h1>
+				<p class="text-sm text-slate-500">Daftarkan definisi barang baru untuk</p>
+			</div>
+		</div>
+	</div>
+
+	<Card.Root class="overflow-hidden border-slate-200 shadow-sm">
+		<Card.Content>
+			<form
+				method="POST"
+				use:enhance={() => {
+					return async ({ result, update }) => {
+						isLoading = true;
+
+						if (
+							result.type === 'success' ||
+							(result.type === 'redirect' && result.location.includes('pemeliharaan'))
+						) {
+							showSuccessNotification();
+						} else if (result.type === 'failure') {
+							showErrorNotification(result.data?.message || 'Terjadi kesalahan');
+						}
+						await update();
+					};
+				}}
+				class="grid grid-cols-1 gap-6 md:grid-cols-2"
+			>
+				<div class="flex flex-col gap-2">
+					<Label for="name">Nama Barang</Label>
+					<Input type="text" name="name" id="name" required placeholder="Contoh: Baterai AA" />
+				</div>
+
+				<div class="flex flex-col gap-2">
+					<Label for="baseUnit">Satuan Dasar</Label>
+
+					<Select.Root name="baseUnit" required type="single">
+						<Select.Trigger class="w-full">Pilih Satuan</Select.Trigger>
+						<Select.Content>
+							<Select.Item value="PCS">PCS</Select.Item>
+							<Select.Item value="BOX">BOX</Select.Item>
+							<Select.Item value="METER">METER</Select.Item>
+							<Select.Item value="ROLL">ROLL</Select.Item>
+							<Select.Item value="UNIT">UNIT</Select.Item>
+						</Select.Content>
+					</Select.Root>
+				</div>
+
+				<div class="flex flex-col gap-2 md:col-span-2">
+					<Label for="description">Deskripsi / Keterangan</Label>
+					<Textarea
+						name="description"
+						id="description"
+						placeholder="Tambahkan catatan singkat tentang barang ini..."
+						class="min-h-20 rounded-lg border p-2.5 outline-none focus:ring-2 focus:ring-[#2D5A43]"
+					/>
+				</div>
+
+				<div class="mt-4 flex gap-3 md:col-span-2">
+					<a
+						href="/{data.user.organization.slug}/barang"
+						class="flex-1 rounded-lg border border-gray-300 py-3 text-center font-medium transition hover:bg-gray-50"
+					>
+						Batal
+					</a>
+					<button
+						disabled={isLoading}
+						type="submit"
+						class="hover:bg-opacity-90 flex-2 rounded-lg bg-[#2D5A43] py-3 font-bold text-white transition disabled:opacity-50"
+					>
+						{isLoading ? 'Menyimpan...' : 'Simpan Barang'}
+					</button>
+				</div>
+			</form>
+		</Card.Content>
+	</Card.Root>
+</div> -->
+
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	let { data, form } = $props();

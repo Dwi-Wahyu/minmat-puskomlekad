@@ -21,10 +21,14 @@
 		"db:seed": "bun run src/lib/server/db/seed.ts",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
 	},
+	"overrides": {
+		"@better-auth/core": "1.5.6"
+	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",
 		"@eslint/compat": "^2.0.2",
 		"@eslint/js": "^9.39.2",
+		"@faker-js/faker": "^10.3.0",
 		"@fontsource-variable/figtree": "^5.2.10",
 		"@hugeicons/core-free-icons": "^4.0.0",
 		"@hugeicons/svelte": "^1.1.2",
@@ -37,7 +41,7 @@
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/node": "^22",
 		"@vitest/browser-playwright": "^4.1.0",
-		"better-auth": "~1.4.21",
+		"better-auth": "1.5.6",
 		"bits-ui": "^2.16.3",
 		"dotenv": "^17.3.1",
 		"drizzle-kit": "^0.31.8",
@@ -64,6 +68,7 @@
 		"vitest-browser-svelte": "^2.0.2"
 	},
 	"dependencies": {
+		"@better-auth/api-key": "1.5.6",
 		"@lucide/svelte": "^0.577.0",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"clsx": "^2.1.1",

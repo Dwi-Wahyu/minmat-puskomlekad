@@ -10,7 +10,8 @@
 		Handshake,
 		Building2,
 		RefreshCcw,
-		Settings
+		Settings,
+		Mailbox
 	} from '@lucide/svelte';
 	import SidebarDropdown from './SidebarDropdown.svelte';
 	import SidebarLink from './SidebarLink.svelte';
@@ -24,7 +25,13 @@
 		return `/${organization.slug + path}`;
 	}
 
-	const menus = [
+	function hasRole(menuRole: string | string[] | undefined, userRole: string) {
+		if (!menuRole) return true;
+		if (Array.isArray(menuRole)) return menuRole.includes(userRole);
+		return menuRole === userRole;
+	}
+
+	const rawMenus = [
 		{
 			name: 'Dashboard',
 			path: getPath('/dashboard'),
@@ -95,6 +102,13 @@
 			children: []
 		},
 		{
+			name: 'Distribusi',
+			path: getPath('/distribusi'),
+			icon: Mailbox,
+			isDropdown: false,
+			children: []
+		},
+		{
 			name: 'Satuan Jajaran',
 			path: getPath('/satuan-jajaran'),
 			icon: Building2,
@@ -113,10 +127,26 @@
 			icon: Settings,
 			isDropdown: true,
 			path: getPath('/pengaturan'),
-			role: 'superadmin',
-			children: [{ name: 'Manajemen Pengguna', path: getPath('/pengaturan/pengguna') }]
+			role: ['superadmin', 'kakomlek'],
+			children: [
+				{ name: 'Manajemen Pengguna', path: getPath('/pengaturan/pengguna'), role: ['superadmin'] },
+				{ name: 'Audit Log', path: getPath('/audit-log'), role: ['superadmin', 'kakomlek'] }
+			]
 		}
 	];
+
+	const menus = $derived(
+		rawMenus
+			.filter((menu) => hasRole(menu.role, user.role))
+			.map((menu) => {
+				if (menu.isDropdown) {
+					const filteredChildren = menu.children.filter((child) => hasRole(child.role, user.role));
+					return { ...menu, children: filteredChildren };
+				}
+				return menu;
+			})
+			.filter((menu) => !menu.isDropdown || menu.children.length > 0)
+	);
 </script>
 
 <aside
@@ -147,18 +177,16 @@
 
 	<nav class="flex-1 overflow-x-hidden overflow-y-auto px-4">
 		<ul class="space-y-1">
-			{#each menus as menu}
-				{#if !menu.role || menu.role === user.role}
-					{#if menu.isDropdown}
-						<SidebarDropdown
-							name={sidebar.open ? menu.name : ''}
-							icon={menu.icon}
-							activePrefix={menu.path}
-							children={menu.children}
-						/>
-					{:else}
-						<SidebarLink href={menu.path} icon={menu.icon} name={sidebar.open ? menu.name : ''} />
-					{/if}
+			{#each menus as menu (menu.name)}
+				{#if menu.isDropdown}
+					<SidebarDropdown
+						name={sidebar.open ? menu.name : ''}
+						icon={menu.icon}
+						activePrefix={menu.path}
+						children={menu.children}
+					/>
+				{:else}
+					<SidebarLink href={menu.path} icon={menu.icon} name={sidebar.open ? menu.name : ''} />
 				{/if}
 			{/each}
 		</ul>
