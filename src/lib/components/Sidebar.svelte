@@ -148,7 +148,6 @@
 			icon: Map,
 			isDropdown: false,
 			path: getPath('/tanah'),
-			role: ['superadmin', 'kakomlek'],
 			children: []
 		},
 		{
@@ -156,7 +155,6 @@
 			icon: Building2,
 			isDropdown: false,
 			path: getPath('/bangunan'),
-			role: ['superadmin', 'kakomlek'],
 			children: []
 		},
 		{
