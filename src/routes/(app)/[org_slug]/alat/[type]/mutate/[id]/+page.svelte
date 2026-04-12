@@ -74,10 +74,11 @@
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
 		<!-- Info Alat -->
 		<Card.Root class="md:col-span-1">
-			<Card.Header>
-				<Card.Title class="text-lg">Detail Alat</Card.Title>
-			</Card.Header>
 			<Card.Content class="space-y-4">
+				<div>
+					<Card.Title class="text-lg">Detail Alat</Card.Title>
+				</div>
+
 				{#if data.equipment.item.imagePath}
 					<img
 						src="/uploads/item/{data.equipment.item.imagePath}"
@@ -92,19 +93,19 @@
 					</div>
 				{/if}
 				<div>
-					<Label class="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+					<Label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
 						>Nama Barang</Label
 					>
 					<p class="font-medium">{data.equipment.item.name}</p>
 				</div>
 				<div>
-					<Label class="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+					<Label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
 						>Serial Number</Label
 					>
 					<p class="font-mono text-sm">{data.equipment.serialNumber || '-'}</p>
 				</div>
 				<div>
-					<Label class="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+					<Label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
 						>Status & Kondisi</Label
 					>
 					<p class="text-sm">
@@ -112,7 +113,7 @@
 					</p>
 				</div>
 				<div>
-					<Label class="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+					<Label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
 						>Lokasi Saat Ini</Label
 					>
 					<p class="font-medium">{data.equipment.warehouse?.name || 'Tanpa Gudang'}</p>
@@ -132,11 +133,12 @@
 						};
 					}}
 				>
-					<Card.Header>
-						<Card.Title class="text-lg">Informasi Mutasi</Card.Title>
-						<Card.Description>Lengkapi data perpindahan di bawah ini.</Card.Description>
-					</Card.Header>
 					<Card.Content class="space-y-6">
+						<div>
+							<Card.Title class="text-lg">Informasi Mutasi</Card.Title>
+							<Card.Description>Lengkapi data perpindahan di bawah ini.</Card.Description>
+						</div>
+
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div class="space-y-2">
 								<Label for="eventType">Jenis Kejadian</Label>
@@ -176,7 +178,7 @@
 									{#if showFromWarehouse}
 										{data.equipment.warehouse?.name || 'Pusat/Luar Sistem'}
 									{:else}
-										<span class="italic text-xs">(Penerimaan dari luar sistem)</span>
+										<span class="text-xs italic">(Penerimaan dari luar sistem)</span>
 									{/if}
 								</div>
 							</div>
@@ -201,7 +203,7 @@
 								<div class="space-y-2 opacity-50">
 									<Label>Gudang Tujuan</Label>
 									<div
-										class="flex h-10 w-full items-center rounded-md border border-dashed border-input px-3 text-sm italic text-muted-foreground"
+										class="flex h-10 w-full items-center rounded-md border border-dashed border-input px-3 text-sm text-muted-foreground italic"
 									>
 										Keluar dari sistem (Permanen)
 									</div>
@@ -238,22 +240,23 @@
 								/>
 							</div>
 						</div>
+
+						<div class="flex justify-end gap-3">
+							<Button variant="outline" type="button" onclick={handleBack} disabled={loading}>
+								Batal
+							</Button>
+							<Button type="submit" class="gap-2" disabled={loading}>
+								{#if loading}
+									<div
+										class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+									></div>
+								{:else}
+									<ArrowRightLeft class="size-4" />
+								{/if}
+								Catat Mutasi
+							</Button>
+						</div>
 					</Card.Content>
-					<Card.Footer class="flex justify-end gap-3 border-t bg-muted/20 pt-6">
-						<Button variant="outline" type="button" onclick={handleBack} disabled={loading}>
-							Batal
-						</Button>
-						<Button type="submit" class="gap-2" disabled={loading}>
-							{#if loading}
-								<div
-									class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-								></div>
-							{:else}
-								<ArrowRightLeft class="size-4" />
-							{/if}
-							Catat Mutasi
-						</Button>
-					</Card.Footer>
 				</form>
 			</Card.Root>
 		</div>

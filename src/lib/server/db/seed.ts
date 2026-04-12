@@ -240,7 +240,7 @@ async function main() {
 				id: uuidv4(),
 				itemId: itemId,
 				warehouseId: org.warehouseId,
-				qty: Math.floor(Math.random() * 500) + 100
+				qty: (Math.floor(Math.random() * 500) + 100).toString()
 			});
 			allCreatedConsumables.push({ id: itemId, name, orgId: org.id });
 		}
@@ -306,7 +306,7 @@ async function main() {
 						equipmentId: eqp.id,
 						eventType: type.event as any,
 						classification: type.class as any,
-						qty: 1,
+						qty: '1.0000',
 						organizationId: org.id,
 						fromWarehouseId: org.warehouseId,
 						picId: orgUser,
@@ -323,7 +323,7 @@ async function main() {
 						itemId: bhp.id,
 						eventType: type.event as any,
 						classification: type.class as any,
-						qty: Math.floor(Math.random() * 10) + 1,
+						qty: (Math.floor(Math.random() * 10) + 1).toString(),
 						unit: 'PCS',
 						organizationId: org.id,
 						fromWarehouseId: org.warehouseId,
@@ -363,7 +363,7 @@ async function main() {
 				id: uuidv4(),
 				distributionId: distId,
 				equipmentId: eqp.id,
-				quantity: 1,
+				quantity: '1.0000',
 				note: 'Distribusi rutin'
 			});
 		}
