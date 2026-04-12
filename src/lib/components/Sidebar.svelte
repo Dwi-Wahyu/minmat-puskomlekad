@@ -130,7 +130,7 @@
 			children: [
 				{ name: 'Pemeliharaan', path: getPath('/pemeliharaan') },
 				{ name: 'Peminjaman', path: getPath('/peminjaman') },
-				{ name: 'Distribusi', path: getPath('/distribusi') }
+				{ name: 'Distribusi', path: getPath('/distribusi'), role: ['parent'] }
 			]
 		},
 		{
@@ -158,11 +158,19 @@
 			children: []
 		},
 		{
+			name: 'Audit Log',
+			path: getPath('/audit-log'),
+			role: ['superadmin', 'kakomlek'],
+			icon: Settings,
+			isDropdown: false,
+			children: []
+		},
+		{
 			name: 'Administrasi',
 			icon: Settings,
 			isDropdown: true,
 			path: getPath('/pengaturan'),
-			role: ['superadmin', 'kakomlek'],
+			role: ['superadmin', 'kakomlek', 'parent'],
 			children: [
 				{ name: 'Satuan Jajaran', path: getPath('/satuan-jajaran') },
 				{ name: 'Manajemen Pengguna', path: getPath('/pengaturan/pengguna'), role: ['superadmin'] },
