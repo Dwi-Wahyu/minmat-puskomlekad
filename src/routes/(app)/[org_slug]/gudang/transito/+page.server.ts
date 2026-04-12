@@ -1,14 +1,29 @@
 import { db } from '$lib/server/db';
-import { movement } from '@/server/db/schema.js';
+import { movement, organization } from '$lib/server/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
+import type { PageServerLoad } from './$types';
 
-export const load = async ({ params, locals }) => {
-	const { id: organizationId } = locals.user.organization;
+export const load: PageServerLoad = async ({ url, locals }) => {
+	const userOrg = locals.user.organization;
+	const isMabes = userOrg.parentId === null;
+	const selectedOrgId = url.searchParams.get('orgId') || userOrg.id;
+
+	if (!userOrg.id) {
+		return {
+			movements: [],
+			organizations: [],
+			isMabes: false,
+			selectedOrgId: ''
+		};
+	}
+
+	// Fetch all organizations if user is Mabes
+	const orgs = isMabes ? await db.query.organization.findMany() : [];
 
 	const movements = await db.query.movement.findMany({
 		where: and(
-			eq(movement.classification, 'KOMUNITY'),
-			eq(movement.organizationId, organizationId)
+			eq(movement.classification, 'TRANSITO'),
+			eq(movement.organizationId, selectedOrgId)
 		),
 
 		with: {
@@ -55,6 +70,9 @@ export const load = async ({ params, locals }) => {
 				qty: m.qty,
 				notes: m.notes
 			};
-		})
+		}),
+		organizations: orgs,
+		isMabes: isMabes,
+		selectedOrgId: selectedOrgId
 	};
 };

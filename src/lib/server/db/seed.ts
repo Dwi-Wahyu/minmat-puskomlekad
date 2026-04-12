@@ -146,14 +146,23 @@ async function main() {
 		'SILIWANGI',
 		'DIPENOGORO',
 		'BRAWIJAYA',
-		'MULAWARMN',
+		'MULAWARMAN',
 		'UDAYANA',
 		'TANJUNG PR',
 		'MERDRKA',
 		'HASANUDDIN',
 		'PATTIMURA',
 		'CENDRAWASIH',
-		'KASUARI'
+		'KASUARI',
+		'TUANGKU TMBSI',
+		'TUANGKU IB',
+		'RADEN INTEN',
+		'TAMBUN BUNGAI',
+		'PALAKA WIRA',
+		'MANDALA TRIKORA',
+		'KOPASSUS',
+		'KOSTRAD',
+		'AKMIL'
 	];
 
 	for (const namaSatuan of daftarSatuan) {

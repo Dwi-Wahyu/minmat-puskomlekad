@@ -1,18 +1,27 @@
 import { db } from '$lib/server/db';
-import { movement } from '@/server/db/schema.js';
-import { eq, desc, and, or } from 'drizzle-orm'; // Tambahkan 'or'
+import { movement, organization } from '$lib/server/db/schema';
+import { eq, desc, and } from 'drizzle-orm';
+import type { PageServerLoad } from './$types';
 
-export const load = async ({ params, locals }) => {
-	const { organizationId } = locals.user; // Pastikan cara ambil ID ini benar sesuai auth provider Anda
+export const load: PageServerLoad = async ({ url, locals }) => {
+	const userOrg = locals.user.organization;
+	const isMabes = userOrg.parentId === null;
+	const selectedOrgId = url.searchParams.get('orgId') || userOrg.id;
 
-	if (!organizationId) {
-		return { movements: [] };
+	if (!userOrg.id) {
+		return {
+			movements: [],
+			organizations: [],
+			isMabes: false,
+			selectedOrgId: ''
+		};
 	}
 
+	// Fetch all organizations if user is Mabes
+	const orgs = isMabes ? await db.query.organization.findMany() : [];
+
 	const movements = await db.query.movement.findMany({
-		// LOGIKA FILTER:
-		// (classification == 'BALKIR') ATAU (organizationId == milik_user)
-		where: or(eq(movement.classification, 'BALKIR'), eq(movement.organizationId, organizationId)),
+		where: and(eq(movement.classification, 'BALKIR'), eq(movement.organizationId, selectedOrgId)),
 		with: {
 			equipment: {
 				with: {
@@ -38,7 +47,7 @@ export const load = async ({ params, locals }) => {
 		movements: movements.map((m) => {
 			// Helper untuk menentukan nama organisasi
 			const displayOrgName =
-				m.organizationId === organizationId ? 'Internal' : (m.organization?.name ?? 'Unknown');
+				m.organizationId === userOrg.id ? 'Internal' : (m.organization?.name ?? 'Unknown');
 
 			if (m.equipment) {
 				return {
@@ -46,7 +55,7 @@ export const load = async ({ params, locals }) => {
 					type: 'asset' as const,
 					nama: m.equipment.item.name,
 					tipe: m.equipment.item.type,
-					kategori: m.equipment.item.equipmentType, // Perbaikan: ambil dari item milik equipment
+					kategori: m.equipment.item.equipmentType,
 					sn: m.equipment.serialNumber,
 					qty: m.qty,
 					satuan: m.equipment.item.baseUnit,
@@ -55,7 +64,7 @@ export const load = async ({ params, locals }) => {
 					tglMasuk: m.createdAt,
 					organizationName: displayOrgName,
 					fromWarehouse: m.fromWarehouse?.name,
-					classification: m.classification // Menambahkan info classification di return
+					classification: m.classification
 				};
 			}
 
@@ -93,6 +102,9 @@ export const load = async ({ params, locals }) => {
 				organizationName: displayOrgName,
 				fromWarehouse: m.fromWarehouse?.name
 			};
-		})
+		}),
+		organizations: orgs,
+		isMabes: isMabes,
+		selectedOrgId: selectedOrgId
 	};
 };

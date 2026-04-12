@@ -1,20 +1,28 @@
 import { db } from '$lib/server/db';
-import { movement, equipment, user } from '$lib/server/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { movement, equipment, organization } from '$lib/server/db/schema';
+import { eq, desc, and } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	const { id: organizationId } = locals.user.organization;
+export const load: PageServerLoad = async ({ locals, url }) => {
+	const userOrg = locals.user.organization;
+	const isMabes = userOrg.parentId === null;
+	const selectedOrgId = url.searchParams.get('orgId') || userOrg.id;
 
-	if (!organizationId) {
+	if (!userOrg.id) {
 		return {
-			items: []
+			items: [],
+			organizations: [],
+			isMabes: false,
+			selectedOrgId: ''
 		};
 	}
 
+	// Fetch all organizations if user is Mabes
+	const orgs = isMabes ? await db.query.organization.findMany() : [];
+
 	// Get all equipment with their movements for KOMUNITY classification
 	const equipmentList = await db.query.equipment.findMany({
-		where: eq(equipment.organizationId, organizationId),
+		where: eq(equipment.organizationId, selectedOrgId),
 		with: {
 			item: true,
 			movements: {
@@ -30,26 +38,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 		let totalMasuk = 0;
 		let totalKeluar = 0;
 
-		// Track latest condition from movements (or use equipment condition)
-		let latestCondition = equip.condition;
-
 		equip.movements.forEach((m) => {
 			if (m.eventType === 'RECEIVE') {
-				totalMasuk += m.qty;
+				totalMasuk += Number(m.qty);
 			} else if (m.eventType === 'ISSUE') {
-				totalKeluar += m.qty;
-			}
-
-			// Update condition if movement has condition info
-			if (m.notes?.includes('kondisi')) {
-				// Logic to update condition from movement notes
+				totalKeluar += Number(m.qty);
 			}
 		});
 
 		const stok = totalMasuk - totalKeluar;
 
 		// Determine condition breakdown
-		// Based on equipment condition and movement history
 		let sisaBaik = 0;
 		let sisaRR = 0;
 		let sisaRB = 0;
@@ -73,7 +72,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 			sisaRR: sisaRR,
 			sisaRB: sisaRB,
 			kondisi: equip.condition,
-			// keterangan: equip.item.description || '-',
 			keterangan: '-',
 			tahun: new Date(equip.createdAt).getFullYear(),
 			equipmentType: equip.item.equipmentType,
@@ -85,6 +83,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const filteredItems = items.filter((item) => item.stok > 0 || item.masuk > 0 || item.keluar > 0);
 
 	return {
-		items: filteredItems
+		items: filteredItems,
+		organizations: orgs,
+		isMabes: isMabes,
+		selectedOrgId: selectedOrgId
 	};
 };
