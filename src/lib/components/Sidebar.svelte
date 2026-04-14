@@ -196,7 +196,7 @@
 >
 	<div class="p-6">
 		<div class="flex items-center gap-3">
-			<img src="/logo-tni-ad.png" width="35" height="35" alt="" class="shrink-0" />
+			<img src="/logo.svg" width="35" height="35" alt="" class="shrink-0" />
 
 			<div
 				class="transition-opacity duration-300"

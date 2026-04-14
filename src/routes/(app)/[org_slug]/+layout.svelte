@@ -48,7 +48,7 @@
 			</div>
 
 			<div class="flex items-center gap-3">
-				<Button.Root
+				<!-- <Button.Root
 					onclick={toggleMode}
 					variant="outline"
 					size="icon"
@@ -61,7 +61,7 @@
 						class="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0"
 					/>
 					<span class="sr-only">Toggle theme</span>
-				</Button.Root>
+				</Button.Root> -->
 
 				<a
 					href="/{data.user.organization.slug}/profil"

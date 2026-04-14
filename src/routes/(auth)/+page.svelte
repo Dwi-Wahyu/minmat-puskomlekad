@@ -1,20 +1,16 @@
 <script lang="ts">
 	import { enhance, applyAction } from '$app/forms';
 	import type { ActionData } from './$types';
-	import { toast } from 'svelte-sonner';
+	import { toast } from '$lib/components/ui/toast';
 
 	let { form }: { form: ActionData } = $props();
 
 	function handleSignIn() {
 		return async ({ result }: { result: any }) => {
 			if (result.type === 'redirect') {
-				toast.success('Login Berhasil', {
-					description: 'Selamat datang kembali di sistem MINMAT.'
-				});
+				toast.success('Login Berhasil', 'Selamat datang kembali di sistem MINMAT.');
 			} else if (result.type === 'failure') {
-				toast.error('Login Gagal', {
-					description: result.data?.message || 'Periksa kembali email dan password Anda.'
-				});
+				toast.error('Login Gagal', result.data?.message || 'Periksa kembali email dan password Anda.');
 			}
 
 			// Menjalankan aksi bawaan SvelteKit (termasuk redirect)
