@@ -9,6 +9,9 @@ node_modules
 /build
 
 # OS
+
+/src/lib/server/db/csv
+
 .DS_Store
 Thumbs.db
 

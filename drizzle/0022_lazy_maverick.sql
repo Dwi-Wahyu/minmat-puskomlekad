@@ -1,0 +1,1 @@
+ALTER TABLE `item` MODIFY COLUMN `base_unit` enum('PCS','BOX','METER','LOT','BUAH','ROLL','UNIT','SET','PAKET','CABINET') NOT NULL;

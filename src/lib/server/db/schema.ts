@@ -63,7 +63,18 @@ export const item = mysqlTable('item', {
 	// Only applicable if type is ASSET
 	equipmentType: mysqlEnum('equipment_type', ['ALKOMLEK', 'PERNIKA_LEK']),
 
-	baseUnit: mysqlEnum('base_unit', ['PCS', 'BOX', 'METER', 'ROLL', 'UNIT']).notNull(),
+	baseUnit: mysqlEnum('base_unit', [
+		'PCS',
+		'BOX',
+		'METER',
+		'LOT',
+		'BUAH',
+		'ROLL',
+		'UNIT',
+		'SET',
+		'PAKET',
+		'CABINET'
+	]).notNull(),
 
 	description: text('description'),
 
