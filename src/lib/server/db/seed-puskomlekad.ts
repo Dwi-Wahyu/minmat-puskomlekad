@@ -7,19 +7,6 @@ import * as authSchema from './auth.schema';
 import { drizzle } from 'drizzle-orm/mysql2';
 import { sql } from 'drizzle-orm';
 
-import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { organization, username } from 'better-auth/plugins';
-
-import {
-	accessControl,
-	kakomlek,
-	operatorBinmatDanBekharrah,
-	operatorPusatDanDaerah,
-	pimpinan,
-	superadmin
-} from '../auth.roles';
-
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
@@ -27,25 +14,10 @@ import { parse } from 'csv-parse/sync';
 const client = mysql.createPool(process.env.DATABASE_URL ?? '');
 const db = drizzle(client, { schema: { ...schema, ...authSchema }, mode: 'default' });
 
-const allAuthRoles = {
-	pimpinan,
-	superadmin,
-	kakomlek,
-	operatorPusatDanDaerah,
-	operatorBinmatDanBekharrah
-};
-
-export const auth = betterAuth({
-	baseURL: process.env.ORIGIN,
-	secret: process.env.BETTER_AUTH_SECRET,
-	database: drizzleAdapter(db, { provider: 'mysql' }),
-	emailAndPassword: { enabled: true },
-	plugins: [username(), organization({ ac: accessControl, roles: allAuthRoles })]
-});
-
 // ─── Konfigurasi ──────────────────────────────────────────────────────────────
 const CSV_DIR = path.resolve(__dirname, './csv');
 const BATCH_SIZE = 100;
+const ORG_NAME = 'PUSKOMLEKAD';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function readCsv<T = Record<string, string>>(filename: string): T[] {
@@ -117,9 +89,27 @@ interface MovementRow {
 }
 
 // ─── Seeders ──────────────────────────────────────────────────────────────────
+
+/**
+ * Import Items (katalog barang PUSKOMLEKAD).
+ *
+ * Logika skip duplikat:
+ * - Cek apakah item dengan nama persis sama sudah ada di DB.
+ * - Jika sudah ada → skip (tidak insert ulang).
+ * - Jika belum ada → insert baru.
+ *
+ * Ini penting karena beberapa item PUSKOMLEKAD mungkin sudah di-seed
+ * dari satuan lain (AKMIL, dll) dengan nama yang identik.
+ */
 async function seedItems() {
 	console.log('\n📦 Step 1: Import Items (Katalog Barang)...');
-	const rows = readCsv<ItemRow>('akmil/items.csv');
+	const rows = readCsv<ItemRow>('puskomlekad/items.csv');
+
+	// Ambil semua nama item yang sudah ada di DB (satu query)
+	const existingItems = await db.query.item.findMany({
+		columns: { name: true }
+	});
+	const existingNames = new Set(existingItems.map((i) => i.name));
 
 	const validUnits = new Set([
 		'PCS',
@@ -134,76 +124,89 @@ async function seedItems() {
 		'CABINET'
 	]);
 
-	const mapped = rows.map((r) => ({
-		id: r.id,
-		name: r.name.trim(),
-		type: r.type as 'ASSET' | 'CONSUMABLE',
-		baseUnit: (validUnits.has(r.baseUnit) ? r.baseUnit : 'UNIT') as
-			| 'PCS'
-			| 'BOX'
-			| 'METER'
-			| 'LOT'
-			| 'BUAH'
-			| 'ROLL'
-			| 'UNIT'
-			| 'SET'
-			| 'PAKET'
-			| 'CABINET',
-		// equipmentType hanya relevan untuk ASSET, null untuk CONSUMABLE & ASSET non-komlek
-		equipmentType:
-			r.equipmentType === 'ALKOMLEK' || r.equipmentType === 'PERNIKA_LEK'
-				? (r.equipmentType as 'ALKOMLEK' | 'PERNIKA_LEK')
-				: null,
-		description: r.description || null,
-		imagePath: null,
-		createdAt: new Date(r.createdAt)
-	}));
+	const toInsert = rows
+		.filter((r) => {
+			const name = r.name.trim();
+			if (existingNames.has(name)) {
+				return false; // skip nama persis sama
+			}
+			return true;
+		})
+		.map((r) => ({
+			id: r.id,
+			name: r.name.trim(),
+			type: r.type as 'ASSET' | 'CONSUMABLE',
+			baseUnit: (validUnits.has(r.baseUnit) ? r.baseUnit : 'UNIT') as
+				| 'PCS'
+				| 'BOX'
+				| 'METER'
+				| 'LOT'
+				| 'BUAH'
+				| 'ROLL'
+				| 'UNIT'
+				| 'SET'
+				| 'PAKET'
+				| 'CABINET',
+			equipmentType:
+				r.equipmentType === 'ALKOMLEK' || r.equipmentType === 'PERNIKA_LEK'
+					? (r.equipmentType as 'ALKOMLEK' | 'PERNIKA_LEK')
+					: null,
+			description: r.description || null,
+			imagePath: null,
+			createdAt: new Date(r.createdAt)
+		}));
 
-	const assetCount = mapped.filter((m) => m.type === 'ASSET').length;
-	const consumableCount = mapped.filter((m) => m.type === 'CONSUMABLE').length;
-	const alkomlekCount = mapped.filter((m) => m.equipmentType === 'ALKOMLEK').length;
-	const pernikaCount = mapped.filter((m) => m.equipmentType === 'PERNIKA_LEK').length;
+	const skippedCount = rows.length - toInsert.length;
 	console.log(
-		`  📊 Total: ${mapped.length} item (${assetCount} ASSET, ${consumableCount} CONSUMABLE)`
-	);
-	console.log(
-		`     └─ ALKOMLEK: ${alkomlekCount} | PERNIKA_LEK: ${pernikaCount} | Non-komlek: ${assetCount - alkomlekCount - pernikaCount}`
+		`  📊 Total CSV: ${rows.length} | Akan diinsert: ${toInsert.length} | Skip (duplikat): ${skippedCount}`
 	);
 
-	await batchInsert('items', mapped, (batch) =>
+	await batchInsert('items', toInsert, (batch) =>
 		db
 			.insert(schema.item)
 			.values(batch)
 			.onDuplicateKeyUpdate({ set: { id: sql`id` } })
 	);
+
+	// Kembalikan map name→id untuk dipakai step berikutnya
+	// (termasuk yang sudah ada di DB, agar equipment/stock tetap bisa di-link)
+	const allItems = await db.query.item.findMany({
+		columns: { id: true, name: true }
+	});
+	return new Map(allItems.map((i) => [i.name, i.id]));
 }
 
-async function seedEquipment(orgId: string, warehouseId: string) {
+async function seedEquipment(
+	orgId: string,
+	warehouseId: string,
+	itemNameToId: Map<string, string>
+) {
 	console.log('\n🔧 Step 2: Import Equipment (Unit Fisik ASSET)...');
-	const rows = readCsv<EquipmentRow>('akmil/equipment.csv');
+	const rows = readCsv<EquipmentRow>('puskomlekad/equipment.csv');
 
-	const withSN = rows.filter(
-		(r) => r.serialNumber && r.serialNumber.trim() !== '' && r.serialNumber !== 'nan'
-	);
-	const withoutSN = rows.filter(
-		(r) => !r.serialNumber || r.serialNumber.trim() === '' || r.serialNumber === 'nan'
-	);
-	console.log(
-		`  📊 Total: ${rows.length} unit (${withSN.length} ber-SN, ${withoutSN.length} tanpa SN)`
-	);
+	// Baca items.csv untuk mendapatkan nama per itemId CSV
+	const itemsCsv = readCsv<ItemRow>('puskomlekad/items.csv');
+	const csvIdToName = new Map(itemsCsv.map((r) => [r.id, r.name.trim()]));
 
-	const mapped = rows.map((r) => ({
-		id: r.id,
-		itemId: r.itemId,
-		serialNumber: r.serialNumber && r.serialNumber !== 'nan' ? r.serialNumber.trim() : null,
-		brand: r.brand && r.brand !== 'nan' ? r.brand.trim() : null,
-		condition: (r.condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT') ?? 'BAIK',
-		status: (r.status as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE') ?? 'READY',
-		// Ganti placeholder CSV dengan ID nyata dari DB yang sudah di-seed
-		warehouseId: warehouseId,
-		organizationId: orgId,
-		createdAt: new Date(r.createdAt)
-	}));
+	const mapped = rows.map((r) => {
+		// Resolve itemId: gunakan ID dari DB (yang mungkin berbeda jika item sudah ada)
+		const itemName = csvIdToName.get(r.itemId);
+		const resolvedItemId = itemName ? (itemNameToId.get(itemName) ?? r.itemId) : r.itemId;
+
+		return {
+			id: r.id,
+			itemId: resolvedItemId,
+			serialNumber: r.serialNumber && r.serialNumber !== 'nan' ? r.serialNumber.trim() : null,
+			brand: r.brand && r.brand !== 'nan' ? r.brand.trim() : null,
+			condition: (r.condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT') ?? 'BAIK',
+			status: (r.status as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE') ?? 'READY',
+			warehouseId: warehouseId,
+			organizationId: orgId,
+			createdAt: new Date(r.createdAt)
+		};
+	});
+
+	console.log(`  📊 Total: ${mapped.length} unit`);
 
 	await batchInsert('equipment', mapped, (batch) =>
 		db
@@ -213,17 +216,24 @@ async function seedEquipment(orgId: string, warehouseId: string) {
 	);
 }
 
-async function seedStock(orgId: string, warehouseId: string) {
-	console.log('\n📊 Step 3: Import Stock (Stok CONSUMABLE)...');
-	const rows = readCsv<StockRow>('akmil/stock.csv');
+async function seedStock(warehouseId: string, itemNameToId: Map<string, string>) {
+	console.log('\n📊 Step 3: Import Stock (Stok ASSET)...');
+	const rows = readCsv<StockRow>('puskomlekad/stock.csv');
 
-	const mapped = rows.map((r) => ({
-		id: r.id,
-		itemId: r.itemId,
-		// Ganti placeholder CSV dengan ID nyata dari DB yang sudah di-seed
-		warehouseId: warehouseId,
-		qty: parseFloat(r.qty).toFixed(4)
-	}));
+	const itemsCsv = readCsv<ItemRow>('puskomlekad/items.csv');
+	const csvIdToName = new Map(itemsCsv.map((r) => [r.id, r.name.trim()]));
+
+	const mapped = rows.map((r) => {
+		const itemName = csvIdToName.get(r.itemId);
+		const resolvedItemId = itemName ? (itemNameToId.get(itemName) ?? r.itemId) : r.itemId;
+
+		return {
+			id: r.id,
+			itemId: resolvedItemId,
+			warehouseId: warehouseId,
+			qty: parseFloat(r.qty).toFixed(4)
+		};
+	});
 
 	await batchInsert('stock', mapped, (batch) =>
 		db
@@ -233,9 +243,16 @@ async function seedStock(orgId: string, warehouseId: string) {
 	);
 }
 
-async function seedMovements(orgId: string, warehouseId: string) {
+async function seedMovements(
+	orgId: string,
+	warehouseId: string,
+	itemNameToId: Map<string, string>
+) {
 	console.log('\n🚚 Step 4: Import Movement (Riwayat RECEIVE awal)...');
-	const rows = readCsv<MovementRow>('akmil/movement_receive.csv');
+	const rows = readCsv<MovementRow>('puskomlekad/movement_receive.csv');
+
+	const itemsCsv = readCsv<ItemRow>('puskomlekad/items.csv');
+	const csvIdToName = new Map(itemsCsv.map((r) => [r.id, r.name.trim()]));
 
 	const validEventTypes = new Set([
 		'RECEIVE',
@@ -250,42 +267,44 @@ async function seedMovements(orgId: string, warehouseId: string) {
 		'MAINTENANCE_IN',
 		'MAINTENANCE_OUT'
 	]);
-
 	const validClassifications = new Set(['BALKIR', 'KOMUNITY', 'TRANSITO']);
 
-	const mapped = rows.map((r) => ({
-		id: r.id,
-		itemId: r.itemId || null,
-		equipmentId: r.equipmentId && r.equipmentId.trim() !== '' ? r.equipmentId : null,
-		eventType: (validEventTypes.has(r.eventType) ? r.eventType : 'RECEIVE') as
-			| 'RECEIVE'
-			| 'ISSUE'
-			| 'ADJUSTMENT'
-			| 'TRANSFER_OUT'
-			| 'TRANSFER_IN'
-			| 'LOAN_OUT'
-			| 'LOAN_RETURN'
-			| 'DISTRIBUTE_OUT'
-			| 'DISTRIBUTE_IN'
-			| 'MAINTENANCE_IN'
-			| 'MAINTENANCE_OUT',
-		qty: parseFloat(r.qty).toFixed(4),
-		unit: r.unit || null,
-		classification: (validClassifications.has(r.classification) ? r.classification : 'KOMUNITY') as
-			| 'BALKIR'
-			| 'KOMUNITY'
-			| 'TRANSITO',
-		specificLocationName: 'Gudang Utama Akmil',
-		fromWarehouseId: null,
-		// Ganti placeholder CSV dengan ID nyata dari DB yang sudah di-seed
-		toWarehouseId: warehouseId,
-		organizationId: orgId,
-		notes: r.notes || null,
-		picId: null,
-		referenceType: null,
-		referenceId: null,
-		createdAt: new Date(r.createdAt)
-	}));
+	const mapped = rows.map((r) => {
+		const itemName = csvIdToName.get(r.itemId);
+		const resolvedItemId = itemName ? (itemNameToId.get(itemName) ?? r.itemId) : r.itemId;
+
+		return {
+			id: r.id,
+			itemId: resolvedItemId || null,
+			equipmentId: r.equipmentId && r.equipmentId.trim() !== '' ? r.equipmentId : null,
+			eventType: (validEventTypes.has(r.eventType) ? r.eventType : 'RECEIVE') as
+				| 'RECEIVE'
+				| 'ISSUE'
+				| 'ADJUSTMENT'
+				| 'TRANSFER_OUT'
+				| 'TRANSFER_IN'
+				| 'LOAN_OUT'
+				| 'LOAN_RETURN'
+				| 'DISTRIBUTE_OUT'
+				| 'DISTRIBUTE_IN'
+				| 'MAINTENANCE_IN'
+				| 'MAINTENANCE_OUT',
+			qty: parseFloat(r.qty).toFixed(4),
+			unit: r.unit || null,
+			classification: (validClassifications.has(r.classification)
+				? r.classification
+				: 'KOMUNITY') as 'BALKIR' | 'KOMUNITY' | 'TRANSITO',
+			specificLocationName: `Gudang Utama ${ORG_NAME}`,
+			fromWarehouseId: null,
+			toWarehouseId: warehouseId,
+			organizationId: orgId,
+			notes: r.notes || null,
+			picId: null,
+			referenceType: null,
+			referenceId: null,
+			createdAt: new Date(r.createdAt)
+		};
+	});
 
 	await batchInsert('movement', mapped, (batch) =>
 		db
@@ -298,7 +317,7 @@ async function seedMovements(orgId: string, warehouseId: string) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
 	console.log('════════════════════════════════════════════════════');
-	console.log('  🪖  SEEDING DATA AKMIL - BTK-16 TW1 2026');
+	console.log(`  🪖  SEEDING DATA ${ORG_NAME}`);
 	console.log('════════════════════════════════════════════════════');
 	console.log(`  Database : ${process.env.DATABASE_URL?.split('@')[1] ?? '(tersembunyi)'}`);
 	console.log(`  CSV Dir  : ${CSV_DIR}`);
@@ -306,26 +325,29 @@ async function main() {
 
 	// Validasi CSV tersedia
 	const required = [
-		'akmil/items.csv',
-		'akmil/equipment.csv',
-		'akmil/stock.csv',
-		'akmil/movement_receive.csv'
+		'puskomlekad/items.csv',
+		'puskomlekad/equipment.csv',
+		'puskomlekad/stock.csv',
+		'puskomlekad/movement_receive.csv'
 	];
 	for (const f of required) {
 		if (!fs.existsSync(path.join(CSV_DIR, f))) {
 			throw new Error(
-				`File CSV tidak ditemukan: ${path.join(CSV_DIR, f)}\nLetakkan semua CSV di folder: ${CSV_DIR}`
+				`File CSV tidak ditemukan: ${path.join(CSV_DIR, f)}\n` +
+					`Jalankan terlebih dahulu: python3 convert_puskomlekad.py`
 			);
 		}
 	}
 
 	// Ambil org & warehouse yang sudah di-seed dari seeding utama
 	const existingOrg = await db.query.organization.findFirst({
-		where: (org, { eq }) => eq(org.name, 'AKMIL')
+		where: (org, { eq }) => eq(org.name, ORG_NAME)
 	});
 
 	if (!existingOrg) {
-		console.log('  ⚠️  Organisasi AKMIL belum ditemukan. Jalankan seeding utama terlebih dahulu.');
+		console.log(
+			`  ⚠️  Organisasi ${ORG_NAME} belum ditemukan. Jalankan seeding utama terlebih dahulu.`
+		);
 		process.exit(1);
 	}
 
@@ -335,7 +357,7 @@ async function main() {
 
 	if (!existingWarehouse) {
 		console.log(
-			'  ⚠️  Gudang untuk organisasi AKMIL belum ditemukan. Jalankan seeding utama terlebih dahulu.'
+			`  ⚠️  Gudang untuk ${ORG_NAME} belum ditemukan. Jalankan seeding utama terlebih dahulu.`
 		);
 		process.exit(1);
 	}
@@ -343,21 +365,11 @@ async function main() {
 	console.log(`\n  🏢 Organisasi : ${existingOrg.name} (${existingOrg.id})`);
 	console.log(`  🏭 Gudang     : ${existingWarehouse.name} (${existingWarehouse.id})`);
 
-	// ─── Cleanup Data Existing (AKMIL Only) ───────────────────────────────────
-	console.log('\n🧹 Step 0: Membersihkan data AKMIL lama...');
-	// Hapus movement yang terkait dengan organizationId AKMIL
-	await db.delete(schema.movement).where(sql`${schema.movement.organizationId} = ${existingOrg.id}`);
-	// Hapus equipment yang terkait dengan organizationId AKMIL
-	await db.delete(schema.equipment).where(sql`${schema.equipment.organizationId} = ${existingOrg.id}`);
-	// Hapus stock yang terkait dengan warehouseId AKMIL
-	await db.delete(schema.stock).where(sql`${schema.stock.warehouseId} = ${existingWarehouse.id}`);
-	console.log('  ✅ Data lama berhasil dibersihkan.');
-
-	// await seedOrganizationAndWarehouse();
-	await seedItems();
-	await seedEquipment(existingOrg.id, existingWarehouse.id);
-	await seedStock(existingOrg.id, existingWarehouse.id);
-	await seedMovements(existingOrg.id, existingWarehouse.id);
+	// Seed steps — itemNameToId diperlukan untuk resolve ID cross-step
+	const itemNameToId = await seedItems();
+	await seedEquipment(existingOrg.id, existingWarehouse.id, itemNameToId);
+	await seedStock(existingWarehouse.id, itemNameToId);
+	await seedMovements(existingOrg.id, existingWarehouse.id, itemNameToId);
 
 	console.log('\n════════════════════════════════════════════════════');
 	console.log('  ✅  Seeding selesai!');

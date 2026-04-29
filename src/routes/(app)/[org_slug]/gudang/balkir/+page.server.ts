@@ -1,17 +1,22 @@
 import { db } from '$lib/server/db';
 import { movement, equipment, item } from '$lib/server/db/schema';
-import { eq, desc, and, isNotNull, isNull } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const userOrg = locals.user.organization;
 	if (!userOrg?.id) {
-		return { movements: [], organizations: [], isMabes: false, selectedOrgId: '' };
+		return { movements: [], organizations: [], isMabes: false, selectedOrgId: '', filters: { search: '', type: '', category: '' } };
 	}
 
 	const isMabes = userOrg.parentId === null;
 	const selectedOrgId = url.searchParams.get('orgId') || userOrg.id;
+	
+	// Filter Params
+	const searchQuery = url.searchParams.get('search') || '';
+	const typeFilter = url.searchParams.get('type') || '';
+	const categoryFilter = url.searchParams.get('category') || '';
 
 	// Fetch all organizations if user is Mabes
 	const orgs = isMabes ? await db.query.organization.findMany() : [];
@@ -39,81 +44,112 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		orderBy: [desc(movement.createdAt)]
 	});
 
-	// Filter: Hanya tampilkan jika barang tersebut MASIH berada di state balkir
-	// Untuk Asset/Equipment: Cek apakah warehouseId-nya masih sesuai atau sudah NULL (karena ISSUE)
-	const activeMovements = movements.filter((m) => {
-		if (m.equipment) {
-			// Jika barang sudah di-ISSUE (warehouseId null), jangan tampilkan lagi di daftar "Menunggu"
-			// Kecuali jika ini adalah record ISSUE itu sendiri (tapi query kita filter classification='BALKIR')
-			return m.equipment.warehouseId !== null || m.eventType !== 'ISSUE';
+	// Filter and Grouping logic
+	const filtered = movements.filter((m) => {
+		const itemData = m.equipment?.item || m.item;
+		if (!itemData) return false;
+
+		// Data Terbaru check: Jika Asset, pastikan masih di sistem (warehouseId null = ISSUE)
+		if (m.equipment && m.equipment.warehouseId === null && m.eventType === 'ISSUE') {
+			return false;
 		}
+
+		// Search Filter
+		if (searchQuery) {
+			const nameMatch = itemData.name.toLowerCase().includes(searchQuery.toLowerCase());
+			const snMatch = m.equipment?.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+			if (!nameMatch && !snMatch) return false;
+		}
+
+		// Type Filter
+		if (typeFilter && itemData.type !== typeFilter) return false;
+
+		// Category Filter
+		if (categoryFilter && itemData.equipmentType !== categoryFilter) return false;
+
 		return true;
 	});
 
-	return {
-		movements: activeMovements.map((m) => {
-			const displayOrgName =
-				m.organizationId === userOrg.id ? 'Internal' : (m.organization?.name ?? 'Unknown');
+	// Mapping & Grouping
+	const mappedMovements = filtered.map((m) => {
+		const displayOrgName =
+			m.organizationId === userOrg.id ? 'Internal' : (m.organization?.name ?? 'Unknown');
 
-			if (m.equipment) {
-				return {
-					id: m.id,
-					equipmentId: m.equipment.id,
-					type: 'asset' as const,
-					nama: m.equipment.item.name,
-					tipe: m.equipment.item.type,
-					kategori: m.equipment.item.equipmentType,
-					sn: m.equipment.serialNumber,
-					qty: m.qty,
-					satuan: m.equipment.item.baseUnit,
-					kondisi: m.equipment.condition,
-					lokasi: m.specificLocationName,
-					tglMasuk: m.createdAt,
-					organizationName: displayOrgName,
-					fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar',
-					classification: m.classification
-				};
-			}
-
-			if (m.item) {
-				return {
-					id: m.id,
-					itemId: m.item.id,
-					type: 'consumable' as const,
-					nama: m.item.name,
-					tipe: m.item.type,
-					kategori: null,
-					sn: null,
-					qty: m.qty,
-					satuan: m.item.baseUnit,
-					kondisi: null,
-					lokasi: m.specificLocationName,
-					tglMasuk: m.createdAt,
-					organizationName: displayOrgName,
-					fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar',
-					classification: m.classification
-				};
-			}
-
+		if (m.equipment) {
 			return {
 				id: m.id,
-				type: 'unknown' as const,
-				nama: 'Unknown',
-				tipe: null,
-				kategori: null,
-				sn: null,
-				qty: m.qty,
-				satuan: null,
-				kondisi: null,
+				equipmentId: m.equipment.id,
+				type: 'asset' as const,
+				nama: m.equipment.item.name,
+				tipe: m.equipment.item.type,
+				kategori: m.equipment.item.equipmentType,
+				sn: m.equipment.serialNumber,
+				qty: 1,
+				satuan: m.equipment.item.baseUnit,
+				kondisi: m.equipment.condition,
 				lokasi: m.specificLocationName,
 				tglMasuk: m.createdAt,
 				organizationName: displayOrgName,
-				fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar'
+				fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar',
+				classification: m.classification
 			};
-		}),
+		}
+
+		return {
+			id: m.id,
+			itemId: m.item?.id,
+			type: 'consumable' as const,
+			nama: m.item?.name || 'Unknown',
+			tipe: m.item?.type || 'CONSUMABLE',
+			kategori: null,
+			sn: null,
+			qty: Number(m.qty),
+			satuan: m.item?.baseUnit,
+			kondisi: null,
+			lokasi: m.specificLocationName,
+			tglMasuk: m.createdAt,
+			organizationName: displayOrgName,
+			fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar',
+			classification: m.classification
+		};
+	});
+
+	// Terapkan Grouping untuk Consumables
+	const finalMovements: any[] = [];
+	const consumableGroups = new Map<string, any>();
+
+	for (const m of mappedMovements) {
+		if (m.type === 'consumable' && m.itemId) {
+			const key = `${m.itemId}-${m.lokasi}-${m.organizationName}-${m.fromWarehouse}`;
+			const existing = consumableGroups.get(key);
+			if (existing) {
+				existing.qty += m.qty;
+				if (new Date(m.tglMasuk) > new Date(existing.tglMasuk)) {
+					existing.tglMasuk = m.tglMasuk;
+				}
+			} else {
+				consumableGroups.set(key, { ...m });
+			}
+		} else {
+			finalMovements.push(m);
+		}
+	}
+
+	finalMovements.push(...Array.from(consumableGroups.values()));
+	
+	// Sort by latest date again
+	finalMovements.sort((a, b) => new Date(b.tglMasuk).getTime() - new Date(a.tglMasuk).getTime());
+
+	return {
+		movements: finalMovements,
 		organizations: orgs,
 		isMabes: isMabes,
-		selectedOrgId: selectedOrgId
+		selectedOrgId: selectedOrgId,
+		filters: {
+			search: searchQuery,
+			type: typeFilter,
+			category: categoryFilter
+		}
 	};
 };
 
@@ -127,7 +163,6 @@ export const actions: Actions = {
 
 		try {
 			await db.transaction(async (tx) => {
-				// 1. Cari record mutasi balkir
 				const currentMovement = await tx.query.movement.findFirst({
 					where: eq(movement.id, movementId),
 					with: {
@@ -137,18 +172,15 @@ export const actions: Actions = {
 
 				if (!currentMovement) throw new Error('Data mutasi tidak ditemukan');
 
-				// 2. Jika barang adalah Asset (Equipment)
 				if (currentMovement.equipmentId) {
-					// Update status alat menjadi tidak ada di gudang (ISSUE)
 					await tx
 						.update(equipment)
 						.set({
 							warehouseId: null,
-							status: 'READY' // Tetap READY tapi tanpa gudang (artinya keluar sistem)
+							status: 'READY'
 						})
 						.where(eq(equipment.id, currentMovement.equipmentId));
 
-					// Catat mutasi ISSUE
 					await tx.insert(movement).values({
 						id: crypto.randomUUID(),
 						equipmentId: currentMovement.equipmentId,
@@ -163,7 +195,6 @@ export const actions: Actions = {
 					});
 				}
 
-				// 3. Update original movement agar tidak muncul di list Balkir (opsional/tergantung filter load)
 				await tx
 					.update(movement)
 					.set({ classification: null })

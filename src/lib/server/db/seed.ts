@@ -78,6 +78,7 @@ async function main() {
 	console.log('Sedang melakukan seeding...');
 
 	console.log('Menghapus data lama...');
+	await db.delete(schema.importLog);
 	await db.delete(schema.notification);
 	await db.delete(schema.auditLog);
 	await db.delete(schema.approval);

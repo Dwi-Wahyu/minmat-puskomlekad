@@ -44,7 +44,7 @@ export const auth = betterAuth({
 });
 
 // ─── Konfigurasi ──────────────────────────────────────────────────────────────
-const CSV_DIR = path.join(process.cwd(), 'src/lib/server/db/csv');
+const CSV_DIR = path.resolve(__dirname, './csv');
 const BATCH_SIZE = 100;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -83,6 +83,7 @@ interface ItemRow {
 	type: 'ASSET' | 'CONSUMABLE';
 	baseUnit: string;
 	description: string;
+	equipmentType: string;
 	createdAt: string;
 }
 
@@ -148,6 +149,11 @@ async function seedItems() {
 			| 'SET'
 			| 'PAKET'
 			| 'CABINET',
+		// equipmentType hanya relevan untuk ASSET, null untuk CONSUMABLE & ASSET non-komlek
+		equipmentType:
+			r.equipmentType === 'ALKOMLEK' || r.equipmentType === 'PERNIKA_LEK'
+				? (r.equipmentType as 'ALKOMLEK' | 'PERNIKA_LEK')
+				: null,
 		description: r.description || null,
 		imagePath: null,
 		createdAt: new Date(r.createdAt)
@@ -155,8 +161,13 @@ async function seedItems() {
 
 	const assetCount = mapped.filter((m) => m.type === 'ASSET').length;
 	const consumableCount = mapped.filter((m) => m.type === 'CONSUMABLE').length;
+	const alkomlekCount = mapped.filter((m) => m.equipmentType === 'ALKOMLEK').length;
+	const pernikaCount = mapped.filter((m) => m.equipmentType === 'PERNIKA_LEK').length;
 	console.log(
 		`  📊 Total: ${mapped.length} item (${assetCount} ASSET, ${consumableCount} CONSUMABLE)`
+	);
+	console.log(
+		`     └─ ALKOMLEK: ${alkomlekCount} | PERNIKA_LEK: ${pernikaCount} | Non-komlek: ${assetCount - alkomlekCount - pernikaCount}`
 	);
 
 	await batchInsert('items', mapped, (batch) =>
@@ -332,11 +343,21 @@ async function main() {
 	console.log(`\n  🏢 Organisasi : ${existingOrg.name} (${existingOrg.id})`);
 	console.log(`  🏭 Gudang     : ${existingWarehouse.name} (${existingWarehouse.id})`);
 
+	// ─── Cleanup Data Existing (AKMIL Only) ───────────────────────────────────
+	console.log('\n🧹 Step 0: Membersihkan data AKMIL lama...');
+	// Hapus movement yang terkait dengan organizationId AKMIL
+	await db.delete(schema.movement).where(sql`${schema.movement.organizationId} = ${existingOrg.id}`);
+	// Hapus equipment yang terkait dengan organizationId AKMIL
+	await db.delete(schema.equipment).where(sql`${schema.equipment.organizationId} = ${existingOrg.id}`);
+	// Hapus stock yang terkait dengan warehouseId AKMIL
+	await db.delete(schema.stock).where(sql`${schema.stock.warehouseId} = ${existingWarehouse.id}`);
+	console.log('  ✅ Data lama berhasil dibersihkan.');
+
 	// await seedOrganizationAndWarehouse();
 	await seedItems();
 	await seedEquipment(existingOrg.id, existingWarehouse.id);
 	await seedStock(existingOrg.id, existingWarehouse.id);
-	// await seedMovements(existingOrg.id, existingWarehouse.id);
+	await seedMovements(existingOrg.id, existingWarehouse.id);
 
 	console.log('\n════════════════════════════════════════════════════');
 	console.log('  ✅  Seeding selesai!');

@@ -2,9 +2,10 @@
 	import * as Table from '$lib/components/ui/table';
 	import { Input } from '$lib/components/ui/input';
 	import * as SearchableSelect from '$lib/components/ui/searchable-select';
+	import * as Select from '$lib/components/ui/select';
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
-	import { Search, Box, HardDrive, Building2, Trash2, AlertTriangle } from '@lucide/svelte';
+	import { Search, Building2, Trash2, Filter } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
@@ -13,9 +14,13 @@
 
 	let { data, form } = $props();
 
-	let searchQuery = $state('');
 	let loading = $state(false);
 	let deleteFormEl: HTMLFormElement;
+
+	// Filters State
+	let searchQuery = $state(data.filters.search);
+	let typeFilter = $state(data.filters.type);
+	let categoryFilter = $state(data.filters.category);
 
 	// Confirmation Dialog State
 	let confirmOpen = $state(false);
@@ -27,13 +32,19 @@
 	let notificationMsg = $state('');
 	let notificationType = $state<'success' | 'error' | 'info'>('success');
 
-	let filteredItems = $derived(
-		data.movements.filter(
-			(item) =>
-				item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				(item.sn && item.sn.toLowerCase().includes(searchQuery.toLowerCase()))
-		)
-	);
+	function updateFilters() {
+		const newUrl = new URL(page.url);
+		if (searchQuery) newUrl.searchParams.set('search', searchQuery);
+		else newUrl.searchParams.delete('search');
+
+		if (typeFilter) newUrl.searchParams.set('type', typeFilter);
+		else newUrl.searchParams.delete('type');
+
+		if (categoryFilter) newUrl.searchParams.set('category', categoryFilter);
+		else newUrl.searchParams.delete('category');
+
+		goto(newUrl.toString(), { keepFocus: true, noScroll: true });
+	}
 
 	function handleOrgChange(val: string | undefined) {
 		if (!val) return;
@@ -69,6 +80,18 @@
 	let selectedOrgName = $derived(
 		data.organizations.find((o) => o.id === data.selectedOrgId)?.name || 'Pilih Kesatuan'
 	);
+
+	const typeOptions = [
+		{ value: '', label: 'Semua Jenis' },
+		{ value: 'ASSET', label: 'Alat' },
+		{ value: 'CONSUMABLE', label: 'Barang Habis Pakai' }
+	];
+
+	const categoryOptions = [
+		{ value: '', label: 'Semua Kategori' },
+		{ value: 'ALKOMLEK', label: 'ALKOMLEK' },
+		{ value: 'PERNIKA_LEK', label: 'PERNIKA_LEK' }
+	];
 </script>
 
 <div class="flex flex-col gap-6 p-6">
@@ -76,11 +99,11 @@
 		<header class="flex flex-col gap-1">
 			<h1 class="text-2xl font-bold tracking-tight">Gudang Balkir</h1>
 			<p class="text-sm text-muted-foreground">Barang dalam tahap persiapan penghapusan.</p>
-			{#if data.isMabes}
+			<!-- {#if data.isMabes}
 				<p class="text-xs text-muted-foreground">
 					Kesatuan: <span class="font-semibold text-primary">{selectedOrgName}</span>
 				</p>
-			{/if}
+			{/if} -->
 		</header>
 
 		<div class="flex flex-wrap items-end gap-4">
@@ -92,7 +115,7 @@
 						value={data.selectedOrgId}
 						onValueChange={handleOrgChange}
 					>
-						<SearchableSelect.Trigger class="w-[250px] border-2">
+						<SearchableSelect.Trigger class="w-[200px] border-2">
 							<Building2 class="mr-2 h-4 w-4 opacity-50" />
 							{selectedOrgName}
 						</SearchableSelect.Trigger>
@@ -106,6 +129,35 @@
 					</SearchableSelect.Root>
 				</div>
 			{/if}
+
+			<div class="flex flex-col gap-1.5">
+				<Label for="type-filter">Jenis</Label>
+				<Select.Root type="single" bind:value={typeFilter} onValueChange={updateFilters}>
+					<Select.Trigger class="w-[180px] border-2">
+						{typeOptions.find((o) => o.value === typeFilter)?.label || 'Semua Jenis'}
+					</Select.Trigger>
+					<Select.Content>
+						{#each typeOptions as opt}
+							<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+
+			<div class="flex flex-col gap-1.5">
+				<Label for="category-filter">Kategori Alat</Label>
+				<Select.Root type="single" bind:value={categoryFilter} onValueChange={updateFilters}>
+					<Select.Trigger class="w-[180px] border-2">
+						{categoryOptions.find((o) => o.value === categoryFilter)?.label || 'Semua Kategori'}
+					</Select.Trigger>
+					<Select.Content>
+						{#each categoryOptions as opt}
+							<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+
 			<div class="flex flex-col gap-1.5">
 				<Label for="search">Cari Barang</Label>
 				<div class="relative max-w-md flex-1">
@@ -113,12 +165,17 @@
 					<Input
 						id="search"
 						type="text"
-						placeholder="Cari nama barang atau nomor seri..."
-						class="w-[300px] border-2 pl-10"
+						placeholder="Cari nama atau SN..."
+						class="w-[250px] border-2 pl-10"
 						bind:value={searchQuery}
+						onkeydown={(e) => e.key === 'Enter' && updateFilters()}
 					/>
 				</div>
 			</div>
+
+			<Button variant="secondary" size="icon" onclick={updateFilters} title="Refresh Filter">
+				<Filter class="size-4" />
+			</Button>
 		</div>
 	</div>
 
@@ -127,6 +184,7 @@
 			<Table.Header>
 				<Table.Row>
 					<Table.Head>Nama Item & Serial Number</Table.Head>
+					<Table.Head>Jenis & Kategori</Table.Head>
 					<Table.Head>Kuantitas</Table.Head>
 					<Table.Head>Asal Gudang</Table.Head>
 					<Table.Head>Lokasi/Unit</Table.Head>
@@ -134,7 +192,7 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each filteredItems as item (item.id)}
+				{#each data.movements as item (item.id)}
 					<Table.Row>
 						<Table.Cell>
 							<div class="font-semibold">{item.nama}</div>
@@ -143,11 +201,19 @@
 							{/if}
 						</Table.Cell>
 						<Table.Cell>
+							<div class="text-xs font-medium text-muted-foreground uppercase">
+								{item.tipe === 'ASSET' ? 'Alat' : 'Barang'}
+							</div>
+							{#if item.kategori}
+								<div class="text-xs text-primary">{item.kategori}</div>
+							{/if}
+						</Table.Cell>
+						<Table.Cell>
 							<span class="text-base font-medium">{Number(item.qty)}</span>
 							<span class="ml-1 text-xs text-muted-foreground">{item.satuan}</span>
 						</Table.Cell>
 						<Table.Cell>
-							<span class="text-sm">{item.fromWarehouse ?? 'Pusat/Luar'}</span>
+							<span class="text-sm">{item.fromWarehouse}</span>
 						</Table.Cell>
 						<Table.Cell>
 							<span class="text-sm">{item.lokasi || '-'}</span>
@@ -166,7 +232,7 @@
 					</Table.Row>
 				{:else}
 					<Table.Row>
-						<Table.Cell colspan={5} class="h-32 text-center text-muted-foreground">
+						<Table.Cell colspan={6} class="h-32 text-center text-muted-foreground">
 							Data balkir tidak ditemukan.
 						</Table.Cell>
 					</Table.Row>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Button from '@/components/ui/button/button.svelte';
 	import {
 		Package,
 		Warehouse,
@@ -286,12 +287,13 @@
 						</div>
 					{/each}
 				</div>
-				<button
+				<a
+					href="/{data.org_slug}/gudang/komunity"
 					class="group mt-6 flex w-full items-center justify-center gap-1 py-2 text-xs font-bold text-primary hover:text-primary/80"
 				>
 					Lihat Semua Inventaris
 					<ChevronRight size={14} class="transition-transform group-hover:translate-x-1" />
-				</button>
+				</a>
 			</div>
 		</div>
 	</div>
