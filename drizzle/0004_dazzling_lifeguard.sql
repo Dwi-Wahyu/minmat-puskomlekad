@@ -1,1 +1,0 @@
-ALTER TABLE `equipment` MODIFY COLUMN `updated_at` timestamp ON UPDATE CURRENT_TIMESTAMP;

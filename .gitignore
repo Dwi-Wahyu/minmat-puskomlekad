@@ -10,6 +10,8 @@ node_modules
 
 # OS
 
+migration-manual.sql
+
 /src/lib/server/db/csv
 
 .DS_Store

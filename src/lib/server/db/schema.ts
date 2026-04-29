@@ -344,6 +344,7 @@ export const importLog = mysqlTable('import_log', {
 	}),
 	userId: varchar('user_id', { length: 36 }).references(() => user.id),
 	filename: varchar('filename', { length: 255 }).notNull(),
+	filepath: text('filepath'),
 	status: mysqlEnum('status', ['SUCCESS', 'FAILED', 'PARTIAL']).default('SUCCESS'),
 	totalRows: decimal('total_rows', { precision: 12, scale: 0 }).default('0'),
 	successRows: decimal('success_rows', { precision: 12, scale: 0 }).default('0'),

@@ -144,15 +144,20 @@
 
 	<div class="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm">
 		<div class="relative flex-1">
-			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-			<form method="GET" class="w-full">
-				<Input
-					name="q"
-					placeholder="Cari berdasarkan serial number, brand, atau nama barang..."
-					class="pl-10"
-					value={data.filters.q}
-				/>
-				<input type="hidden" name="back_url" value={page.url.searchParams.get('back_url') || ''} />
+			<form method="GET" class="flex flex-1 items-center gap-2">
+				<div class="relative flex-1">
+					<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+					<Input
+						name="name"
+						placeholder="Cari nama barang..."
+						class="pl-10"
+						value={data.filters.q}
+					/>
+				</div>
+				<Button type="submit" variant="secondary" class="gap-2">
+					<Search class="size-4" />
+					Cari
+				</Button>
 			</form>
 		</div>
 	</div>

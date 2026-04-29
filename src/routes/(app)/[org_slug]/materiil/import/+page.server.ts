@@ -1,8 +1,10 @@
 import { db } from '$lib/server/db';
-import { item, equipment, stock, warehouse, importLog, user } from '$lib/server/db/schema';
+import { item, equipment, stock, warehouse, importLog, user, unit } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { error, fail } from '@sveltejs/kit';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export const load = async ({ params, locals }) => {
 	const sessionUser = locals.user;
@@ -21,6 +23,7 @@ export const load = async ({ params, locals }) => {
 			organizationId: importLog.organizationId,
 			userId: importLog.userId,
 			filename: importLog.filename,
+			filepath: importLog.filepath,
 			status: importLog.status,
 			totalRows: importLog.totalRows,
 			successRows: importLog.successRows,
@@ -56,6 +59,7 @@ export const actions = {
 		const formData = await request.formData();
 		const dataJson = formData.get('data') as string;
 		const filename = formData.get('filename') as string;
+		const file = formData.get('file') as File;
 
 		if (!dataJson) return fail(400, { message: 'Data is required' });
 
@@ -72,15 +76,49 @@ export const actions = {
 			});
 		}
 
+		// Handle File Upload
+		let savedFilePath = null;
+		if (file && file instanceof File && file.size > 0) {
+			try {
+				const uploadDir = path.join(process.cwd(), 'static', 'uploads', 'import');
+				if (!fs.existsSync(uploadDir)) {
+					fs.mkdirSync(uploadDir, { recursive: true });
+				}
+				const fileExt = path.extname(filename) || '.xlsx';
+				const newFilename = `${uuidv4()}${fileExt}`;
+				savedFilePath = `/uploads/import/${newFilename}`;
+				const fullPath = path.join(uploadDir, newFilename);
+				
+				const arrayBuffer = await file.arrayBuffer();
+				const buffer = Buffer.from(arrayBuffer);
+				fs.writeFileSync(fullPath, buffer);
+			} catch (err) {
+				console.error('Failed to save import file:', err);
+			}
+		}
+
 		let successCount = 0;
-		let errorCount = 0;
 		const logId = uuidv4();
 
 		try {
 			await db.transaction(async (tx) => {
 				for (const row of rows) {
 					try {
-						// 1. Cari atau Buat Item
+						// 1. Cari atau Buat Unit jika belum ada
+						if (row.SatuanDasar) {
+							const unitName = row.SatuanDasar.toString().toUpperCase();
+							const existingUnit = await tx.query.unit.findFirst({
+								where: (u, { eq }) => eq(u.name, unitName)
+							});
+							if (!existingUnit) {
+								await tx.insert(unit).values({
+									id: unitName,
+									name: unitName
+								});
+							}
+						}
+
+						// 2. Cari atau Buat Item
 						let existingItem = await tx.query.item.findFirst({
 							where: (it, { eq }) => eq(it.name, row.NamaBarang)
 						});
@@ -94,17 +132,17 @@ export const actions = {
 								name: row.NamaBarang,
 								type: row.Tipe as 'ASSET' | 'CONSUMABLE',
 								equipmentType: row.KategoriAlat || null,
-								baseUnit: row.SatuanDasar,
+								baseUnit: row.SatuanDasar?.toString().toUpperCase(),
 								description: row.Deskripsi
 							});
 						}
 
-						// 2. Proses berdasarkan Tipe
+						// 3. Proses berdasarkan Tipe
 						if (row.Tipe === 'ASSET') {
 							// Cek Serial Number Duplikasi jika diisi
 							if (row.NomorSeri) {
 								const existingSN = await tx.query.equipment.findFirst({
-									where: (eqp, { eq }) => eq(eqp.serialNumber, row.NomorSeri)
+									where: (eqp, { eq }) => eq(eqp.serialNumber, row.NomorSeri.toString())
 								});
 								if (existingSN) {
 									throw new Error(`Nomor Seri ${row.NomorSeri} sudah ada di database.`);
@@ -114,11 +152,11 @@ export const actions = {
 							await tx.insert(equipment).values({
 								id: uuidv4(),
 								itemId: itemId!,
-								serialNumber: row.NomorSeri || null,
-								brand: row.Merk || null,
+								serialNumber: row.NomorSeri?.toString() || null,
+								brand: row.Merk?.toString() || null,
 								warehouseId: defaultWarehouse.id,
 								organizationId: org.id,
-								condition: row.Kondisi || 'BAIK',
+								condition: (row.Kondisi?.toString() || 'BAIK').toUpperCase() as any,
 								status: 'READY'
 							});
 						} else {
@@ -131,7 +169,7 @@ export const actions = {
 							if (existingStock) {
 								await tx
 									.update(stock)
-									.set({ qty: (Number(existingStock.qty) + Number(row.Jumlah)).toString() })
+									.set({ qty: (Number(existingStock.qty) + Number(row.Jumlah || 0)).toString() })
 									.where(eq(stock.id, existingStock.id));
 							} else {
 								await tx.insert(stock).values({
@@ -145,14 +183,7 @@ export const actions = {
 						successCount++;
 					} catch (e: any) {
 						console.error(`Error processing row:`, e);
-						errorCount++;
-						// Kita tidak menghentikan transaksi jika satu baris gagal?
-						// Tapi tx.insert akan rollback jika di dalam transaction.
-						// Jika ingin partial success, jangan pakai transaction global atau handle error per row.
-						// Sesuai permintaan "sejarah import", kita re-throw agar rollback jika ada satu saja yang gagal,
-						// atau kita tangani per row jika ingin partial.
-						// User minta "success rows", "error rows". Mari buat partial.
-						throw e; // Untuk saat ini kita re-throw agar aman (atomic)
+						throw e;
 					}
 				}
 			});
@@ -163,6 +194,7 @@ export const actions = {
 				organizationId: org.id,
 				userId: sessionUser.id,
 				filename: filename,
+				filepath: savedFilePath,
 				status: 'SUCCESS',
 				totalRows: rows.length.toString(),
 				successRows: successCount.toString(),
@@ -177,6 +209,7 @@ export const actions = {
 				organizationId: org.id,
 				userId: sessionUser.id,
 				filename: filename,
+				filepath: savedFilePath,
 				status: 'FAILED',
 				totalRows: rows.length.toString(),
 				successRows: '0',

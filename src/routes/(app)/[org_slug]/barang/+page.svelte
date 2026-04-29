@@ -149,17 +149,21 @@
 	</div>
 
 	<div class="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm">
-		<div class="relative flex-1">
-			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-			<form method="GET" class="w-full">
+		<form method="GET" class="flex flex-1 items-center gap-2">
+			<div class="relative flex-1">
+				<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 				<Input
 					name="name"
 					placeholder="Cari nama barang atau deskripsi..."
 					class="pl-10"
 					value={data.filters.name}
 				/>
-			</form>
-		</div>
+			</div>
+			<Button type="submit" variant="secondary" class="gap-2">
+				<Search class="size-4" />
+				Cari
+			</Button>
+		</form>
 	</div>
 
 	<div class="overflow-hidden rounded-lg border bg-card shadow-sm">
@@ -357,7 +361,10 @@
 	title="Hapus Barang"
 	description="Apakah Anda yakin? Barang yang dihapus tidak dapat dipulihkan."
 	actionLabel="Hapus Permanen"
-	onAction={() => document.getElementById('delete-form').requestSubmit()}
+	onAction={() => {
+		const deleteform = document.getElementById('delete-form') as HTMLFormElement;
+		deleteform.requestSubmit();
+	}}
 />
 
 <ConfirmationDialog
@@ -374,7 +381,8 @@
 			notificationOpen = true;
 			return;
 		}
-		document.getElementById('mutate-form').requestSubmit();
+		const mutateform = document.getElementById('mutate-form') as HTMLFormElement;
+		mutateform.requestSubmit();
 	}}
 >
 	<div class="mt-4 grid gap-4 text-left">

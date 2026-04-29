@@ -22,6 +22,7 @@
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import { toast } from 'svelte-sonner';
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 
 	let { data } = $props();
 
@@ -29,6 +30,7 @@
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let rawData = $state<any[]>([]);
 	let fileName = $state('');
+	let selectedFile = $state<File | null>(null);
 	let isProcessing = $state(false);
 	let isUploading = $state(false);
 
@@ -83,6 +85,7 @@
 		const file = target.files?.[0];
 		if (!file) return;
 
+		selectedFile = file;
 		fileName = file.name;
 		isProcessing = true;
 
@@ -93,11 +96,32 @@
 				const wb = XLSX.read(bstr, { type: 'binary' });
 				const wsname = wb.SheetNames[0];
 				const ws = wb.Sheets[wsname];
-				const data = XLSX.utils.sheet_to_json(ws);
 
-				rawData = data;
+				// Gunakan range: 2 untuk memakai baris ke-3 sebagai header
+				// Baris 1-2 adalah judul dan instruksi umum
+				// Baris 3 adalah header kolom (Nama Barang *, Tipe *, dll)
+				// Baris 4 adalah deskripsi kolom (perlu di-skip)
+				// Baris 5 adalah data awal
+				const allRows = XLSX.utils.sheet_to_json(ws, { range: 2 });
+				
+				// Skip baris pertama dari hasil karena itu adalah baris deskripsi (baris ke-4 di Excel)
+				const dataRows = allRows.slice(1);
+
+				// Normalisasi keys (hilangkan spasi, tanda bintang, dan keterangan tambahan)
+				// Contoh: "Nama Barang *" -> "NamaBarang"
+				rawData = dataRows.map((row: any) => {
+					const normalized: any = {};
+					for (const key in row) {
+						// Ambil bagian sebelum kurung (jika ada), trim, dan hilangkan karakter non-alfanumerik
+						const cleanKey = key.split('(')[0].trim();
+						const normalizedKey = cleanKey.replace(/[^a-zA-Z0-9]/g, '');
+						normalized[normalizedKey] = row[key];
+					}
+					return normalized;
+				});
+
 				currentPage = 1;
-				toast.success(`Berhasil memuat ${data.length} baris data`);
+				toast.success(`Berhasil memuat ${rawData.length} baris data`);
 			} catch (err) {
 				console.error(err);
 				toast.error('Gagal membaca file Excel');
@@ -111,6 +135,7 @@
 	function reset() {
 		rawData = [];
 		fileName = '';
+		selectedFile = null;
 		if (fileInput) fileInput.value = '';
 	}
 
@@ -238,7 +263,7 @@
 								</Table.Row>
 							</Table.Header>
 							<Table.Body>
-								{#each paginatedData as row, i}
+								{#each paginatedData as row, i (i)}
 									{@const rowIndex = (currentPage - 1) * pageSize + i}
 									{@const validation = validationResults[rowIndex]}
 									<Table.Row class={!validation.valid ? 'bg-destructive/5' : ''}>
@@ -253,7 +278,7 @@
 														class="invisible absolute bottom-full left-0 z-50 mb-2 w-48 rounded bg-popover p-2 text-xs text-popover-foreground shadow-md group-hover:visible"
 													>
 														<ul class="list-disc pl-3">
-															{#each validation.errors as err}
+															{#each validation.errors as err (err)}
 																<li>{err}</li>
 															{/each}
 														</ul>
@@ -325,17 +350,18 @@
 						<Table.Head>Total</Table.Head>
 						<Table.Head>Berhasil</Table.Head>
 						<Table.Head>Status</Table.Head>
+						<Table.Head>Aksi</Table.Head>
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
 					{#if data.history.length === 0}
 						<Table.Row>
-							<Table.Cell colspan={6} class="h-24 text-center text-muted-foreground">
+							<Table.Cell colspan={7} class="h-24 text-center text-muted-foreground">
 								Belum ada riwayat import.
 							</Table.Cell>
 						</Table.Row>
 					{:else}
-						{#each data.history as log}
+						{#each data.history as log (log.id)}
 							<Table.Row>
 								<Table.Cell>{formatDateTime(log.createdAt)}</Table.Cell>
 								<Table.Cell class="font-medium">{log.filename}</Table.Cell>
@@ -353,6 +379,15 @@
 										>
 											{log.errorMessage}
 										</div>
+									{/if}
+								</Table.Cell>
+								<Table.Cell>
+									{#if log.filepath}
+										<Button variant="ghost" size="icon" href={log.filepath} download={log.filename}>
+											<Download class="size-4" />
+										</Button>
+									{:else}
+										-
 									{/if}
 								</Table.Cell>
 							</Table.Row>
@@ -374,6 +409,15 @@
 	loading={isUploading}
 	onAction={() => {
 		const form = document.getElementById('import-form') as HTMLFormElement;
+		
+		// Create a DataTransfer to put the file back into the form
+		if (selectedFile) {
+			const fileInput = form.querySelector('input[type="file"]') as HTMLInputElement;
+			const dataTransfer = new DataTransfer();
+			dataTransfer.items.add(selectedFile);
+			fileInput.files = dataTransfer.files;
+		}
+		
 		form.requestSubmit();
 	}}
 />
@@ -383,6 +427,7 @@
 	id="import-form"
 	method="POST"
 	action="?/import"
+	enctype="multipart/form-data"
 	use:enhance={() => {
 		isUploading = true;
 		showConfirm = false;
@@ -392,8 +437,9 @@
 				toast.success('Berhasil mengimport data!');
 				showSuccessDialog = true;
 				reset();
+				invalidateAll(); // Refresh data history
 			} else if (result.type === 'failure') {
-				toast.error('Gagal mengimport data');
+				toast.error('Gagal mengimport data: ' + (result.data?.message || 'Terjadi kesalahan'));
 			}
 		};
 	}}
@@ -401,6 +447,7 @@
 >
 	<input type="hidden" name="data" value={JSON.stringify(rawData)} />
 	<input type="hidden" name="filename" value={fileName} />
+	<input type="file" name="file" />
 </form>
 
 <!-- Success Modal -->
