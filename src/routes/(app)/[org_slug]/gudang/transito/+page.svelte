@@ -16,6 +16,12 @@
 	let typeFilter = $state(data.filters.type);
 	let categoryFilter = $state(data.filters.category);
 
+	$effect(() => {
+		searchQuery = data.filters.search;
+		typeFilter = data.filters.type;
+		categoryFilter = data.filters.category;
+	});
+
 	function updateFilters() {
 		const newUrl = new URL(page.url);
 		if (searchQuery) newUrl.searchParams.set('search', searchQuery);

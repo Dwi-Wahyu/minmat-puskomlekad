@@ -17,7 +17,10 @@
 
 	const sidebar = getSidebarState();
 
-	let isGroupActive = $derived(page.url.pathname.startsWith(activePrefix));
+	let isGroupActive = $derived(
+		page.url.pathname.startsWith(activePrefix) ||
+		children.some((child) => page.url.pathname.startsWith(child.path))
+	);
 
 	function handleToggle() {
 		if (!sidebar.open) {

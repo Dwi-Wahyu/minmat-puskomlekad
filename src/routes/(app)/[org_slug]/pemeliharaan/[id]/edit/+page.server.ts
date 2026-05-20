@@ -98,7 +98,7 @@ export const actions: Actions = {
 					? new Date(rawCompletionDate).toISOString()
 					: null,
 			status: formData.get('status')?.toString() || 'PENDING',
-			technicianId: rawTechnicianId && rawTechnicianId !== '' ? rawTechnicianId : null
+			technicianId: rawTechnicianId && rawTechnicianId.trim() !== '' ? rawTechnicianId : null
 		};
 
 		try {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '@/components/ui/button/button.svelte';
+	import { equipmentStatusColors, equipmentStatusLabels } from '@/utils.js';
 	import {
 		Package,
 		Warehouse,
@@ -103,8 +104,7 @@
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-3 lg:col-span-2">
 			<!-- Transito -->
 			<div class="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-				<div class="flex items-center gap-2 border-b border-border bg-muted/50 px-5 py-4">
-					<Truck size={18} class="text-primary" />
+				<div class="border-b border-border bg-muted/50 px-5 py-4">
 					<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">Gudang Transito</h3>
 				</div>
 				<div class="flex-1 space-y-4 p-5">
@@ -127,8 +127,7 @@
 
 			<!-- Komoditi -->
 			<div class="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-				<div class="flex items-center gap-2 border-b border-border bg-muted/50 px-5 py-4">
-					<Home size={18} class="text-success" />
+				<div class="border-b border-border bg-muted/50 px-5 py-4">
 					<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">Gudang Komunity</h3>
 				</div>
 				<div class="flex-1 space-y-4 p-5">
@@ -151,8 +150,7 @@
 
 			<!-- Balkir -->
 			<div class="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-				<div class="flex items-center gap-2 border-b border-border bg-muted/50 px-5 py-4">
-					<Warehouse size={18} class="text-destructive" />
+				<div class="border-b border-border bg-muted/50 px-5 py-4">
 					<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">Gudang Balkir</h3>
 				</div>
 				<div class="flex-1 space-y-4 p-5">
@@ -272,17 +270,23 @@
 								<Box size={18} />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="truncate text-sm font-bold text-foreground">{eq.name}</p>
+								<div class="flex items-center gap-2">
+									<p class="truncate text-sm font-bold text-foreground">{eq.name}</p>
+								</div>
 								<p class="font-mono text-[10px] text-muted-foreground">
 									{eq.serialNumber || 'No SN'}
 								</p>
 							</div>
 							<div
-								class="rounded px-2 py-1 text-[10px] font-bold uppercase {eq.condition === 'BAIK'
+								class="rounded px-2 py-1 text-[10px] font-bold {eq.condition === 'BAIK'
 									? 'bg-success/10 text-success'
 									: 'bg-destructive/10 text-destructive'}"
 							>
-								{eq.condition}
+								{eq.condition === 'BAIK'
+									? 'Baik'
+									: eq.condition === 'RUSAK_RINGAN'
+										? 'Rusak Ringan'
+										: 'Rusak Berat'}
 							</div>
 						</div>
 					{/each}

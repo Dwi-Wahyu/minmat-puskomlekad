@@ -60,13 +60,19 @@
 <div class="flex flex-col gap-6 p-6">
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-3xl font-bold tracking-tight text-foreground">Tracking Peminjaman</h1>
-			<p class="text-muted-foreground">Pantau status pengajuan.</p>
+			<h1 class="text-3xl font-bold tracking-tight text-foreground">
+				{data.isInduk ? 'Daftar Pengajuan Masuk' : 'Tracking Peminjaman'}
+			</h1>
+			<p class="text-muted-foreground">
+				{data.isInduk ? 'Kelola pengajuan peminjaman dari satuan jajaran.' : 'Pantau status pengajuan.'}
+			</p>
 		</div>
-		<Button href="/{page.params.org_slug}/peminjaman/create" class="gap-2">
-			<Plus class="size-4" />
-			Buat Pengajuan
-		</Button>
+		{#if !data.isInduk}
+			<Button href="/{page.params.org_slug}/peminjaman/create" class="gap-2">
+				<Plus class="size-4" />
+				Buat Pengajuan
+			</Button>
+		{/if}
 	</div>
 
 	<div class="flex flex-col items-center gap-4 rounded-lg border bg-card p-4 shadow-sm md:flex-row">

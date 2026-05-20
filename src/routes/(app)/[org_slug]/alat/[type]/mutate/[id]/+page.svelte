@@ -141,7 +141,7 @@
 						>Status & Kondisi</Label
 					>
 					<p class="text-sm">
-						<span class="font-medium">{data.equipment.status}</span> • {data.equipment.condition}
+						<span class="font-medium">{equipmentStatusLabels[data.equipment.status] || data.equipment.status.replace('_', ' ')}</span> • {data.equipment.condition}
 					</p>
 				</div>
 				<div>

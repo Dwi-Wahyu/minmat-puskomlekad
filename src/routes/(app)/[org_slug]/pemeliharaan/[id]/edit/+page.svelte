@@ -21,7 +21,25 @@
 
 	let { data } = $props();
 
-	let formData = $state({ ...data.maintenance });
+	let formData = $state({
+		equipmentId: data.maintenance.equipmentId,
+		maintenanceType: data.maintenance.maintenanceType,
+		description: data.maintenance.description,
+		scheduledDate: data.maintenance.scheduledDate,
+		completionDate: data.maintenance.completionDate,
+		status: data.maintenance.status,
+		technicianId: data.maintenance.technicianId || ''
+	});
+
+	$effect(() => {
+		formData.equipmentId = data.maintenance.equipmentId;
+		formData.maintenanceType = data.maintenance.maintenanceType;
+		formData.description = data.maintenance.description;
+		formData.scheduledDate = data.maintenance.scheduledDate;
+		formData.completionDate = data.maintenance.completionDate;
+		formData.status = data.maintenance.status;
+		formData.technicianId = data.maintenance.technicianId || '';
+	});
 
 	// State untuk dialog notifikasi
 	let showNotification = $state(false);

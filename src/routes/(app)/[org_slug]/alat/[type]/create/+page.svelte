@@ -80,7 +80,7 @@
 			<div class="space-y-2">
 				<Label for="serialNumber">Serial Number (SN)</Label>
 				<Input name="serialNumber" id="serialNumber" placeholder="Contoh: SN-12345678" />
-				<p class="text-xs text-muted-foreground">Nomor seri unik untuk alat ini</p>
+				<p class="text-xs text-muted-foreground">Nomor seri unik</p>
 			</div>
 
 			<div class="space-y-2">
@@ -95,7 +95,7 @@
 					id="warehouseId"
 					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
 				>
-					<option value="">Tanpa Gudang (Langsung ke Satuan)</option>
+					<option value="">Tanpa Gudang</option>
 					{#each data.warehouses as warehouse (warehouse.id)}
 						<option value={warehouse.id}>{warehouse.name}</option>
 					{/each}

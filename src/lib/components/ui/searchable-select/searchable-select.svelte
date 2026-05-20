@@ -10,7 +10,7 @@
 
 	let searchValue = $state('');
 
-	setContext('SEARCHABLE_SELECT_STATE', {
+	setContext('SEARCHABLE_SELECT_SEARCH_STATE', {
 		get searchValue() {
 			return searchValue;
 		},

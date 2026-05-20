@@ -1,5 +1,9 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+	import { RotateCw } from '@lucide/svelte';
 	let { data } = $props();
+
+	let isLoading = $state(false);
 
 	function exportCSV() {
 		if (!data.groupedReports.length) return;
@@ -53,18 +57,41 @@
 </script>
 
 <div class="min-h-screen space-y-6 bg-background p-8 text-foreground">
-	<div class="space-y-1 text-center">
-		<h1 class="text-xl font-bold uppercase underline">LAPORAN MATERIIL PERNIKA DAN LEK</h1>
-		<p class="text-sm font-semibold italic text-muted-foreground">Daftar Materiil Berdasarkan Satuan Jajaran</p>
-	</div>
-
-	<div class="flex justify-end print:hidden">
-		<button
-			onclick={exportCSV}
-			class="rounded-md bg-secondary px-6 py-2 text-xs font-bold tracking-wider text-secondary-foreground uppercase shadow transition hover:bg-secondary/90"
-		>
-			Ekspor (.CSV)
-		</button>
+	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+		<div class="space-y-1">
+			<h1 class="text-xl font-bold uppercase underline">LAPORAN MATERIIL PERNIKA DAN LEK</h1>
+			<p class="text-sm font-semibold italic text-muted-foreground">
+				Daftar Materiil Berdasarkan Satuan Jajaran
+			</p>
+		</div>
+		<div class="flex shrink-0 items-center gap-2 print:hidden">
+			<form
+				method="POST"
+				action="?/reload"
+				use:enhance={() => {
+					isLoading = true;
+					return async ({ update }) => {
+						await update();
+						isLoading = false;
+					};
+				}}
+			>
+				<button
+					type="submit"
+					disabled={isLoading}
+					class="flex items-center gap-2 whitespace-nowrap rounded-md bg-primary px-6 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow transition hover:bg-primary/90 disabled:opacity-50"
+				>
+					<RotateCw class="h-4 w-4 {isLoading ? 'animate-spin' : ''}" />
+					{isLoading ? 'Memproses...' : 'Muat Ulang Data'}
+				</button>
+			</form>
+			<button
+				onclick={exportCSV}
+				class="whitespace-nowrap rounded-md bg-secondary px-6 py-2 text-xs font-bold uppercase tracking-wider text-secondary-foreground shadow transition hover:bg-secondary/90"
+			>
+				Ekspor (.CSV)
+			</button>
+		</div>
 	</div>
 
 	<div class="overflow-x-auto border-[1.5px] border-border">

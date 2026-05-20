@@ -1,8 +1,9 @@
 import { db } from '$lib/server/db';
-import { equipment, item, warehouse, movement } from '$lib/server/db/schema';
+import { equipment, item, warehouse, movement, organization } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
+import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const { id, org_slug } = params;
@@ -10,19 +11,25 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	if (!user) throw redirect(302, '/login');
 
-	const data = await db.query.equipment.findFirst({
-		where: eq(equipment.id, id),
-		with: {
-			item: true,
-			warehouse: true
-		}
-	});
+	const [data, org] = await Promise.all([
+		db.query.equipment.findFirst({
+			where: eq(equipment.id, id),
+			with: {
+				item: true,
+				warehouse: true
+			}
+		}),
+		db.query.organization.findFirst({
+			where: eq(organization.slug, org_slug)
+		})
+	]);
 
 	if (!data) throw redirect(302, `/${org_slug}/alat/${params.type}`);
+	if (!org) throw redirect(302, '/dashboard');
 
 	// Fetch available warehouses for the organization
 	const warehouses = await db.query.warehouse.findMany({
-		where: eq(warehouse.organizationId, user.organization.id)
+		where: eq(warehouse.organizationId, org.id)
 	});
 
 	return {
@@ -47,6 +54,12 @@ export const actions: Actions = {
 		const { id, org_slug, type } = params;
 
 		try {
+			const org = await db.query.organization.findFirst({
+				where: eq(organization.slug, org_slug)
+			});
+
+			if (!org) return fail(404, { message: 'Organisasi tidak ditemukan' });
+
 			// Start a transaction to update equipment and record movement
 			await db.transaction(async (tx) => {
 				const currentEquipment = await tx.query.equipment.findFirst({
@@ -103,7 +116,7 @@ export const actions: Actions = {
 				await tx.insert(movement).values({
 					id: crypto.randomUUID(),
 					equipmentId: id,
-					organizationId: user.organization.id,
+					organizationId: org.id,
 					eventType: eventType,
 					classification: classification || null,
 					qty: '1.0000',
@@ -115,6 +128,9 @@ export const actions: Actions = {
 					createdAt: new Date()
 				});
 			});
+
+			// Invalidate cache
+			await invalidateOrgInventoryCache(org.id);
 
 			return { success: true, message: 'Mutasi alat berhasil dicatat' };
 		} catch (error) {

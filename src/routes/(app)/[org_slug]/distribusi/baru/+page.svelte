@@ -3,6 +3,8 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
+	import * as SearchableSelect from '$lib/components/ui/searchable-select';
+	import { Badge } from '$lib/components/ui/badge';
 	import {
 		Card,
 		CardContent,
@@ -87,16 +89,16 @@
 				<div class="grid gap-4">
 					<div class="flex flex-col gap-2">
 						<Label for="toOrg">Kesatuan Tujuan</Label>
-						<Select.Root type="single" bind:value={toOrganizationId} name="toOrganizationId">
-							<Select.Trigger class="w-full">
+						<SearchableSelect.Root type="single" bind:value={toOrganizationId} name="toOrganizationId">
+							<SearchableSelect.Trigger class="w-full">
 								{selectedToOrg?.name || 'Pilih Kesatuan Tujuan'}
-							</Select.Trigger>
-							<Select.Content>
+							</SearchableSelect.Trigger>
+							<SearchableSelect.Content>
 								{#each data.organizations as org}
-									<Select.Item value={org.id}>{org.name}</Select.Item>
+									<SearchableSelect.Item value={org.id} label={org.name}>{org.name}</SearchableSelect.Item>
 								{/each}
-							</Select.Content>
-						</Select.Root>
+							</SearchableSelect.Content>
+						</SearchableSelect.Root>
 					</div>
 				</div>
 			</CardContent>

@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import { notification } from '$lib/server/db/schema';
 import { v4 as uuidv4 } from 'uuid';
+import { invalidateNotifCache } from '$lib/server/redis';
 
 export type NotificationPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -30,7 +31,7 @@ export async function createNotification(params: CreateNotificationParams) {
 		throw new Error('Either userId or organizationId must be provided to create a notification.');
 	}
 
-	return await db.insert(notification).values({
+	const result = await db.insert(notification).values({
 		id: uuidv4(),
 		userId: userId || null,
 		organizationId: organizationId || null,
@@ -41,4 +42,13 @@ export async function createNotification(params: CreateNotificationParams) {
 		read: false,
 		createdAt: new Date()
 	});
+
+	// Invalidasi cache layout notifikasi untuk user terkait
+	if (userId) {
+		invalidateNotifCache(userId).catch((err) => {
+			console.error('Error invalidating notification cache:', err);
+		});
+	}
+
+	return result;
 }

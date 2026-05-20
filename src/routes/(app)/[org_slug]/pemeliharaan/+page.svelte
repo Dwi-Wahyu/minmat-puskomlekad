@@ -26,6 +26,10 @@
 	let selectedEquipmentIds = $state(data.filters.equipmentIds);
 
 	$effect(() => {
+		selectedEquipmentIds = data.filters.equipmentIds;
+	});
+
+	$effect(() => {
 		const url = new URL(window.location.href);
 		const currentEqIds = url.searchParams.get('equipmentIds')?.split(',').filter(Boolean) || [];
 		

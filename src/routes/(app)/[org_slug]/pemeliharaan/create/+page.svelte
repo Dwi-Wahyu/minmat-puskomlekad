@@ -6,7 +6,16 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Label } from '$lib/components/ui/label';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
-	import { ArrowLeft, Save, Activity, Clock, User as UserIcon, Calendar, Box, X } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		Save,
+		Activity,
+		Clock,
+		User as UserIcon,
+		Calendar,
+		Box,
+		X
+	} from '@lucide/svelte';
 	import * as Card from '$lib/components/ui/card';
 	import * as SearchableSelect from '$lib/components/ui/searchable-select';
 	import { Badge } from '$lib/components/ui/badge';
@@ -90,13 +99,15 @@
 				<h1 class="flex items-center gap-2 text-2xl font-bold text-foreground">
 					Tambah Pemeliharaan Baru
 				</h1>
-				<p class="text-sm text-muted-foreground">Buat jadwal perawatan atau perbaikan peralatan baru</p>
+				<p class="text-sm text-muted-foreground">
+					Buat jadwal perawatan atau perbaikan peralatan baru
+				</p>
 			</div>
 		</div>
 	</div>
 
-	<Card.Root class="overflow-hidden border-border shadow-sm">
-		<Card.Header class="border-b border-border bg-muted/50">
+	<Card.Root class="overflow-hidden border-border pt-0 shadow-sm">
+		<Card.Header class="border-b border-border bg-muted/50 pt-6">
 			<Card.Title
 				class="flex items-center gap-2 text-sm font-bold tracking-wider text-muted-foreground uppercase"
 			>
@@ -133,10 +144,7 @@
 							<input type="hidden" name="equipmentId" value={id} />
 						{/each}
 
-						<SearchableSelect.Root
-							type="multiple"
-							bind:value={formData.equipmentIds}
-						>
+						<SearchableSelect.Root type="multiple" bind:value={formData.equipmentIds}>
 							<SearchableSelect.Trigger
 								class="flex h-11 w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-2 text-sm"
 							>

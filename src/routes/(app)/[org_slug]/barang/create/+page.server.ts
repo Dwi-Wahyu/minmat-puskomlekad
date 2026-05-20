@@ -1,36 +1,3 @@
-// import { db } from '$lib/server/db';
-// import { item } from '$lib/server/db/schema';
-// import { error, fail } from '@sveltejs/kit';
-// import type { Actions } from './$types';
-// import { v4 as uuidv4 } from 'uuid';
-
-// export const actions: Actions = {
-// 	default: async ({ request }) => {
-// 		try {
-// 			const formData = await request.formData();
-// 			const name = formData.get('name') as string;
-// 			const baseUnit = formData.get('baseUnit') as 'PCS' | 'BOX' | 'METER' | 'ROLL' | 'UNIT';
-// 			const description = formData.get('description') as string;
-
-// 			if (!name || !baseUnit) throw error(400, 'Nama dan Satuan wajib diisi');
-
-// 			await db.insert(item).values({
-// 				id: uuidv4(),
-// 				name,
-// 				type: 'CONSUMABLE',
-// 				baseUnit,
-// 				description,
-// 				createdAt: new Date()
-// 			});
-
-// 			return { success: true, message: 'Peminjaman berhasil diajukan' };
-// 		} catch (error) {
-// 			console.error('Error creating lending:', err);
-// 			return fail(500, { message: 'Gagal membuat pengajuan peminjaman' });
-// 		}
-// 	}
-// };
-
 import { db } from '$lib/server/db';
 import { item, warehouse, organization, stock } from '$lib/server/db/schema';
 import { error, fail } from '@sveltejs/kit';
@@ -38,6 +5,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { uploadFile } from '$lib/server/storage';
+import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const orgResults = await db
@@ -64,8 +32,9 @@ export const load: PageServerLoad = async ({ params }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request }) => {
+	default: async ({ request, params }) => {
 		try {
+			const { org_slug } = params;
 			const formData = await request.formData();
 			const name = formData.get('name') as string;
 			const baseUnit = formData.get('baseUnit') as 'PCS' | 'BOX' | 'METER' | 'ROLL' | 'UNIT';
@@ -110,6 +79,15 @@ export const actions: Actions = {
 					});
 				}
 			});
+
+			// Invalidate cache
+			const org = await db.query.organization.findFirst({
+				where: eq(organization.slug, org_slug)
+			});
+
+			if (org) {
+				await invalidateOrgInventoryCache(org.id);
+			}
 
 			return { success: true, message: 'Barang berhasil disimpan' };
 		} catch (err) {

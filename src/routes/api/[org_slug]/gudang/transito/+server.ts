@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { movement, item, equipment } from '$lib/server/db/schema';
 import { eq, desc, and, like, or } from 'drizzle-orm';
+import { getOrSetCache, CacheKeys, CacheTTL } from '$lib/server/redis';
 
 /** @type {import('./$types').RequestHandler} */
 export const GET = async ({ url, params, locals }) => {
@@ -15,7 +16,68 @@ export const GET = async ({ url, params, locals }) => {
 	const searchType = url.searchParams.get('type'); // ASSET atau CONSUMABLE
 
 	try {
-		// Query Data Movement dengan Klasifikasi 'TRANSITO' dan filter tambahan
+		// Hanya cache request tanpa filter (list penuh)
+		if (!searchName && !searchType) {
+			const cacheKey = CacheKeys.gudangTransito(organizationId);
+			const data = await getOrSetCache(
+				cacheKey,
+				async () => {
+					const movements = await db.query.movement.findMany({
+						where: and(eq(movement.classification, 'TRANSITO'), eq(movement.organizationId, organizationId)),
+						with: {
+							equipment: {
+								with: {
+									item: true
+								}
+							},
+							item: true
+						},
+						orderBy: [desc(movement.createdAt)]
+					});
+
+					return movements.map((m) => {
+						if (m.equipment && m.equipment.item) {
+							return {
+								id: m.id,
+								type: 'asset',
+								nama: m.equipment.item.name,
+								serialNumber: m.equipment.serialNumber,
+								kategori: m.equipment.item.equipmentType,
+								notes: m.notes,
+								qty: m.qty,
+								createdAt: m.createdAt,
+								eventType: m.eventType
+							};
+						} else if (m.item) {
+							return {
+								id: m.id,
+								type: 'consumable',
+								nama: m.item.name,
+								kategori: null,
+								notes: m.notes,
+								qty: m.qty,
+								unit: m.unit || m.item.baseUnit,
+								createdAt: m.createdAt,
+								eventType: m.eventType
+							};
+						}
+						return {
+							id: m.id,
+							type: 'unknown',
+							nama: 'Unknown Item',
+							qty: m.qty,
+							notes: m.notes,
+							createdAt: m.createdAt
+						};
+					});
+				},
+				CacheTTL.GUDANG
+			);
+
+			return json({ success: true, data });
+		}
+
+		// Jika ada filter, langsung query DB tanpa cache
 		const movements = await db.query.movement.findMany({
 			where: (movements, { and, eq, exists }) => {
 				const conditions = [
@@ -26,9 +88,9 @@ export const GET = async ({ url, params, locals }) => {
 				if (searchName || searchType) {
 					conditions.push(
 						or(
-							// Filter untuk Consumable (langsung ke item)
 							exists(
-								db.select()
+								db
+									.select()
 									.from(item)
 									.where(
 										and(
@@ -38,9 +100,9 @@ export const GET = async ({ url, params, locals }) => {
 										)
 									)
 							),
-							// Filter untuk Asset (lewat equipment)
 							exists(
-								db.select()
+								db
+									.select()
 									.from(equipment)
 									.innerJoin(item, eq(item.id, equipment.itemId))
 									.where(
@@ -68,9 +130,7 @@ export const GET = async ({ url, params, locals }) => {
 			orderBy: [desc(movement.createdAt)]
 		});
 
-		// Transformasi Data untuk Konsumsi Mobile (Clean JSON)
 		const formattedMovements = movements.map((m) => {
-			// Jika movement terkait alat/asset (memiliki data equipment)
 			if (m.equipment && m.equipment.item) {
 				return {
 					id: m.id,
@@ -83,9 +143,7 @@ export const GET = async ({ url, params, locals }) => {
 					createdAt: m.createdAt,
 					eventType: m.eventType
 				};
-			}
-			// Jika movement terkait bahan/consumable (hanya memiliki data item)
-			else if (m.item) {
+			} else if (m.item) {
 				return {
 					id: m.id,
 					type: 'consumable',
@@ -98,7 +156,6 @@ export const GET = async ({ url, params, locals }) => {
 					eventType: m.eventType
 				};
 			}
-			// Fallback
 			return {
 				id: m.id,
 				type: 'unknown',
@@ -109,7 +166,6 @@ export const GET = async ({ url, params, locals }) => {
 			};
 		});
 
-		// Return Response
 		return json({
 			success: true,
 			data: formattedMovements

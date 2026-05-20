@@ -16,6 +16,7 @@
 		Zap,
 		Box
 	} from '@lucide/svelte';
+	import { equipmentStatusLabels, equipmentStatusColors } from '$lib/utils';
 
 	let { data } = $props();
 
@@ -189,8 +190,8 @@
 								</Badge>
 							</Table.Cell>
 							<Table.Cell>
-								<Badge variant="secondary" class={statusColors[item.status]}>
-									{item.status.replace('_', ' ')}
+								<Badge variant="secondary" class={equipmentStatusColors[item.status]}>
+									{equipmentStatusLabels[item.status] || item.status.replace('_', ' ')}
 								</Badge>
 							</Table.Cell>
 							<Table.Cell class="text-right">

@@ -33,6 +33,10 @@
 		data.land.photoPath ? `/uploads/land/${data.land.photoPath}` : null
 	);
 
+	$effect(() => {
+		imagePreview = data.land.photoPath ? `/uploads/land/${data.land.photoPath}` : null;
+	});
+
 	function handleImageChange(event: Event) {
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];

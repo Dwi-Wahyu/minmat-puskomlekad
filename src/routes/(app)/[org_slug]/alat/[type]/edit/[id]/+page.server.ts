@@ -4,6 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail, error } from '@sveltejs/kit';
 import { uploadFile, deleteFile } from '$lib/server/storage';
+import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { org_slug, id } = params;
@@ -126,6 +127,9 @@ export const actions: Actions = {
 					updatedAt: new Date()
 				})
 				.where(eq(equipment.id, id));
+
+			// Invalidate cache
+			await invalidateOrgInventoryCache(current.equipment.organizationId);
 
 			return { success: true, message: 'Data alat berhasil diperbarui' };
 		} catch (error: any) {

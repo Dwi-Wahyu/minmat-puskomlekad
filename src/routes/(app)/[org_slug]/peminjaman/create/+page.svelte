@@ -19,6 +19,10 @@
 	let endDate = $state('');
 	let selectedTargetOrgId = $state(data.targetOrg?.id || '');
 
+	$effect(() => {
+		selectedTargetOrgId = data.targetOrg?.id || '';
+	});
+
 	// State untuk items yang dipilih
 	let selectedItems = $state<
 		Record<string, { selected: boolean; qty: number; manualIds: string[] }>

@@ -1,5 +1,9 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+	import { RotateCw } from '@lucide/svelte';
 	let { data } = $props();
+
+	let isLoading = $state(false);
 
 	function exportCSV() {
 		if (!data.reports.length) return;
@@ -42,17 +46,39 @@
 </script>
 
 <div class="space-y-4 p-6">
-	<div class="flex items-end justify-between">
-		<div class="w-full text-center">
+	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+		<div>
 			<h1 class="text-lg font-bold uppercase underline text-foreground">LAPORAN KONDISI MATERIIL</h1>
 			<h2 class="text-md font-bold uppercase text-foreground">( BTK - 16 )</h2>
 		</div>
-		<button
-			onclick={exportCSV}
-			class="w-fit rounded bg-success px-4 py-2 text-sm text-success-foreground shadow-sm hover:opacity-90 transition-opacity"
-		>
-			Ekspor CSV
-		</button>
+		<div class="flex shrink-0 items-center gap-2">
+			<form
+				method="POST"
+				action="?/reload"
+				use:enhance={() => {
+					isLoading = true;
+					return async ({ update }) => {
+						await update();
+						isLoading = false;
+					};
+				}}
+			>
+				<button
+					type="submit"
+					disabled={isLoading}
+					class="flex items-center gap-2 whitespace-nowrap rounded bg-primary px-4 py-2 text-sm text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+				>
+					<RotateCw class="h-4 w-4 {isLoading ? 'animate-spin' : ''}" />
+					{isLoading ? 'Memproses...' : 'Muat Ulang Data'}
+				</button>
+			</form>
+			<button
+				onclick={exportCSV}
+				class="whitespace-nowrap rounded bg-success px-4 py-2 text-sm text-success-foreground shadow-sm transition-opacity hover:opacity-90"
+			>
+				Ekspor CSV
+			</button>
+		</div>
 	</div>
 
 	<div class="overflow-x-auto">

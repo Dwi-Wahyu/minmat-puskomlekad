@@ -17,6 +17,12 @@
 	let typeFilter = $state(data.filters.type);
 	let categoryFilter = $state(data.filters.category);
 
+	$effect(() => {
+		searchQuery = data.filters.search;
+		typeFilter = data.filters.type;
+		categoryFilter = data.filters.category;
+	});
+
 	let currentPage = $state(1);
 	let itemsPerPage = $state(10);
 

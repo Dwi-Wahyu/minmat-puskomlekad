@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { equipment, item, stock, movement, warehouse, organization } from '$lib/server/db/schema';
 import { eq, and, count, sum, gte, sql, desc } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
+import { getOrSetCache, CacheKeys, CacheTTL } from '$lib/server/redis';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	// Validasi Auth
@@ -20,178 +21,187 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 	}
 
 	const orgId = org.id;
-	const now = new Date();
-	const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-	// Eksekusi Parallel Queries (Optimasi)
-	// Kita bisa menjalankan semua query secara bersamaan menggunakan Promise.all
-	const [
-		activeInventoryCount,
-		warehouseStockSum,
-		damagedItemsCount,
-		monthlyMovementsCount,
-		transitoIncoming,
-		transitoOutgoing,
-		transitoPending,
-		komoditiActive,
-		komoditiOutgoing,
-		balkirTotal,
-		balkirDamaged,
-		balkirIncoming,
-		balkirOutgoing,
-		recentEquipments
-	] = await Promise.all([
-		// Summary Stats
-		db.select({ count: count() }).from(equipment).where(eq(equipment.organizationId, orgId)),
-		db
-			.select({ total: sum(stock.qty) })
-			.from(stock)
-			.innerJoin(warehouse, eq(stock.warehouseId, warehouse.id))
-			.where(eq(warehouse.organizationId, orgId)),
-		db
-			.select({ count: count() })
-			.from(equipment)
-			.where(and(eq(equipment.organizationId, orgId), sql`${equipment.condition} != 'BAIK'`)),
-		db
-			.select({ count: count() })
-			.from(movement)
-			.where(and(eq(movement.organizationId, orgId), gte(movement.createdAt, firstDayOfMonth))),
+	const cacheKey = CacheKeys.dashboard(orgId);
 
-		// Transito
-		db
-			.select({ count: count() })
-			.from(movement)
-			.where(
-				and(
-					eq(movement.organizationId, orgId),
-					eq(movement.classification, 'TRANSITO'),
-					eq(movement.eventType, 'RECEIVE'),
-					gte(movement.createdAt, firstDayOfMonth)
-				)
-			),
-		db
-			.select({ count: count() })
-			.from(movement)
-			.where(
-				and(
-					eq(movement.organizationId, orgId),
-					eq(movement.classification, 'TRANSITO'),
-					eq(movement.eventType, 'ISSUE'),
-					gte(movement.createdAt, firstDayOfMonth)
-				)
-			),
-		db
-			.select({ count: count() })
-			.from(equipment)
-			.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'TRANSIT'))),
+	const dashboardData = await getOrSetCache(
+		cacheKey,
+		async () => {
+			const now = new Date();
+			const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-		// Komoditi
-		db
-			.select({ count: count() })
-			.from(equipment)
-			.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'IN_USE'))),
-		db
-			.select({ count: count() })
-			.from(movement)
-			.where(
-				and(
-					eq(movement.organizationId, orgId),
-					eq(movement.classification, 'KOMUNITY'),
-					eq(movement.eventType, 'ISSUE'),
-					gte(movement.createdAt, firstDayOfMonth)
-				)
-			),
+			// Eksekusi Parallel Queries (Optimasi)
+			const [
+				activeInventoryCount,
+				warehouseStockSum,
+				damagedItemsCount,
+				monthlyMovementsCount,
+				transitoIncoming,
+				transitoOutgoing,
+				transitoPending,
+				komoditiActive,
+				komoditiOutgoing,
+				balkirTotal,
+				balkirDamaged,
+				balkirIncoming,
+				balkirOutgoing,
+				recentEquipments
+			] = await Promise.all([
+				// Summary Stats
+				db.select({ count: count() }).from(equipment).where(eq(equipment.organizationId, orgId)),
+				db
+					.select({ total: sum(stock.qty) })
+					.from(stock)
+					.innerJoin(warehouse, eq(stock.warehouseId, warehouse.id))
+					.where(eq(warehouse.organizationId, orgId)),
+				db
+					.select({ count: count() })
+					.from(equipment)
+					.where(and(eq(equipment.organizationId, orgId), sql`${equipment.condition} != 'BAIK'`)),
+				db
+					.select({ count: count() })
+					.from(movement)
+					.where(and(eq(movement.organizationId, orgId), gte(movement.createdAt, firstDayOfMonth))),
 
-		// Balkir
-		db
-			.select({ count: count() })
-			.from(equipment)
-			.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'READY'))),
-		db
-			.select({ count: count() })
-			.from(equipment)
-			.where(
-				and(
-					eq(equipment.organizationId, orgId),
-					eq(equipment.status, 'READY'),
-					sql`${equipment.condition} != 'BAIK'`
-				)
-			),
-		db
-			.select({ count: count() })
-			.from(movement)
-			.where(
-				and(
-					eq(movement.organizationId, orgId),
-					eq(movement.classification, 'BALKIR'),
-					eq(movement.eventType, 'RECEIVE'),
-					gte(movement.createdAt, firstDayOfMonth)
-				)
-			),
-		db
-			.select({ count: count() })
-			.from(movement)
-			.where(
-				and(
-					eq(movement.organizationId, orgId),
-					eq(movement.classification, 'BALKIR'),
-					eq(movement.eventType, 'ISSUE'),
-					gte(movement.createdAt, firstDayOfMonth)
-				)
-			),
+				// Transito
+				db
+					.select({ count: count() })
+					.from(movement)
+					.where(
+						and(
+							eq(movement.organizationId, orgId),
+							eq(movement.classification, 'TRANSITO'),
+							eq(movement.eventType, 'RECEIVE'),
+							gte(movement.createdAt, firstDayOfMonth)
+						)
+					),
+				db
+					.select({ count: count() })
+					.from(movement)
+					.where(
+						and(
+							eq(movement.organizationId, orgId),
+							eq(movement.classification, 'TRANSITO'),
+							eq(movement.eventType, 'ISSUE'),
+							gte(movement.createdAt, firstDayOfMonth)
+						)
+					),
+				db
+					.select({ count: count() })
+					.from(equipment)
+					.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'TRANSIT'))),
 
-		// Recent Equipment
-		db
-			.select({
-				id: equipment.id,
-				serialNumber: equipment.serialNumber,
-				brand: equipment.brand,
-				condition: equipment.condition,
-				status: equipment.status,
-				createdAt: equipment.createdAt,
-				item: {
-					name: item.name
-				}
-			})
-			.from(equipment)
-			.innerJoin(item, eq(equipment.itemId, item.id))
-			.where(eq(equipment.organizationId, orgId))
-			.orderBy(desc(equipment.createdAt))
-			.limit(5)
-	]);
+				// Komoditi
+				db
+					.select({ count: count() })
+					.from(equipment)
+					.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'IN_USE'))),
+				db
+					.select({ count: count() })
+					.from(movement)
+					.where(
+						and(
+							eq(movement.organizationId, orgId),
+							eq(movement.classification, 'KOMUNITY'),
+							eq(movement.eventType, 'ISSUE'),
+							gte(movement.createdAt, firstDayOfMonth)
+						)
+					),
 
-	// Transformasi & Return Response
-	return json({
-		summary: {
-			activeInventory: Number(activeInventoryCount[0]?.count) || 0,
-			warehouseStock: Number(warehouseStockSum[0]?.total) || 0,
-			damagedItems: Number(damagedItemsCount[0]?.count) || 0,
-			monthlyMovements: Number(monthlyMovementsCount[0]?.count) || 0
+				// Balkir
+				db
+					.select({ count: count() })
+					.from(equipment)
+					.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'READY'))),
+				db
+					.select({ count: count() })
+					.from(equipment)
+					.where(
+						and(
+							eq(equipment.organizationId, orgId),
+							eq(equipment.status, 'READY'),
+							sql`${equipment.condition} != 'BAIK'`
+						)
+					),
+				db
+					.select({ count: count() })
+					.from(movement)
+					.where(
+						and(
+							eq(movement.organizationId, orgId),
+							eq(movement.classification, 'BALKIR'),
+							eq(movement.eventType, 'RECEIVE'),
+							gte(movement.createdAt, firstDayOfMonth)
+						)
+					),
+				db
+					.select({ count: count() })
+					.from(movement)
+					.where(
+						and(
+							eq(movement.organizationId, orgId),
+							eq(movement.classification, 'BALKIR'),
+							eq(movement.eventType, 'ISSUE'),
+							gte(movement.createdAt, firstDayOfMonth)
+						)
+					),
+
+				// Recent Equipment
+				db
+					.select({
+						id: equipment.id,
+						serialNumber: equipment.serialNumber,
+						brand: equipment.brand,
+						condition: equipment.condition,
+						status: equipment.status,
+						createdAt: equipment.createdAt,
+						item: {
+							name: item.name
+						}
+					})
+					.from(equipment)
+					.innerJoin(item, eq(equipment.itemId, item.id))
+					.where(eq(equipment.organizationId, orgId))
+					.orderBy(desc(equipment.createdAt))
+					.limit(5)
+			]);
+
+			return {
+				summary: {
+					activeInventory: Number(activeInventoryCount[0]?.count) || 0,
+					warehouseStock: Number(warehouseStockSum[0]?.total) || 0,
+					damagedItems: Number(damagedItemsCount[0]?.count) || 0,
+					monthlyMovements: Number(monthlyMovementsCount[0]?.count) || 0
+				},
+				transito: {
+					incoming: Number(transitoIncoming[0]?.count) || 0,
+					outgoing: Number(transitoOutgoing[0]?.count) || 0,
+					pending: Number(transitoPending[0]?.count) || 0
+				},
+				komoditi: {
+					active: Number(komoditiActive[0]?.count) || 0,
+					outgoing: Number(komoditiOutgoing[0]?.count) || 0,
+					damaged: 0
+				},
+				balkir: {
+					total: Number(balkirTotal[0]?.count) || 0,
+					ready: Number(balkirTotal[0]?.count) || 0,
+					damaged: Number(balkirDamaged[0]?.count) || 0,
+					incoming: Number(balkirIncoming[0]?.count) || 0,
+					outgoing: Number(balkirOutgoing[0]?.count) || 0
+				},
+				recentEquipments: recentEquipments.map((e) => ({
+					id: e.id,
+					name: e.item.name,
+					brand: e.brand,
+					serialNumber: e.serialNumber,
+					condition: e.condition,
+					status: e.status
+				}))
+			};
 		},
-		transito: {
-			incoming: Number(transitoIncoming[0]?.count) || 0,
-			outgoing: Number(transitoOutgoing[0]?.count) || 0,
-			pending: Number(transitoPending[0]?.count) || 0
-		},
-		komoditi: {
-			active: Number(komoditiActive[0]?.count) || 0,
-			outgoing: Number(komoditiOutgoing[0]?.count) || 0,
-			damaged: 0 // Sesuaikan jika ada kriteria spesifik
-		},
-		balkir: {
-			total: Number(balkirTotal[0]?.count) || 0,
-			ready: Number(balkirTotal[0]?.count) || 0,
-			damaged: Number(balkirDamaged[0]?.count) || 0,
-			incoming: Number(balkirIncoming[0]?.count) || 0,
-			outgoing: Number(balkirOutgoing[0]?.count) || 0
-		},
-		recentEquipments: recentEquipments.map((e) => ({
-			id: e.id,
-			name: e.item.name,
-			brand: e.brand,
-			serialNumber: e.serialNumber,
-			condition: e.condition,
-			status: e.status
-		}))
-	});
+		CacheTTL.DASHBOARD
+	);
+
+	return json(dashboardData);
 };

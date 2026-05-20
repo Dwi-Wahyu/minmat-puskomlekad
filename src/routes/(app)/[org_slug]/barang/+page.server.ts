@@ -1,12 +1,29 @@
 import { db } from '$lib/server/db';
-import { item, stock, warehouse, movement, itemUnitConversion } from '$lib/server/db/schema';
+import { item, stock, warehouse, movement, itemUnitConversion, organization } from '$lib/server/db/schema';
 import { eq, and, like, desc, sql, inArray } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
 import { deleteFile } from '$lib/server/storage';
+import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
-export const load: PageServerLoad = async ({ url, locals }) => {
-	const organizationId = locals.user.organization.id;
+export const load: PageServerLoad = async ({ url, locals, params }) => {
+	const org = await db.query.organization.findFirst({
+		where: eq(organization.slug, params.org_slug)
+	});
+
+	if (!org) {
+		const organizationId = locals.user?.organization?.id;
+		if (!organizationId) {
+			return {
+				consumables: [],
+				warehouses: [],
+				pagination: { currentPage: 1, totalPages: 0, totalItems: 0 },
+				filters: { name: '' }
+			};
+		}
+	}
+
+	const organizationId = org?.id || locals.user?.organization?.id;
 
 	const searchQuery = url.searchParams.get('name') || '';
 	const page = Number(url.searchParams.get('page')) || 1;
@@ -79,13 +96,18 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 };
 
 export const actions: Actions = {
-	delete: async ({ request }) => {
+	delete: async ({ request, params }) => {
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 
 		if (!id) return fail(400, { message: 'ID is required' });
 
 		try {
+			// Get organization for cache invalidation
+			const org = await db.query.organization.findFirst({
+				where: eq(organization.slug, params.org_slug)
+			});
+
 			// Get current item for image deletion
 			const currentResult = await db.select().from(item).where(eq(item.id, id)).limit(1);
 
@@ -111,6 +133,12 @@ export const actions: Actions = {
 			}
 
 			await db.delete(item).where(eq(item.id, id));
+
+			// Invalidate cache
+			if (org) {
+				await invalidateOrgInventoryCache(org.id);
+			}
+
 			return { success: true, message: 'Barang berhasil dihapus' };
 		} catch (error) {
 			console.error(error);
@@ -118,7 +146,7 @@ export const actions: Actions = {
 		}
 	},
 
-	mutate: async ({ request, locals }) => {
+	mutate: async ({ request, locals, params }) => {
 		const { user } = locals;
 		const formData = await request.formData();
 		const itemId = formData.get('itemId') as string;
@@ -132,21 +160,28 @@ export const actions: Actions = {
 		}
 
 		try {
+			// Get organization for cache invalidation
+			const org = await db.query.organization.findFirst({
+				where: eq(organization.slug, params.org_slug)
+			});
+
 			const qtyNum = Number(qtyInput);
 			const delta = type === 'ISSUE' ? -qtyNum : qtyNum;
 
 			await db.transaction(async (tx) => {
+				const orgId = org?.id || user?.organization?.id;
+
 				// 1. Record movement
 				await tx.insert(movement).values({
 					id: crypto.randomUUID(),
 					itemId,
-					organizationId: user.organization.id,
+					organizationId: orgId,
 					eventType: type || 'ADJUSTMENT',
 					qty: qtyNum.toString(),
 					fromWarehouseId: type === 'ISSUE' || type === 'ADJUSTMENT' ? warehouseId : null,
 					toWarehouseId: type === 'RECEIVE' || type === 'ADJUSTMENT' ? warehouseId : null,
 					notes: notes || 'Mutasi stok manual',
-					picId: user.id,
+					picId: user?.id,
 					createdAt: new Date()
 				});
 
@@ -173,6 +208,11 @@ export const actions: Actions = {
 					});
 				}
 			});
+
+			// Invalidate cache
+			if (org) {
+				await invalidateOrgInventoryCache(org.id);
+			}
 
 			return { success: true, message: 'Mutasi stok berhasil diperbarui' };
 		} catch (error: any) {

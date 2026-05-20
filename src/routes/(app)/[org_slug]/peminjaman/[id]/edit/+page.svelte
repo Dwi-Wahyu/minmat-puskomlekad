@@ -22,6 +22,13 @@
 	let startDate = $state(data.lending.startDate);
 	let endDate = $state(data.lending.endDate);
 
+	$effect(() => {
+		unit = data.lending.unit;
+		purpose = data.lending.purpose;
+		startDate = data.lending.startDate;
+		endDate = data.lending.endDate;
+	});
+
 	// State untuk items yang dipilih
 	let selectedItems = $state<Record<string, { selected: boolean; qty: number }>>({});
 

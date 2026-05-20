@@ -4,6 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
 import { uploadFile } from '$lib/server/storage';
+import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { org_slug, type } = params;
@@ -118,6 +119,9 @@ export const actions: Actions = {
 					notes: `Penambahan alat baru dengan klasifikasi ${classification}`
 				});
 			}
+
+			// Invalidate cache
+			await invalidateOrgInventoryCache(org.id);
 
 			return { success: true, message: 'Alat berhasil ditambahkan' };
 		} catch (error: any) {

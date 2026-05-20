@@ -128,7 +128,7 @@
 		</div>
 	</div>
 
-	<div class="overflow-hidden rounded-2xl shadow-sm border">
+	<div class="overflow-hidden rounded-2xl border shadow-sm">
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
@@ -137,7 +137,7 @@
 					<Table.Head>Aksi</Table.Head>
 					<Table.Head>Tabel</Table.Head>
 					<Table.Head>ID Record</Table.Head>
-					<Table.Head class="text-right">Detail</Table.Head>
+					<!-- <Table.Head class="text-right">Detail</Table.Head> -->
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -175,14 +175,14 @@
 						<Table.Cell>
 							<span class="font-mono text-[10px] text-slate-400">{log.recordId || '-'}</span>
 						</Table.Cell>
-						<Table.Cell class="text-right">
+						<!-- <Table.Cell class="text-right">
 							<button
 								onclick={() => showDetail(log)}
 								class="rounded-lg p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-900"
 							>
 								<Activity size={16} title="Lihat Perubahan" />
 							</button>
-						</Table.Cell>
+						</Table.Cell> -->
 					</Table.Row>
 				{:else}
 					<Table.Row>

@@ -3,6 +3,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
+	import { equipmentStatusLabels, equipmentStatusColors } from '$lib/utils';
 	import {
 		ChevronLeft,
 		Package,
@@ -19,13 +20,6 @@
 		BAIK: 'bg-green-100 text-green-700 border-green-200',
 		RUSAK_RINGAN: 'bg-yellow-100 text-yellow-700 border-yellow-200',
 		RUSAK_BERAT: 'bg-red-100 text-red-700 border-red-200'
-	};
-
-	const statusColors: Record<string, string> = {
-		READY: 'bg-blue-100 text-blue-700',
-		IN_USE: 'bg-purple-100 text-purple-700',
-		TRANSIT: 'bg-orange-100 text-orange-700',
-		MAINTENANCE: 'bg-red-100 text-red-700'
 	};
 </script>
 
@@ -71,8 +65,8 @@
 							<Badge variant="outline" class={conditionColors[data.equipment.condition]}>
 								{data.equipment.condition.replace('_', ' ')}
 							</Badge>
-							<Badge variant="secondary" class={statusColors[data.equipment.status]}>
-								{data.equipment.status.replace('_', ' ')}
+							<Badge variant="secondary" class={equipmentStatusColors[data.equipment.status]}>
+								{equipmentStatusLabels[data.equipment.status] || data.equipment.status.replace('_', ' ')}
 							</Badge>
 						</div>
 					</div>
@@ -111,8 +105,8 @@
 						>Status Operasional</span
 					>
 					<div>
-						<Badge variant="secondary" class={statusColors[data.equipment.status]}>
-							{data.equipment.status.replace('_', ' ')}
+						<Badge variant="secondary" class={equipmentStatusColors[data.equipment.status]}>
+							{equipmentStatusLabels[data.equipment.status] || data.equipment.status.replace('_', ' ')}
 						</Badge>
 					</div>
 				</div>

@@ -1,19 +1,27 @@
 import { db } from '$lib/server/db';
-import { warehouse, item, movement, stock } from '$lib/server/db/schema';
+import { warehouse, item, movement, stock, organization } from '$lib/server/db/schema';
 import { eq, inArray, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
+import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { user } = locals;
 	if (!user) throw redirect(302, '/login');
 
+	const { org_slug } = params;
 	const ids = url.searchParams.get('ids')?.split(',') || [];
+
+	const org = await db.query.organization.findFirst({
+		where: eq(organization.slug, org_slug)
+	});
+
+	if (!org) throw redirect(302, '/dashboard');
 
 	// Fetch available warehouses for the organization
 	const [warehouses, selectedItems] = await Promise.all([
 		db.query.warehouse.findMany({
-			where: eq(warehouse.organizationId, user.organization.id)
+			where: eq(warehouse.organizationId, org.id)
 		}),
 		ids.length > 0
 			? db.query.item.findMany({
@@ -34,13 +42,14 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
+	default: async ({ request, locals, params }) => {
 		const { user } = locals;
 		if (!user) return fail(401);
 
+		const { org_slug } = params;
 		const formData = await request.formData();
 		const batchDataRaw = formData.get('batchData') as string;
-		
+
 		if (!batchDataRaw) {
 			return fail(400, { message: 'Data mutasi tidak boleh kosong' });
 		}
@@ -48,6 +57,12 @@ export const actions: Actions = {
 		const batchItems = JSON.parse(batchDataRaw);
 
 		try {
+			const org = await db.query.organization.findFirst({
+				where: eq(organization.slug, org_slug)
+			});
+
+			if (!org) return fail(404, { message: 'Organisasi tidak ditemukan' });
+
 			await db.transaction(async (tx) => {
 				for (const bItem of batchItems) {
 					const { itemId, eventType, qty, toWarehouseId, fromWarehouseId, notes } = bItem;
@@ -66,7 +81,8 @@ export const actions: Actions = {
 						});
 
 						if (existingStock) {
-							await tx.update(stock)
+							await tx
+								.update(stock)
 								.set({ qty: (Number(existingStock.qty) + amount).toString() })
 								.where(eq(stock.id, existingStock.id));
 						} else {
@@ -85,7 +101,8 @@ export const actions: Actions = {
 
 						if (existingStock) {
 							const newQty = Math.max(0, Number(existingStock.qty) - amount);
-							await tx.update(stock)
+							await tx
+								.update(stock)
 								.set({ qty: newQty.toString() })
 								.where(eq(stock.id, existingStock.id));
 						}
@@ -96,7 +113,8 @@ export const actions: Actions = {
 						});
 
 						if (existingStock) {
-							await tx.update(stock)
+							await tx
+								.update(stock)
 								.set({ qty: amount.toString() })
 								.where(eq(stock.id, existingStock.id));
 						} else {
@@ -114,7 +132,8 @@ export const actions: Actions = {
 						});
 						if (sourceStock) {
 							const newQty = Math.max(0, Number(sourceStock.qty) - amount);
-							await tx.update(stock)
+							await tx
+								.update(stock)
 								.set({ qty: newQty.toString() })
 								.where(eq(stock.id, sourceStock.id));
 						}
@@ -124,7 +143,8 @@ export const actions: Actions = {
 							where: and(eq(stock.itemId, itemId), eq(stock.warehouseId, targetWhId))
 						});
 						if (targetStock) {
-							await tx.update(stock)
+							await tx
+								.update(stock)
 								.set({ qty: (Number(targetStock.qty) + amount).toString() })
 								.where(eq(stock.id, targetStock.id));
 						} else {
@@ -141,7 +161,7 @@ export const actions: Actions = {
 					await tx.insert(movement).values({
 						id: crypto.randomUUID(),
 						itemId: itemId,
-						organizationId: user.organization.id,
+						organizationId: org.id,
 						eventType: eventType === 'TRANSFER' ? 'TRANSFER_IN' : eventType, // Normalize TRANSFER to eventTypeEnum
 						qty: amount.toString(),
 						fromWarehouseId: sourceWhId,
@@ -152,6 +172,9 @@ export const actions: Actions = {
 					});
 				}
 			});
+
+			// Invalidate cache
+			await invalidateOrgInventoryCache(org.id);
 
 			return { success: true, message: `${batchItems.length} jenis barang berhasil dimutasi` };
 		} catch (error) {

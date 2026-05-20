@@ -22,7 +22,15 @@
 		searchPlaceholder?: string;
 	} = $props();
 
-	const state = getContext<{ searchValue: string } | undefined>('SEARCHABLE_SELECT_STATE');
+	const searchState = getContext<{ searchValue: string } | undefined>('SEARCHABLE_SELECT_SEARCH_STATE');
+
+	let inputRef = $state<HTMLInputElement | null>(null);
+
+	$effect(() => {
+		if (inputRef) {
+			inputRef.focus();
+		}
+	});
 </script>
 
 <SelectPortal {...portalProps}>
@@ -40,10 +48,10 @@
 		<div class="flex items-center px-3 sticky top-0 bg-popover z-10">
 			<Search class="mr-2 h-4 w-4 shrink-0 opacity-50" />
 			<input
+				bind:this={inputRef}
 				class="flex h-10 w-full rounded-md border-none bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
 				placeholder={searchPlaceholder}
-				autofocus
-				bind:value={state!.searchValue}
+				bind:value={searchState!.searchValue}
 				onkeydown={(e) => {
 					// Prevent the select from closing when pressing space in the search input
 					if (e.key === ' ') {

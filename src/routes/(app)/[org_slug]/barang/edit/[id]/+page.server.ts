@@ -1,9 +1,10 @@
 import { db } from '$lib/server/db';
-import { item } from '$lib/server/db/schema';
+import { item, organization } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { uploadFile, deleteFile } from '$lib/server/storage';
+import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const dataResults = await db
@@ -18,7 +19,7 @@ export const load: PageServerLoad = async ({ params }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, params }) => {
+	default: async ({ request, params, locals }) => {
 		const formData = await request.formData();
 		const name = formData.get('name') as string;
 		const baseUnit = formData.get('baseUnit') as any;
@@ -56,6 +57,15 @@ export const actions: Actions = {
 					imagePath
 				})
 				.where(eq(item.id, params.id));
+
+			// Invalidate cache
+			const org = await db.query.organization.findFirst({
+				where: eq(organization.slug, params.org_slug)
+			});
+
+			if (org) {
+				await invalidateOrgInventoryCache(org.id);
+			}
 
 			return { success: true, message: 'Data barang berhasil diperbarui' };
 		} catch (error) {

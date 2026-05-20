@@ -12,6 +12,7 @@
 	import { page } from '$app/state';
 	import SidebarDropdown from './SidebarDropdown.svelte';
 	import SidebarLink from './SidebarLink.svelte';
+	import { untrack } from 'svelte';
 	import { getSidebarState } from './ui/sidebar/context.svelte';
 
 	// 1. Definisikan Interface agar tidak ada error "Property 'role' does not exist"
@@ -45,15 +46,30 @@
 
 	let openDropdown = $state<string | null>(null);
 
+	// Sync openDropdown based on current path ONLY if it's currently null.
+	// This ensures we set it on initial load/reload, but allow manual toggles to persist
+	// unless the user navigates away.
 	$effect(() => {
-		if (sidebar.open) {
-			const activeMenu = menus.find((m) => m.isDropdown && page.url.pathname.startsWith(m.path));
-			if (activeMenu) {
+		const currentPath = page.url.pathname;
+		const isSidebarOpen = sidebar.open;
+
+		if (!isSidebarOpen) {
+			untrack(() => { openDropdown = null; });
+			return;
+		}
+
+		// Temukan menu mana yang sedang aktif berdasarkan URL parent ATAU URL children
+		const activeMenu = menus.find(
+			(m) =>
+				m.isDropdown &&
+				(currentPath.startsWith(m.path) || m.children.some((child) => currentPath.startsWith(child.path)))
+		);
+		
+		untrack(() => {
+			if (activeMenu && openDropdown !== activeMenu.name) {
 				openDropdown = activeMenu.name;
 			}
-		} else {
-			openDropdown = null;
-		}
+		});
 	});
 
 	function getPath(urlPath: string) {

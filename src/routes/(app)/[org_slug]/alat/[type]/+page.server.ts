@@ -3,6 +3,7 @@ import { equipment, item, warehouse, movement } from '$lib/server/db/schema';
 import { eq, and, like, sql, desc, inArray } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
+import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const { org_slug, type } = params;
@@ -57,16 +58,47 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			.where(and(...filters))
 	]);
 
-	// Fetch last movement for each
-	const equipmentWithMovements = await Promise.all(
-		dataRaw.map(async (eqp) => {
-			const lastMov = await db.query.movement.findFirst({
-				where: eq(movement.equipmentId, eqp.id),
-				orderBy: [desc(movement.createdAt)]
-			});
-			return { ...eqp, lastMovement: lastMov };
-		})
-	);
+	// Ambil last movement untuk semua equipment dalam 1 query
+	// Menggunakan subquery untuk mendapatkan max createdAt per equipmentId
+	const equipmentIds = dataRaw.map((e) => e.id);
+
+	let lastMovements: (typeof movement.$inferSelect)[] = [];
+
+	if (equipmentIds.length > 0) {
+		// Subquery: ambil createdAt terbaru per equipmentId
+		const subquery = db
+			.select({
+				equipmentId: movement.equipmentId,
+				maxDate: sql<Date>`MAX(${movement.createdAt})`.as('max_date')
+			})
+			.from(movement)
+			.where(inArray(movement.equipmentId, equipmentIds))
+			.groupBy(movement.equipmentId)
+			.as('latest');
+
+		lastMovements = await db
+			.select({
+				id: movement.id,
+				equipmentId: movement.equipmentId,
+				eventType: movement.eventType,
+				classification: movement.classification,
+				createdAt: movement.createdAt,
+				notes: movement.notes
+			})
+			.from(movement)
+			.innerJoin(
+				subquery,
+				and(eq(movement.equipmentId, subquery.equipmentId), eq(movement.createdAt, subquery.maxDate))
+			);
+	}
+
+	// Map ke equipment — O(n) lookup via Map
+	const lastMovMap = new Map(lastMovements.map((m) => [m.equipmentId, m]));
+
+	const equipmentWithMovements = dataRaw.map((eqp) => ({
+		...eqp,
+		lastMovement: lastMovMap.get(eqp.id) ?? null
+	}));
 
 	const totalItems = totalCountResult[0].count;
 
@@ -83,14 +115,24 @@ export const load: PageServerLoad = async ({ params, url }) => {
 };
 
 export const actions: Actions = {
-	delete: async ({ request }) => {
+	delete: async ({ request, params }) => {
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 
 		if (!id) return fail(400, { message: 'ID is required' });
 
+		const org = await db.query.organization.findFirst({
+			where: eq(sql`slug`, params.org_slug)
+		});
+
+		if (!org) return fail(404, { message: 'Organisasi tidak ditemukan' });
+
 		try {
 			await db.delete(equipment).where(eq(equipment.id, id));
+
+			// Invalidate cache
+			await invalidateOrgInventoryCache(org.id);
+
 			return { success: true, message: 'Alat berhasil dihapus' };
 		} catch (error) {
 			console.error(error);

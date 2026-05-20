@@ -3,6 +3,7 @@ import { warehouse, equipment, movement } from '$lib/server/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
+import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { user } = locals;
@@ -105,6 +106,9 @@ export const actions: Actions = {
 					});
 				}
 			});
+
+			// Invalidate cache
+			await invalidateOrgInventoryCache(user.organization.id);
 
 			return { success: true, message: `${batchItems.length} alat berhasil dimutasi` };
 		} catch (error) {

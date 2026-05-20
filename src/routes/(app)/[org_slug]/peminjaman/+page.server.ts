@@ -17,16 +17,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.from(member)
 		.where(eq(member.organizationId, currentUser.organization.id));
 
-	// Query peminjaman dimana organisasi user adalah:
-	// 1. Pemberi pinjaman (organizationId adalah organisasi ini)
-	// 2. Pemohon (requestedBy berasal dari anggota organisasi ini)
+	// Query peminjaman dimana:
+	// Jika INDUK (parentId null): Hanya tampilkan pengajuan MASUK (organizationId = org ini)
+	// Jika BUKAN INDUK: Tampilkan pengajuan MASUK dan KELUAR (requestedBy anggota org ini)
 
-	const filters = [
-		or(
-			eq(lending.organizationId, currentUser.organization.id),
-			inArray(lending.requestedBy, orgUserIdsSubquery)
-		)
-	];
+	const isInduk = currentUser.organization.parentId === null;
+
+	const filters = isInduk
+		? [eq(lending.organizationId, currentUser.organization.id)]
+		: [
+				or(
+					eq(lending.organizationId, currentUser.organization.id),
+					inArray(lending.requestedBy, orgUserIdsSubquery)
+				)
+			];
 
 	if (statusFilter !== 'ALL') {
 		filters.push(eq(lending.status, statusFilter as any));
@@ -49,6 +53,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	return {
 		lendingList: data,
-		filters: { q: searchQuery, status: statusFilter }
+		filters: { q: searchQuery, status: statusFilter },
+		isInduk
 	};
 };

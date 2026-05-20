@@ -112,7 +112,7 @@
 					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
 					value={data.equipment.warehouseId}
 				>
-					<option value="">Tanpa Gudang (Langsung ke Satuan)</option>
+					<option value="">Tanpa Gudang</option>
 					{#each data.warehouses as warehouse (warehouse.id)}
 						<option value={warehouse.id}>{warehouse.name}</option>
 					{/each}

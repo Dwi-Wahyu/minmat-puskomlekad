@@ -22,6 +22,7 @@
 		Ellipsis,
 		ArrowLeft
 	} from '@lucide/svelte';
+	import { equipmentStatusLabels, equipmentStatusColors } from '$lib/utils';
 
 	let { data } = $props();
 
@@ -70,20 +71,6 @@
 		BAIK: 'bg-green-100 text-green-700 border-green-200',
 		RUSAK_RINGAN: 'bg-yellow-100 text-yellow-700 border-yellow-200',
 		RUSAK_BERAT: 'bg-red-100 text-red-700 border-red-200'
-	};
-
-	const statusColors: Record<string, string> = {
-		READY: 'bg-blue-100 text-blue-700',
-		IN_USE: 'bg-purple-100 text-purple-700',
-		TRANSIT: 'bg-orange-100 text-orange-700',
-		MAINTENANCE: 'bg-red-100 text-red-700'
-	};
-
-	const statusLabels: Record<string, string> = {
-		READY: 'Tersedia',
-		IN_USE: 'Digunakan',
-		TRANSIT: 'Transit',
-		MAINTENANCE: 'Perbaikan'
 	};
 
 	const conditionLabels: Record<string, string> = {
@@ -225,8 +212,8 @@
 								</Badge>
 							</Table.Cell>
 							<Table.Cell>
-								<Badge variant="secondary" class="whitespace-nowrap {statusColors[item.status]}">
-									{statusLabels[item.status] || item.status}
+								<Badge variant="secondary" class="whitespace-nowrap {equipmentStatusColors[item.status]}">
+									{equipmentStatusLabels[item.status] || item.status}
 								</Badge>
 							</Table.Cell>
 							<Table.Cell>
