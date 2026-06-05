@@ -17,11 +17,14 @@
 	let notificationOpen = $state(false);
 
 	// State untuk form internal (hanya untuk Select)
-	let selectedBaseUnit = $state(data.consumable.baseUnit || '');
+	let selectedBaseUnit = $state('');
 
-	let imagePreview = $state<string | null>(
-		data.consumable.imagePath ? `/uploads/item/${data.consumable.imagePath}` : null
-	);
+	let imagePreview = $state<string | null>(null);
+
+	$effect(() => {
+		selectedBaseUnit = data.consumable.baseUnit || '';
+		imagePreview = data.consumable.imagePath ? `/uploads/item/${data.consumable.imagePath}` : null;
+	});
 
 	$effect(() => {
 		if (form?.success) {

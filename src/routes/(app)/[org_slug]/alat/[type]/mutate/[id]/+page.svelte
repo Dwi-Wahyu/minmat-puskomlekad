@@ -31,9 +31,15 @@
 	// Form states
 	let eventType = $state('RECEIVE');
 	let classification = $state('KOMUNITY');
-	let toWarehouseId = $state(data.equipment.warehouseId || '');
+	let toWarehouseId = $state('');
 	let specificLocationName = $state('');
 	let notes = $state('');
+
+	$effect(() => {
+		if (data.equipment) {
+			toWarehouseId = data.equipment.warehouseId || '';
+		}
+	});
 
 	$effect(() => {
 		if (form?.success) {

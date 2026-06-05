@@ -23,7 +23,7 @@
 	let { data } = $props();
 
 	// State untuk filter
-	let selectedEquipmentIds = $state(data.filters.equipmentIds);
+	let selectedEquipmentIds = $state<string[]>([]);
 
 	$effect(() => {
 		selectedEquipmentIds = data.filters.equipmentIds;

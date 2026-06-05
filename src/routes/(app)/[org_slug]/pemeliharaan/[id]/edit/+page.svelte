@@ -22,13 +22,13 @@
 	let { data } = $props();
 
 	let formData = $state({
-		equipmentId: data.maintenance.equipmentId,
-		maintenanceType: data.maintenance.maintenanceType,
-		description: data.maintenance.description,
-		scheduledDate: data.maintenance.scheduledDate,
-		completionDate: data.maintenance.completionDate,
-		status: data.maintenance.status,
-		technicianId: data.maintenance.technicianId || ''
+		equipmentId: '',
+		maintenanceType: '',
+		description: '',
+		scheduledDate: '',
+		completionDate: '',
+		status: '',
+		technicianId: ''
 	});
 
 	$effect(() => {

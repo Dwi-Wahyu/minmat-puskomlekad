@@ -345,7 +345,7 @@
 			>
 		</a>
 		<a
-			href="/{data.org_slug}/laporan/btk16"
+			href="/{data.org_slug}/laporan/btk-16"
 			class="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/20 hover:bg-primary/5"
 		>
 			<FileText size={22} class="text-muted-foreground group-hover:text-primary" />

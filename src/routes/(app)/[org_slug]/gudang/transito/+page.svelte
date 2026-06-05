@@ -12,9 +12,9 @@
 	let { data } = $props();
 
 	// Filters State
-	let searchQuery = $state(data.filters.search);
-	let typeFilter = $state(data.filters.type);
-	let categoryFilter = $state(data.filters.category);
+	let searchQuery = $state('');
+	let typeFilter = $state('');
+	let categoryFilter = $state('');
 
 	$effect(() => {
 		searchQuery = data.filters.search;

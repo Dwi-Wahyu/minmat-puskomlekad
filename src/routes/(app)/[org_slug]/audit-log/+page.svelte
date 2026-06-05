@@ -27,9 +27,15 @@
 	let isFilterModalOpen = $state(false);
 
 	// Filter states
-	let searchQuery = $state(data.filters.search || '');
-	let startDate = $state(data.filters.startDate || '');
-	let endDate = $state(data.filters.endDate || '');
+	let searchQuery = $state('');
+	let startDate = $state('');
+	let endDate = $state('');
+
+	$effect(() => {
+		searchQuery = data.filters.search || '';
+		startDate = data.filters.startDate || '';
+		endDate = data.filters.endDate || '';
+	});
 
 	function formatDate(date: Date) {
 		return new Intl.DateTimeFormat('id-ID', {

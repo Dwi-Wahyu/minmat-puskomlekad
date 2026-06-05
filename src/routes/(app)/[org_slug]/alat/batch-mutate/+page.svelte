@@ -44,19 +44,23 @@
 	const searchLimit = 5;
 
 	// Batch data state
-	let batchItems = $state<any[]>(
-		data.selectedEquipment?.map((eq: any) => ({
-			equipmentId: eq.id,
-			name: eq.item.name,
-			sn: eq.serialNumber,
-			currentWarehouse: eq.warehouse?.name || 'Tanpa Gudang',
-			eventType: 'RECEIVE',
-			classification: 'KOMUNITY',
-			toWarehouseId: eq.warehouseId || '',
-			specificLocationName: '',
-			notes: ''
-		})) || []
-	);
+	let batchItems = $state<any[]>([]);
+
+	$effect(() => {
+		if (data.selectedEquipment && batchItems.length === 0) {
+			batchItems = data.selectedEquipment.map((eq: any) => ({
+				equipmentId: eq.id,
+				name: eq.item.name,
+				sn: eq.serialNumber,
+				currentWarehouse: eq.warehouse?.name || 'Tanpa Gudang',
+				eventType: 'RECEIVE',
+				classification: 'KOMUNITY',
+				toWarehouseId: eq.warehouseId || '',
+				specificLocationName: '',
+				notes: ''
+			}));
+		}
+	});
 
 	// Dialog editing state
 	let locationDialogOpen = $state(false);

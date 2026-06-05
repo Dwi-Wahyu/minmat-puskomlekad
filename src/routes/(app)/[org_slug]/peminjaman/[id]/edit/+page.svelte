@@ -17,10 +17,10 @@
 	let { data } = $props();
 
 	// State form
-	let unit = $state(data.lending.unit);
-	let purpose = $state(data.lending.purpose);
-	let startDate = $state(data.lending.startDate);
-	let endDate = $state(data.lending.endDate);
+	let unit = $state('');
+	let purpose = $state('');
+	let startDate = $state('');
+	let endDate = $state('');
 
 	$effect(() => {
 		unit = data.lending.unit;

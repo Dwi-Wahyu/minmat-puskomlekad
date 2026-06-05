@@ -17,7 +17,7 @@
 	let purpose = $state('OPERASI');
 	let startDate = $state('');
 	let endDate = $state('');
-	let selectedTargetOrgId = $state(data.targetOrg?.id || '');
+	let selectedTargetOrgId = $state('');
 
 	$effect(() => {
 		selectedTargetOrgId = data.targetOrg?.id || '';

@@ -14,9 +14,11 @@
 	let notificationMsg = $state('');
 	let notificationType = $state<'success' | 'error' | 'info'>('success');
 
-	let imagePreview = $state<string | null>(
-		data.equipment.item.imagePath ? `/uploads/item/${data.equipment.item.imagePath}` : null
-	);
+	let imagePreview = $state<string | null>(null);
+
+	$effect(() => {
+		imagePreview = data.equipment.item.imagePath ? `/uploads/item/${data.equipment.item.imagePath}` : null;
+	});
 
 	function handleImageChange(event: Event) {
 		const input = event.target as HTMLInputElement;

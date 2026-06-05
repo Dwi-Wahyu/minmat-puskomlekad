@@ -22,16 +22,16 @@
 		{ value: 'LAINNYA', label: 'LAINNYA' }
 	];
 
-	let selectedStatus = $state(
-		statusOptions.find((o) => o.value === data.land.status)?.value ?? statusOptions[0].value
-	);
+	let selectedStatus = $state('');
+
+	$effect(() => {
+		selectedStatus = statusOptions.find((o) => o.value === data.land.status)?.value ?? statusOptions[0].value;
+	});
 
 	const statusTrigger = $derived(
 		statusOptions.find((o) => o.value === selectedStatus)?.label ?? 'Pilih Status'
 	);
-	let imagePreview = $state<string | null>(
-		data.land.photoPath ? `/uploads/land/${data.land.photoPath}` : null
-	);
+	let imagePreview = $state<string | null>(null);
 
 	$effect(() => {
 		imagePreview = data.land.photoPath ? `/uploads/land/${data.land.photoPath}` : null;

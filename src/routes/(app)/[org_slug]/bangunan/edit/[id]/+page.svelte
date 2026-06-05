@@ -27,13 +27,14 @@
 		{ value: 'LAINNYA', label: 'LAINNYA' }
 	];
 
-	let selectedCondition = $state(
-		conditionOptions.find((o) => o.value === data.building.condition)?.value ??
-			conditionOptions[0].value
-	);
-	let selectedStatus = $state(
-		statusOptions.find((o) => o.value === data.building.status)?.value ?? statusOptions[0].value
-	);
+	let selectedCondition = $state('');
+	let selectedStatus = $state('');
+
+	$effect(() => {
+		selectedCondition = conditionOptions.find((o) => o.value === data.building.condition)?.value ??
+			conditionOptions[0].value;
+		selectedStatus = statusOptions.find((o) => o.value === data.building.status)?.value ?? statusOptions[0].value;
+	});
 
 	const conditionTrigger = $derived(
 		conditionOptions.find((o) => o.value === selectedCondition)?.label ?? 'Pilih Kondisi'
@@ -41,9 +42,11 @@
 	const statusTrigger = $derived(
 		statusOptions.find((o) => o.value === selectedStatus)?.label ?? 'Pilih Status'
 	);
-	let imagePreview = $state<string | null>(
-		data.building.photoPath ? `/uploads/building/${data.building.photoPath}` : null
-	);
+	let imagePreview = $state<string | null>(null);
+
+	$effect(() => {
+		imagePreview = data.building.photoPath ? `/uploads/building/${data.building.photoPath}` : null;
+	});
 
 	function handleImageChange(event: Event) {
 		const input = event.target as HTMLInputElement;

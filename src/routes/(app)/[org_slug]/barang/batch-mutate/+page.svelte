@@ -45,18 +45,22 @@
 	const searchLimit = 5;
 
 	// Batch data state
-	let batchItems = $state<any[]>(
-		data.selectedItems?.map((item: any) => ({
-			itemId: item.id,
-			name: item.name,
-			baseUnit: item.baseUnit,
-			eventType: 'RECEIVE',
-			qty: 1,
-			fromWarehouseId: '',
-			toWarehouseId: '',
-			notes: ''
-		})) || []
-	);
+	let batchItems = $state<any[]>([]);
+
+	$effect(() => {
+		if (data.selectedItems && batchItems.length === 0) {
+			batchItems = data.selectedItems.map((item: any) => ({
+				itemId: item.id,
+				name: item.name,
+				baseUnit: item.baseUnit,
+				eventType: 'RECEIVE',
+				qty: 1,
+				fromWarehouseId: '',
+				toWarehouseId: '',
+				notes: ''
+			}));
+		}
+	});
 
 	// Dialog editing state
 	let notesDialogOpen = $state(false);

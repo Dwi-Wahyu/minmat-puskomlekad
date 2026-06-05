@@ -35,6 +35,7 @@
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="modal-title"
+			tabindex="0"
 			class="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
 		>
 			<div class="border-b border-border p-6">
