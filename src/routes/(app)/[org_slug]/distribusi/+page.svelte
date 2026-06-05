@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Table from '$lib/components/ui/table';
@@ -14,7 +15,7 @@
 	} from '@lucide/svelte';
 	import { page } from '$app/state';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	function getStatusVariant(status: string) {
 		switch (status) {
@@ -107,8 +108,8 @@
 							</div>
 						</Table.Cell>
 						<Table.Cell>
-							<Badge variant={getStatusVariant(dist.status)} class="gap-1 px-2">
-								{@const Icon = getStatusIcon(dist.status)}
+							<Badge variant={getStatusVariant(dist.status!)} class="gap-1 px-2">
+								{@const Icon = getStatusIcon(dist.status!)}
 								<Icon class="size-3" />
 								{dist.status}
 							</Badge>

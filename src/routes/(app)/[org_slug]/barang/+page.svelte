@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -24,7 +25,7 @@
 		Box
 	} from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// Selection state
 	let selectedIds = $state<string[]>([]);

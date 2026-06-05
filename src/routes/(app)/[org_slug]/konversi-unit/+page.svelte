@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { invalidateAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
@@ -20,7 +21,7 @@
 	import * as SearchableSelect from '$lib/components/ui/searchable-select';
 	import { Plus, Pencil, Trash2, RefreshCcw, Search, Info } from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// State UI Dialogs
 	let showFormDialog = $state(false);
@@ -69,9 +70,9 @@
 
 	function editItem(conv: (typeof data.conversions)[0]) {
 		formData = {
-			itemId: conv.itemId,
-			itemIds: [conv.itemId],
-			fromUnit: conv.fromUnit,
+			itemId: conv.itemId!,
+			itemIds: [conv.itemId!],
+			fromUnit: conv.fromUnit!,
 			toUnit: conv.toUnit,
 			multiplier: parseFloat(conv.multiplier.toString())
 		};

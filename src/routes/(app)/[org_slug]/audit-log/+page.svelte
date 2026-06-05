@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import {
 		History,
 		User,
@@ -19,7 +20,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	const logs = $derived(data.logs);
 	let selectedLog = $state<any>(null);

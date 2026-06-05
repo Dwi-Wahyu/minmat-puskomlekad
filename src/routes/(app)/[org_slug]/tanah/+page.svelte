@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
@@ -11,7 +12,7 @@
 	import { Search, Plus, Pencil, Trash2, Ellipsis, MapPin, FileText } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);

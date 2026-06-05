@@ -1,3 +1,4 @@
+import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { lending, member } from '$lib/server/db/schema';
 import { eq, or, desc, and, like, inArray } from 'drizzle-orm';
@@ -6,7 +7,9 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { user: currentUser } = locals;
 
-	if (!currentUser || !currentUser.organization) return { status: 401 };
+	if (!currentUser || !currentUser.organization) {
+		throw error(401, 'Unauthorized');
+	}
 
 	const searchQuery = url.searchParams.get('q') || '';
 	const statusFilter = url.searchParams.get('status') || 'ALL';

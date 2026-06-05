@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -10,7 +11,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { FileText, Search, ChevronDown, ChevronUp, Check, Warehouse, Tags } from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// State form
 	let unit = $state('');

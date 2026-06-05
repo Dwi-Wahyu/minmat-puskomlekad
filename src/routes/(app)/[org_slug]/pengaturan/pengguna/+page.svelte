@@ -1,11 +1,12 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import * as Table from '$lib/components/ui/table';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Card from '$lib/components/ui/card';
 	import { UserRound, Settings2, ShieldCheck, Mail } from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 </script>
 
 <div class="p-8 max-w-7xl mx-auto space-y-6">

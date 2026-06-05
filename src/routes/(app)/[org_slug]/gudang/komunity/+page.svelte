@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import * as Table from '$lib/components/ui/table';
 	import { Input } from '$lib/components/ui/input';
 	import { CardTitle } from '$lib/components/ui/card';
@@ -10,7 +11,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// Filters State
 	let searchQuery = $state('');

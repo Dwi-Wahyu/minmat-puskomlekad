@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import Button from '@/components/ui/button/button.svelte';
 	import { equipmentStatusColors, equipmentStatusLabels } from '@/utils.js';
 	import {
@@ -18,7 +19,7 @@
 		ChevronRight
 	} from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// Menggunakan derived untuk reaktivitas jika data berubah
 	const summary = $derived(data.summary);

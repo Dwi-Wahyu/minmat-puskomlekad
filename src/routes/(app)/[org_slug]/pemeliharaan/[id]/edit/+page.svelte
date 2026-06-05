@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { page } from '$app/stores';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
@@ -19,7 +20,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	let formData = $state({
 		equipmentId: '',
@@ -32,8 +33,8 @@
 	});
 
 	$effect(() => {
-		formData.equipmentId = data.maintenance.equipmentId;
-		formData.maintenanceType = data.maintenance.maintenanceType;
+		formData.equipmentId = data.maintenance.equipmentId!;
+		formData.maintenanceType = data.maintenance.maintenanceType!;
 		formData.description = data.maintenance.description;
 		formData.scheduledDate = data.maintenance.scheduledDate;
 		formData.completionDate = data.maintenance.completionDate;

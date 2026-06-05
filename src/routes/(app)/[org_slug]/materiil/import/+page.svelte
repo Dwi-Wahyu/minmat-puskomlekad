@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
@@ -24,7 +25,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// State
 	let fileInput = $state<HTMLInputElement | null>(null);

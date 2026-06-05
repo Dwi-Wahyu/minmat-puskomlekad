@@ -27,10 +27,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		throw new Error('User tidak ditemukan');
 	}
 
-	// Ambil data peminjaman
 	const lendingData = await db.query.lending.findFirst({
 		where: and(eq(lending.id, id), eq(lending.organizationId, user.organization.id)),
 		with: {
+			organization: true,
+			requestedByUser: true,
 			items: {
 				with: {
 					equipment: true

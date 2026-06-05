@@ -1,7 +1,8 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { RotateCw } from '@lucide/svelte';
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	let isLoading = $state(false);
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
@@ -10,7 +11,7 @@
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import { ArrowLeft } from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	let isLoading = $state(false);
 

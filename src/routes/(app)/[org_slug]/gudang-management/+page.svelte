@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
@@ -7,7 +8,7 @@
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);

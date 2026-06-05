@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
@@ -8,10 +7,10 @@
 	import { Input } from '$lib/components/ui/input';
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { Search, Plus, Pencil, Trash2, Ellipsis, Building2 } from '@lucide/svelte';
+	import { Search, Plus, Pencil, Trash2, Ellipsis } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 
-	let { data }: any = $props();
+	let { data } = $props();
 
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);

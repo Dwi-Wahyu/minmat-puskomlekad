@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -17,7 +18,7 @@
 		AlertCircle
 	} from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	const statusConfig = {
 		DRAFT: {
@@ -92,7 +93,7 @@
 			<div class="flex gap-1">
 				{#each ['ALL', 'DRAFT', 'APPROVED', 'PERINTAH_LANGSUNG', 'DIPINJAM', 'KEMBALI', 'REJECTED'] as status}
 					<Button
-						variant={data.filters.status === status ? 'default' : 'outline'}
+						variant={data.filters!.status === status ? 'default' : 'outline'}
 						size="sm"
 						href="?status={status}&q={data.filters.q}"
 						class="h-7 px-2 text-[10px]"

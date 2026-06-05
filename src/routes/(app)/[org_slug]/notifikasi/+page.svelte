@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { Bell, Check, Trash2, X, Calendar, Clock, Inbox } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
@@ -6,7 +7,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { cn } from '$lib/utils';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	function formatRelativeTime(date: Date | string | number) {
 		const now = new Date().getTime();

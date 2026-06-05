@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -14,7 +15,7 @@
 		Calendar
 	} from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	const conditionColors: Record<string, string> = {
 		BAIK: 'bg-green-100 text-green-700 border-green-200',

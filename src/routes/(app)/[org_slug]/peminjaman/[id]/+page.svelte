@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
@@ -28,7 +29,7 @@
 		FileText
 	} from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// State Dialog
 	let notificationOpen = $state(false);
@@ -186,7 +187,7 @@
 		<div class="grid grid-cols-4 gap-2 rounded-xl border bg-card p-4 shadow-sm md:p-6">
 			{#each steps as step, i (step.status)}
 				{@const statusOrder = ['DRAFT', 'APPROVED', 'PERINTAH_LANGSUNG', 'DIPINJAM', 'KEMBALI']}
-				{@const currentIndex = statusOrder.indexOf(data.lending.status)}
+				{@const currentIndex = statusOrder.indexOf(data.lending.status!)}
 				{@const stepIndex = statusOrder.indexOf(step.status)}
 				{@const isCompleted =
 					data.lending.status === 'REJECTED' ? false : currentIndex >= stepIndex}
@@ -224,7 +225,7 @@
 						<div
 							class={cn(
 								'absolute top-5 left-[calc(50%+25px)] h-0.5 w-[calc(100%-50px)] md:top-6',
-								isCompleted && statusOrder.indexOf(data.lending.status) > statusOrder.indexOf(step.status)
+								isCompleted && statusOrder.indexOf(data.lending.status!) > statusOrder.indexOf(step.status)
 									? 'bg-success'
 									: 'bg-muted'
 							)}

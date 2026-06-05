@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
@@ -20,7 +21,7 @@
 	import * as SearchableSelect from '$lib/components/ui/searchable-select';
 	import { Badge } from '$lib/components/ui/badge';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// State form
 	let formData = $state({

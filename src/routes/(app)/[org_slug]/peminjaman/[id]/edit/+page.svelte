@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -14,7 +15,7 @@
 	} from '$lib/components/ui/card';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// State form
 	let unit = $state('');
@@ -284,10 +285,10 @@
 										<div class="flex-1">
 											<div class="flex items-center gap-2">
 												<Label for={eq.id} class="cursor-pointer font-medium">
-													{eq.name}
+													{eq.item.name}
 												</Label>
 												<Badge variant="outline" class="text-xs">
-													{eq.type}
+													{eq.item.type}
 												</Badge>
 												{#if eq.condition}
 													<Badge
@@ -376,15 +377,15 @@
 						<!-- Informasi Organisasi -->
 						<div>
 							<h4 class="mb-2 text-sm font-medium">Organisasi</h4>
-							<p class="text-sm text-muted-foreground">{data.lending.organization?.name}</p>
-						</div>
+							<p class="text-sm text-muted-foreground">{(data.lending as any).organization?.name}</p>
+							</div>
 
-						<!-- Informasi Pemohon -->
-						<div>
+							<div>
 							<h4 class="mb-2 text-sm font-medium">Pemohon</h4>
-							<p class="text-sm text-muted-foreground">{data.lending.requestedByUser?.name}</p>
-						</div>
-
+							<p class="text-sm text-muted-foreground">
+							{(data.lending as any).requestedByUser?.name}
+							</p>
+							</div>
 						<!-- Tombol Submit -->
 						<div class="space-y-2 pt-4">
 							<Button type="submit" class="w-full" disabled={selectedCount === 0 || isSubmitting}>

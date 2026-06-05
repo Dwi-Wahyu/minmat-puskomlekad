@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { invalidateAll, goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button';
@@ -20,7 +21,7 @@
 		Filter
 	} from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	// State untuk filter
 	let selectedEquipmentIds = $state<string[]>([]);

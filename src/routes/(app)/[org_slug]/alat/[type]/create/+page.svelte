@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
@@ -7,7 +8,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { ChevronLeft, Save, Loader2 } from '@lucide/svelte';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	let loading = $state(false);
 	let notificationOpen = $state(false);

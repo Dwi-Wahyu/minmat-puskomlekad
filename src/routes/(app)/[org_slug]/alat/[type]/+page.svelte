@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -24,7 +25,7 @@
 	} from '@lucide/svelte';
 	import { equipmentStatusLabels, equipmentStatusColors } from '$lib/utils';
 
-	let { data }: any = $props();
+	let { data }: { data: PageData } = $props();
 
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);
