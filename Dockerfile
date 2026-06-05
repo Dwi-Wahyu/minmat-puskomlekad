@@ -15,6 +15,9 @@ RUN bun install --frozen-lockfile
 # Salin semua source code
 COPY . .
 
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
+
 # Build aplikasi menggunakan adapter-bun
 RUN bun run build
 
