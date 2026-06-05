@@ -30,7 +30,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 5
@@ -41,7 +41,10 @@ services:
     container_name: minmat_puskomlekad
     restart: always
     # Menambahkan instruksi build agar compose tahu cara membuat image ini
-    build: .
+    build:
+      context: .
+      args:
+        - DATABASE_URL=${DATABASE_URL} # Mengoper variabel saat build time
     depends_on:
       db:
         condition: service_healthy
