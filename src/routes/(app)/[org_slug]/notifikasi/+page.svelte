@@ -6,7 +6,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { cn } from '$lib/utils';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	function formatRelativeTime(date: Date | string | number) {
 		const now = new Date().getTime();
@@ -104,7 +104,7 @@
 						<div class="flex items-start justify-between gap-4">
 							<div class="space-y-1 flex-1">
 								<div class="flex items-center gap-2 mb-2">
-									<Badge class={cn("text-[10px] uppercase font-bold px-2 py-0", priorityColors[notif.priority])}>
+									<Badge class={cn("text-[10px] uppercase font-bold px-2 py-0", (priorityColors as any)[notif.priority])}>
 										{notif.priority}
 									</Badge>
 									<div class="flex items-center text-xs text-muted-foreground gap-1">

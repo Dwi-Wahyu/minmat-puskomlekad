@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import type { Component } from 'svelte';
-	import { getSidebarState } from '$lib/components/ui/sidebar/context.svelte.ts';
+	import { getSidebarState } from '$lib/components/ui/sidebar/context.svelte';
 
 	let { href, icon: Icon, name } = $props<{
 		href: string;

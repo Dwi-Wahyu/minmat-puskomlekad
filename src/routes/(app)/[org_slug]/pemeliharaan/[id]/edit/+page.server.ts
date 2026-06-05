@@ -77,7 +77,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, params }) => {
+	default: async ({ request, params }: any) => {
 		const { id, org_slug } = params;
 		const formData = await request.formData();
 
@@ -119,7 +119,7 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error(err);
 			if (err instanceof z.ZodError) {
-				return fail(400, { errors: err.errors });
+				return fail(400, { errors: (err as any).errors });
 			}
 			return fail(500, { message: 'Kesalahan server internal' });
 		}

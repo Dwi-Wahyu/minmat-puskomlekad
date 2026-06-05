@@ -20,7 +20,7 @@
 		Filter
 	} from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	// State untuk filter
 	let selectedEquipmentIds = $state<string[]>([]);
@@ -32,8 +32,10 @@
 	$effect(() => {
 		const url = new URL(window.location.href);
 		const currentEqIds = url.searchParams.get('equipmentIds')?.split(',').filter(Boolean) || [];
-		
-		if (JSON.stringify(currentEqIds.sort()) !== JSON.stringify(selectedEquipmentIds.slice().sort())) {
+
+		if (
+			JSON.stringify(currentEqIds.sort()) !== JSON.stringify(selectedEquipmentIds.slice().sort())
+		) {
 			if (selectedEquipmentIds.length > 0) {
 				url.searchParams.set('equipmentIds', selectedEquipmentIds.join(','));
 			} else {
@@ -118,7 +120,7 @@
 
 		<Button
 			href="/{data.org_slug}/pemeliharaan/create"
-			class="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:translate-y-[-1px] hover:bg-primary/90"
+			class="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-1 hover:bg-primary/90"
 		>
 			<Plus size={18} />
 			Tambah Pemeliharaan
@@ -143,11 +145,11 @@
 						class="flex h-10 w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm transition-colors hover:bg-accent"
 					>
 						<div class="flex items-center gap-2 overflow-hidden">
-							<Filter size={16} class="text-muted-foreground shrink-0" />
+							<Filter size={16} class="shrink-0 text-muted-foreground" />
 							{#if selectedEquipmentIds.length === 0}
-								<span class="text-muted-foreground truncate">Filter Peralatan</span>
+								<span class="truncate text-muted-foreground">Filter Peralatan</span>
 							{:else}
-								<span class="text-foreground font-medium truncate"
+								<span class="truncate font-medium text-foreground"
 									>{selectedEquipmentIds.length} Alat</span
 								>
 							{/if}
@@ -160,7 +162,7 @@
 								label={`${eq.item?.name || 'Tanpa Nama'} ${eq.serialNumber ? `(${eq.serialNumber})` : ''}`}
 							>
 								<div class="flex flex-col">
-									<span class="font-medium text-xs">{eq.item?.name || 'Tanpa Nama'}</span>
+									<span class="text-xs font-medium">{eq.item?.name || 'Tanpa Nama'}</span>
 									{#if eq.serialNumber}
 										<span class="text-[10px] text-muted-foreground">SN: {eq.serialNumber}</span>
 									{/if}
@@ -184,7 +186,7 @@
 		<Table.Root>
 			<Table.Header class="bg-muted/50">
 				<Table.Row>
-					<Table.Head class="w-[300px]">Peralatan</Table.Head>
+					<Table.Head class="w-75">Peralatan</Table.Head>
 					<Table.Head>Tipe</Table.Head>
 					<Table.Head>Deskripsi</Table.Head>
 					<Table.Head>Jadwal</Table.Head>
@@ -196,18 +198,13 @@
 				{#each data.maintenance as item (item.id)}
 					<Table.Row class="group transition-colors hover:bg-accent/50">
 						<Table.Cell>
-							<div class="flex items-center gap-3">
-								<div
-									class="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary"
-								>
-									<Box size={20} />
-								</div>
+							<div class="flex max-w-75 items-center gap-3">
 								<div class="flex flex-col">
-									<span class="leading-tight font-bold text-foreground"
-										>{item.equipment?.item?.name ?? item.equipmentId}</span
+									<span class="leading-tight font-bold text-wrap text-foreground"
+										>{item.equipment!?.item?.name ?? item.equipmentId}</span
 									>
 									<span class="mt-1 font-mono text-[10px] text-muted-foreground"
-										>SN: {item.equipment?.serialNumber || '-'}</span
+										>SN: {item.equipment!?.serialNumber || '-'}</span
 									>
 								</div>
 							</div>
@@ -255,10 +252,10 @@
 									bind:this={deleteForm}
 									use:enhance={() => {
 										return async ({ result, update }) => {
-											if (result.type === 'success') {
+											if (result?.type === 'success') {
 												await invalidateAll();
-											} else if (result.type === 'failure') {
-												alert(result.data?.message || 'Gagal menghapus');
+											} else if (result?.type === 'failure') {
+												alert((result?.data as any)?.message || 'Gagal menghapus');
 											}
 											await update();
 										};

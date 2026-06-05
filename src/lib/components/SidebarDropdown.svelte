@@ -4,7 +4,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import type { Component } from 'svelte';
 	import { ChevronDown } from '@lucide/svelte';
-	import { getSidebarState } from '$lib/components/ui/sidebar/context.svelte.ts';
+	import { getSidebarState } from '$lib/components/ui/sidebar/context.svelte';
 
 	let { name, icon: Icon, children, activePrefix, isOpen, onToggle } = $props<{
 		name: string;
@@ -19,7 +19,7 @@
 
 	let isGroupActive = $derived(
 		page.url.pathname.startsWith(activePrefix) ||
-		children.some((child) => page.url.pathname.startsWith(child.path))
+		children.some((child: any) => page.url.pathname.startsWith(child.path))
 	);
 
 	function handleToggle() {

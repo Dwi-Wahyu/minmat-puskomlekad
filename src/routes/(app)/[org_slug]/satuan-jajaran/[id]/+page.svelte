@@ -18,7 +18,7 @@
 	} from '@lucide/svelte';
 	import { equipmentStatusLabels, equipmentStatusColors } from '$lib/utils';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	const conditionColors: Record<string, string> = {
 		BAIK: 'bg-green-100 text-green-700 border-green-200',
@@ -190,8 +190,8 @@
 								</Badge>
 							</Table.Cell>
 							<Table.Cell>
-								<Badge variant="secondary" class={equipmentStatusColors[item.status]}>
-									{equipmentStatusLabels[item.status] || item.status.replace('_', ' ')}
+								<Badge variant="secondary" class={equipmentStatusColors[item.status!]}>
+									{equipmentStatusLabels[item.status!] || item.status!.replace('_', ' ')}
 								</Badge>
 							</Table.Cell>
 							<Table.Cell class="text-right">

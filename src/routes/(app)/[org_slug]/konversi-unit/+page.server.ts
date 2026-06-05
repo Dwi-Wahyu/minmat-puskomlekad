@@ -164,7 +164,7 @@ export const actions: Actions = {
 				.where(eq(itemUnitConversion.id, id));
 		} catch (err) {
 			if (err instanceof z.ZodError) {
-				return fail(400, { errors: err.errors });
+				return fail(400, { errors: (err as any).errors });
 			}
 			return fail(500, { message: 'Kesalahan server internal' });
 		}

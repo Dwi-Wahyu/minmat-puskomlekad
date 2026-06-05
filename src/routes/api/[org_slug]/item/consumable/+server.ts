@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import { item, stock, warehouse } from '$lib/server/db/schema';
 import { eq, and, like, sql } from 'drizzle-orm';
 
-export const GET = async ({ url, locals }) => {
+export const GET: import("./$types").RequestHandler = async ({ url, locals }) => {
 	if (!locals.user?.organization) {
 		return json({ success: false, message: 'Unauthorized' }, { status: 401 });
 	}

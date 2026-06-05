@@ -24,7 +24,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	// State
 	let fileInput = $state<HTMLInputElement | null>(null);
@@ -433,13 +433,13 @@
 		showConfirm = false;
 		return async ({ result }) => {
 			isUploading = false;
-			if (result.type === 'success') {
+			if (result?.type === 'success') {
 				toast.success('Berhasil mengimport data!');
 				showSuccessDialog = true;
 				reset();
 				invalidateAll(); // Refresh data history
-			} else if (result.type === 'failure') {
-				toast.error('Gagal mengimport data: ' + (result.data?.message || 'Terjadi kesalahan'));
+			} else if (result?.type === 'failure') {
+				toast.error('Gagal mengimport data: ' + ((result?.data as any)?.message || 'Terjadi kesalahan'));
 			}
 		};
 	}}

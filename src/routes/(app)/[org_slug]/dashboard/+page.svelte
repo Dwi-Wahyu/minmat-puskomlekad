@@ -18,7 +18,7 @@
 		ChevronRight
 	} from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	// Menggunakan derived untuk reaktivitas jika data berubah
 	const summary = $derived(data.summary);

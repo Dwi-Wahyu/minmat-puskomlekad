@@ -78,7 +78,7 @@ export const load: PageServerLoad = async ({ url, locals, params }) => {
 			: [];
 
 	// Map conversions to items
-	const consumables = itemsData.map((item) => ({
+	const consumables = itemsData.map((item: any) => ({
 		...item,
 		conversions: conversions.filter((c) => c.itemId === item.id)
 	}));

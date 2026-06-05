@@ -10,7 +10,7 @@
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import { ArrowLeft } from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let isLoading = $state(false);
 
@@ -93,13 +93,13 @@
 					isLoading = true;
 					return async ({ result }) => {
 						isLoading = false;
-						if (result.type === 'success') {
+						if (result?.type === 'success') {
 							showSuccessNotification('Data barang berhasil disimpan.');
-						} else if (result.type === 'failure') {
+						} else if (result?.type === 'failure') {
 							showErrorNotification(
 								(result.data as any)?.message || 'Terjadi kesalahan saat menyimpan data.'
 							);
-						} else if (result.type === 'error') {
+						} else if (result?.type === 'error') {
 							showErrorNotification('Terjadi kesalahan sistem.');
 						}
 					};

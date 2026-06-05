@@ -61,11 +61,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			item: true,
 			warehouse: true
 		},
-		orderBy: (eq, { asc }) => [asc(eq.name)]
+		orderBy: (fields, { desc }) => [desc(fields.createdAt)]
 	});
 
 	// Tandai equipment mana yang sudah dipilih dalam peminjaman ini
-	const selectedEquipmentIds = lendingData.items.map((item) => item.equipmentId);
+	const selectedEquipmentIds = lendingData.items.map((item: any) => item.equipmentId);
 
 	const equipmentWithSelection = availableEquipment.map((eq) => ({
 		...eq,
@@ -134,17 +134,16 @@ export const actions: Actions = {
 
 			// Validasi ketersediaan equipment
 			for (const item of validated.items) {
-				const eq = await db.query.equipment.findFirst({
+				const equip = await db.query.equipment.findFirst({
 					where: and(
-						equipment.id,
-						item.equipmentId,
+						eq(equipment.id, item.equipmentId!),
 						eq(equipment.status, 'READY'),
 						eq(equipment.organizationId, user.organization.id)
 					)
 				});
 
 				// Jika equipment tidak tersedia, cek apakah equipment tersebut sudah ada di peminjaman ini
-				if (!eq) {
+				if (!equip) {
 					const existingItem = await db.query.lendingItem.findFirst({
 						where: and(eq(lendingItem.lendingId, id), eq(lendingItem.equipmentId, item.equipmentId))
 					});
@@ -162,8 +161,7 @@ export const actions: Actions = {
 					unit: validated.unit,
 					purpose: validated.purpose,
 					startDate: new Date(validated.startDate),
-					endDate: validated.endDate ? new Date(validated.endDate) : null,
-					updatedAt: new Date()
+					endDate: validated.endDate ? new Date(validated.endDate) : null
 				})
 				.where(eq(lending.id, id));
 
@@ -176,12 +174,12 @@ export const actions: Actions = {
 					id: uuidv4(),
 					lendingId: id,
 					equipmentId: item.equipmentId,
-					qty: item.qty
+					qty: String(item.qty)
 				});
 			}
 		} catch (err) {
 			if (err instanceof z.ZodError) {
-				return fail(400, { errors: err.errors });
+				return fail(400, { errors: (err as any).errors });
 			}
 			console.error('Error updating lending:', err);
 			return fail(500, { message: 'Kesalahan server internal' });

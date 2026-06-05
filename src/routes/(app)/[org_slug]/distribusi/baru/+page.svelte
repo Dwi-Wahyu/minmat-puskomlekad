@@ -53,7 +53,7 @@
 		items = items.filter((_, i) => i !== index);
 	}
 
-	const selectedToOrg = $derived(data.organizations.find((o) => o.id === toOrganizationId));
+	const selectedToOrg = $derived(data.organizations.find((o: any) => o.id === toOrganizationId));
 </script>
 
 <div class="mx-auto flex max-w-4xl flex-col gap-6 p-6">

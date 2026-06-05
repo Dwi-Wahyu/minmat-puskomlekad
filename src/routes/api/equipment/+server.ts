@@ -7,7 +7,7 @@ import type { RequestHandler } from './$types';
 
 // GET: List equipment untuk organisasi user saat ini
 export const GET: RequestHandler = async ({ locals, url }) => {
-	const { user } = requirePermission(locals, 'inventory', 'view');
+	const { user } = requirePermission('inventory', 'view', locals);
 	const search = url.searchParams.get('q');
 	const page = Number(url.searchParams.get('page')) || 1;
 	const limit = Number(url.searchParams.get('limit')) || 20;
@@ -60,7 +60,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 // POST: Tambah equipment baru
 export const POST: RequestHandler = async ({ locals, request }) => {
-	const { user } = requirePermission(locals, 'inventory', 'create');
+	const { user } = requirePermission('inventory', 'create', locals);
 
 	const body = await request.json();
 

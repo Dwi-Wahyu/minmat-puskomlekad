@@ -7,7 +7,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { ChevronLeft, Save, Loader2 } from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let loading = $state(false);
 	let notificationOpen = $state(false);
@@ -57,11 +57,11 @@
 			loading = true;
 			return ({ result }) => {
 				loading = false;
-				if (result.type === 'success') {
+				if (result?.type === 'success') {
 					notificationMsg = 'Berhasil';
 					notificationType = 'success';
 					notificationOpen = true;
-				} else if (result.type === 'failure') {
+				} else if (result?.type === 'failure') {
 					notificationMsg = 'Terjadi kesalahan';
 					notificationType = 'error';
 					notificationOpen = true;

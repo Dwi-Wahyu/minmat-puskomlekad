@@ -5,7 +5,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { UserRound, Settings2, ShieldCheck, Mail } from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 </script>
 
 <div class="p-8 max-w-7xl mx-auto space-y-6">
@@ -45,19 +45,19 @@
 								<Table.Cell>
 									<div class="flex items-center gap-3">
 										<div class="h-9 w-9 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-											{#if member.user.image}
-												<img src={member.user.image} alt={member.user.name} class="h-full w-full object-cover" />
+											{#if member.user!.image}
+												<img src={member.user!.image} alt={member.user!.name} class="h-full w-full object-cover" />
 											{:else}
 												<UserRound class="h-5 w-5 text-muted-foreground" />
 											{/if}
 										</div>
-										<span class="font-medium">{member.user.name}</span>
+										<span class="font-medium">{member.user!.name}</span>
 									</div>
 								</Table.Cell>
 								<Table.Cell>
 									<div class="flex items-center gap-2 text-muted-foreground">
 										<Mail class="h-4 w-4" />
-										{member.user.email}
+										{member.user!.email}
 									</div>
 								</Table.Cell>
 								<Table.Cell>
@@ -67,7 +67,7 @@
 									</div>
 								</Table.Cell>
 								<Table.Cell>
-									{#if member.user.emailVerified}
+									{#if member.user!.emailVerified}
 										<Badge variant="outline" class="bg-green-100 text-green-700 border-green-200">Terverifikasi</Badge>
 									{:else}
 										<Badge variant="outline" class="bg-yellow-100 text-yellow-700 border-yellow-200">Pending</Badge>
@@ -77,7 +77,7 @@
 									<Button 
 										variant="ghost" 
 										size="sm" 
-										href="/{data.orgSlug}/pengaturan/pengguna/{member.user.id}"
+										href="/{data.orgSlug}/pengaturan/pengguna/{member.user!.id}"
 										class="gap-2"
 									>
 										<Settings2 class="h-4 w-4" />

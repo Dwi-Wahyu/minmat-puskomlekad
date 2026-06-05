@@ -24,7 +24,7 @@
 	} from '@lucide/svelte';
 	import { equipmentStatusLabels, equipmentStatusColors } from '$lib/utils';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);
@@ -44,7 +44,7 @@
 		if (isAllSelected) {
 			selectedIds = [];
 		} else {
-			selectedIds = data.equipment.map((item) => item.id);
+			selectedIds = data.equipment.map((item: any) => item.id);
 		}
 	}
 
@@ -212,8 +212,8 @@
 								</Badge>
 							</Table.Cell>
 							<Table.Cell>
-								<Badge variant="secondary" class="whitespace-nowrap {equipmentStatusColors[item.status]}">
-									{equipmentStatusLabels[item.status] || item.status}
+								<Badge variant="secondary" class="whitespace-nowrap {equipmentStatusColors[item.status!]}">
+									{equipmentStatusLabels[item.status!] || item.status}
 								</Badge>
 							</Table.Cell>
 							<Table.Cell>
@@ -317,7 +317,7 @@
 		return ({ result }) => {
 			deleteLoading = false;
 			deleteDialogOpen = false;
-			if (result.type === 'success') {
+			if (result?.type === 'success') {
 				notificationMsg = 'Sukses menghapus alat';
 				notificationType = 'success';
 				notificationOpen = true;
@@ -338,7 +338,7 @@
 	title="Hapus Alat"
 	description="Konfirmasi penghapusan alat. Tindakan ini permanen."
 	actionLabel="Hapus Alat"
-	onAction={() => document.getElementById('delete-form').requestSubmit()}
+	onAction={() => (document.getElementById('delete-form') as HTMLFormElement)?.requestSubmit()}
 />
 
 <NotificationDialog

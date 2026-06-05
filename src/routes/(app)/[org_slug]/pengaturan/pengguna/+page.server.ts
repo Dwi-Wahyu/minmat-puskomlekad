@@ -32,7 +32,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	// Filter out global.superadmin@gmail.com and own user
 	const filteredMembers = members.filter((m) => {
-		return m.user.email !== 'global.superadmin@gmail.com' && m.userId !== currentUser.id;
+		return m.user?.email !== 'global.superadmin@gmail.com' && m.userId !== currentUser.id;
 	});
 
 	return {

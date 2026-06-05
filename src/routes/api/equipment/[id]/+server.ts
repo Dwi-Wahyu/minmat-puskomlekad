@@ -20,14 +20,14 @@ async function getMyEquipment(id: string, organizationId: string) {
 
 // GET: Ambil detail satu equipment
 export const GET: RequestHandler = async ({ params, locals }) => {
-	const { user } = requirePermission(locals, 'inventory', 'view');
+	const { user } = requirePermission('inventory', 'view', locals);
 	const item = await getMyEquipment(params.id, user.organization.id);
 	return json(item);
 };
 
 // PATCH: Update equipment
 export const PATCH: RequestHandler = async ({ params, locals, request }) => {
-	const { user } = requirePermission(locals, 'inventory', 'update');
+	const { user } = requirePermission('inventory', 'update', locals);
 	await getMyEquipment(params.id, user.organization.id);
 
 	const body = await request.json();
@@ -47,10 +47,11 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
 
 // DELETE: Hapus equipment
 export const DELETE: RequestHandler = async ({ params, locals }) => {
-	const { user } = requirePermission(locals, 'inventory', 'delete');
+	const { user } = requirePermission('inventory', 'delete', locals);
 	await getMyEquipment(params.id, user.organization.id);
 
 	await db.delete(equipment).where(eq(equipment.id, params.id));
 
 	return json({ success: true });
 };
+;

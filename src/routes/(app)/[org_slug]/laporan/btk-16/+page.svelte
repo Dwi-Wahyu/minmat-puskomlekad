@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { RotateCw } from '@lucide/svelte';
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let isLoading = $state(false);
 
@@ -21,7 +21,7 @@
 			'RB',
 			'KET'
 		];
-		const rows = data.reports.map((r, i) => [
+		const rows = data.reports.map((r: any, i: number) => [
 			i + 1,
 			i + 1,
 			r.itemId, // Menggunakan ID sebagai Kode

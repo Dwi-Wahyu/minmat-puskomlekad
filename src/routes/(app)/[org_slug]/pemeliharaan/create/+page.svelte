@@ -20,7 +20,7 @@
 	import * as SearchableSelect from '$lib/components/ui/searchable-select';
 	import { Badge } from '$lib/components/ui/badge';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	// State form
 	let formData = $state({
@@ -120,12 +120,12 @@
 				use:enhance={() => {
 					return async ({ result, update }) => {
 						if (
-							result.type === 'success' ||
-							(result.type === 'redirect' && result.location.includes('pemeliharaan'))
+							result?.type === 'success' ||
+							(result?.type === 'redirect' && result.location.includes('pemeliharaan'))
 						) {
 							showSuccessNotification();
-						} else if (result.type === 'failure') {
-							showErrorNotification(result.data?.message || 'Terjadi kesalahan');
+						} else if (result?.type === 'failure') {
+							showErrorNotification((result?.data as any)?.message || 'Terjadi kesalahan');
 						}
 						await update();
 					};

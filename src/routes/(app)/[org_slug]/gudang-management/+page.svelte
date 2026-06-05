@@ -7,7 +7,7 @@
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);
@@ -112,13 +112,13 @@
 		return async ({ result, update }) => {
 			deleteLoading = false;
 			deleteDialogOpen = false;
-			if (result.type === 'success') {
+			if (result?.type === 'success') {
 				await update();
 				notificationMsg = 'Gudang berhasil dihapus';
 				notificationType = 'success';
 				notificationOpen = true;
 			} else {
-				notificationMsg = result.data?.message || 'Gagal menghapus gudang';
+				notificationMsg = ((result as any)?.data as any)?.message || 'Gagal menghapus gudang';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -137,7 +137,7 @@
 	title="Hapus Gudang"
 	description="Apakah Anda yakin ingin menghapus gudang ini? Data materiil yang terhubung mungkin akan terpengaruh."
 	actionLabel="Hapus Gudang"
-	onAction={() => document.getElementById('delete-form').requestSubmit()}
+	onAction={() => (document.getElementById('delete-form') as HTMLFormElement)?.requestSubmit()}
 />
 
 <NotificationDialog

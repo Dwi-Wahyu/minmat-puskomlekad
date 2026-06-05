@@ -133,7 +133,7 @@
 			<div>
 				<div class="mb-1 flex items-center gap-2">
 					<h1 class="text-2xl font-bold tracking-tight">Detail Distribusi</h1>
-					<Badge variant={getStatusVariant(dist.status)}>{dist.status}</Badge>
+					<Badge variant={getStatusVariant(dist.status!)}>{dist.status}</Badge>
 				</div>
 				<p class="font-mono text-sm text-muted-foreground">{dist.id}</p>
 			</div>
@@ -252,12 +252,12 @@
 							{#each dist.items as item}
 								<Table.Row>
 									<Table.Cell class="pl-6 font-medium">
-										{item.equipment?.item?.name || item.item?.name}
+										{item.equipment!?.item?.name || item.item?.name}
 									</Table.Cell>
 									<Table.Cell>
 										{#if item.equipmentId}
 											<Badge variant="outline" class="font-mono"
-												>{item.equipment?.serialNumber}</Badge
+												>{item.equipment!?.serialNumber}</Badge
 											>
 										{:else}
 											<span class="text-sm text-muted-foreground italic">Consumable</span>
@@ -357,7 +357,7 @@
 								<Label>Pilih Gudang Asal</Label>
 								<Select.Root type="single" bind:value={selectedWarehouseId}>
 									<Select.Trigger>
-										{data.warehouses.find((w) => w.id === selectedWarehouseId)?.name ||
+										{data.warehouses.find((w: any) => w.id === selectedWarehouseId)?.name ||
 											'Pilih Gudang'}
 									</Select.Trigger>
 									<Select.Content>
@@ -390,7 +390,7 @@
 								<Label>Pilih Gudang Tujuan</Label>
 								<Select.Root type="single" bind:value={selectedWarehouseId}>
 									<Select.Trigger>
-										{data.warehouses.find((w) => w.id === selectedWarehouseId)?.name ||
+										{data.warehouses.find((w: any) => w.id === selectedWarehouseId)?.name ||
 											'Pilih Gudang'}
 									</Select.Trigger>
 									<Select.Content>

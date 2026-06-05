@@ -80,17 +80,17 @@
 				<div
 					class="mx-auto mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-muted"
 				>
-					{#if data.targetUser.image}
+					{#if data.targetUser!.image}
 						<img
-							src={data.targetUser.image}
-							alt={data.targetUser.name}
+							src={data.targetUser!.image}
+							alt={data.targetUser!.name}
 							class="h-full w-full object-cover"
 						/>
 					{:else}
 						<UserRound class="h-12 w-12 text-muted-foreground" />
 					{/if}
 				</div>
-				<Card.Title>{data.targetUser.name}</Card.Title>
+				<Card.Title>{data.targetUser!.name}</Card.Title>
 				<Card.Description>{data.targetMember.role.toUpperCase()}</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-4 border-t pt-4">
@@ -98,14 +98,14 @@
 					<Label class="text-xs text-muted-foreground uppercase">Email</Label>
 					<div class="flex items-center gap-2 text-sm">
 						<Mail class="h-4 w-4 text-muted-foreground" />
-						{data.targetUser.email}
+						{data.targetUser!.email}
 					</div>
 				</div>
 				<div class="space-y-1">
 					<Label class="text-xs text-muted-foreground uppercase">Daftar Pada</Label>
 					<div class="flex items-center gap-2 text-sm">
 						<Calendar class="h-4 w-4 text-muted-foreground" />
-						{formatDate(data.targetUser.createdAt)}
+						{formatDate(data.targetUser!.createdAt)}
 					</div>
 				</div>
 			</Card.Content>

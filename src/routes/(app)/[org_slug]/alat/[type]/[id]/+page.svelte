@@ -14,7 +14,7 @@
 		Calendar
 	} from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	const conditionColors: Record<string, string> = {
 		BAIK: 'bg-green-100 text-green-700 border-green-200',
@@ -38,7 +38,7 @@
 		<!-- <Button 
 			class="gap-2" 
 			href="/{page.params.org_slug}/peminjaman/create?equipmentId={data.equipment.id}&targetOrgId={data.equipment.organizationId}"
-			disabled={data.equipment.status !== 'READY'}
+			disabled={data.equipment!.status! !== 'READY'}
 		>
 			<Handshake class="size-4" />
 			Pinjam Alat
@@ -62,11 +62,11 @@
 							{data.equipment.brand || 'Tanpa Brand'} • {data.equipment.serialNumber || 'Tanpa SN'}
 						</p>
 						<div class="mt-2 flex gap-2">
-							<Badge variant="outline" class={conditionColors[data.equipment.condition]}>
-								{data.equipment.condition.replace('_', ' ')}
+							<Badge variant="outline" class={conditionColors[data.equipment!.condition]}>
+								{data.equipment!.condition.replace('_', ' ')}
 							</Badge>
-							<Badge variant="secondary" class={equipmentStatusColors[data.equipment.status]}>
-								{equipmentStatusLabels[data.equipment.status] || data.equipment.status.replace('_', ' ')}
+							<Badge variant="secondary" class={equipmentStatusColors[data.equipment!.status!]}>
+								{equipmentStatusLabels[data.equipment!.status!] || data.equipment!.status!.replace('_', ' ')}
 							</Badge>
 						</div>
 					</div>
@@ -95,8 +95,8 @@
 				<div class="space-y-1">
 					<span class="text-xs font-semibold text-muted-foreground uppercase">Kondisi</span>
 					<div>
-						<Badge variant="outline" class={conditionColors[data.equipment.condition]}>
-							{data.equipment.condition.replace('_', ' ')}
+						<Badge variant="outline" class={conditionColors[data.equipment!.condition]}>
+							{data.equipment!.condition.replace('_', ' ')}
 						</Badge>
 					</div>
 				</div>
@@ -105,8 +105,8 @@
 						>Status Operasional</span
 					>
 					<div>
-						<Badge variant="secondary" class={equipmentStatusColors[data.equipment.status]}>
-							{equipmentStatusLabels[data.equipment.status] || data.equipment.status.replace('_', ' ')}
+						<Badge variant="secondary" class={equipmentStatusColors[data.equipment!.status!]}>
+							{equipmentStatusLabels[data.equipment!.status!] || data.equipment!.status!.replace('_', ' ')}
 						</Badge>
 					</div>
 				</div>

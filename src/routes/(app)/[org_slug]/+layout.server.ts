@@ -42,5 +42,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		CacheTTL.NOTIF_LAYOUT
 	);
 
-	return result;
+	return {
+		...result,
+		user: locals.user
+	};
 };

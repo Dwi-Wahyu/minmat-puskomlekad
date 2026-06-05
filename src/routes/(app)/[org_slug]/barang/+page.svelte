@@ -24,7 +24,7 @@
 		Box
 	} from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	// Selection state
 	let selectedIds = $state<string[]>([]);
@@ -36,7 +36,7 @@
 		if (isAllSelected) {
 			selectedIds = [];
 		} else {
-			selectedIds = data.consumables.map((item) => item.id);
+			selectedIds = data.consumables.map((item: any) => item.id);
 		}
 	}
 
@@ -71,11 +71,11 @@
 	];
 
 	const mutateTrigger = $derived(
-		mutateTypeOptions.find((o) => o.value === mutateType)?.label ?? 'Pilih Jenis'
+		mutateTypeOptions.find((o: any) => o.value === mutateType)?.label ?? 'Pilih Jenis'
 	);
 
 	const warehouseTrigger = $derived(
-		data.warehouses.find((w) => w.id === mutateWarehouseId)?.name ?? 'Pilih Gudang'
+		data.warehouses.find((w: any) => w.id === mutateWarehouseId)?.name ?? 'Pilih Gudang'
 	);
 
 	function confirmDelete(id: string) {
@@ -303,12 +303,12 @@
 			deleteLoading = false;
 			deleteDialogOpen = false;
 			await update();
-			if (result.type === 'success') {
+			if (result?.type === 'success') {
 				notificationMsg = 'Barang berhasil dihapus';
 				notificationType = 'success';
 				notificationOpen = true;
 			} else {
-				notificationMsg = result.data?.message || 'Gagal menghapus barang';
+				notificationMsg = ((result as any)?.data as any)?.message || 'Gagal menghapus barang';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -327,10 +327,10 @@
 		mutateLoading = true;
 		return async ({ result, update }) => {
 			mutateLoading = false;
-			if (result.type === 'success') {
+			if (result?.type === 'success') {
 				mutateDialogOpen = false;
 				await update();
-				notificationMsg = result.data?.message;
+				notificationMsg = ((result?.data as any)?.message as string) || '';
 				notificationType = 'success';
 				notificationOpen = true;
 				// Reset fields
@@ -338,7 +338,7 @@
 				mutateNotes = '';
 				mutateWarehouseId = '';
 			} else {
-				notificationMsg = result.data?.message || 'Gagal mencatat mutasi';
+				notificationMsg = ((result as any).data as any)?.message || 'Gagal mencatat mutasi';
 				notificationType = 'error';
 				notificationOpen = true;
 			}

@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const consumableItemsWithStock = consumableItems.map((it) => ({
 		...it,
-		totalStock: it.stocks.reduce((acc, s) => acc + s.qty, 0)
+		totalStock: it.stocks.reduce((acc, s) => acc + parseFloat(s.qty as any), 0)
 	}));
 
 	return {
@@ -86,7 +86,7 @@ export const actions: Actions = {
 										and(eq(s.itemId, it.itemId), inArray(s.warehouseId, warehouseIds))
 								})
 							: [];
-					const total = stocks.reduce((acc, s) => acc + s.qty, 0);
+					const total = stocks.reduce((acc, s) => acc + parseFloat(s.qty as any), 0);
 					if (total < it.quantity) {
 						return {
 							success: false,

@@ -24,7 +24,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		throw redirect(302, `?targetOrgId=${parentOrg.id}`);
 	}
 
-	let allowedOrganizations = [];
+	let allowedOrganizations: any[] = [];
 
 	if (user.organization.parentId) {
 		// User adalah satuan jajaran (anak)
@@ -243,7 +243,7 @@ export const actions: Actions = {
 						id: uuidv4(),
 						lendingId,
 						equipmentId: eqId,
-						qty: 1
+						qty: '1'
 					});
 				}
 
@@ -272,7 +272,7 @@ export const actions: Actions = {
 							id: uuidv4(),
 							lendingId,
 							equipmentId: eqp.id,
-							qty: 1
+							qty: '1'
 						});
 					}
 				}

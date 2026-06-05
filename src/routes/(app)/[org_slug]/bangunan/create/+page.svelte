@@ -29,10 +29,10 @@
 	let selectedStatus = $state(statusOptions[0].value);
 
 	const conditionTrigger = $derived(
-		conditionOptions.find((o) => o.value === selectedCondition)?.label ?? 'Pilih Kondisi'
+		conditionOptions.find((o: any) => o.value === selectedCondition)?.label ?? 'Pilih Kondisi'
 	);
 	const statusTrigger = $derived(
-		statusOptions.find((o) => o.value === selectedStatus)?.label ?? 'Pilih Status'
+		statusOptions.find((o: any) => o.value === selectedStatus)?.label ?? 'Pilih Status'
 	);
 	let imagePreview = $state<string | null>(null);
 
@@ -72,11 +72,11 @@
 					loading = true;
 					return async ({ result }) => {
 						loading = false;
-						if (result.type === 'success') {
+						if (result?.type === 'success') {
 							notificationMsg = 'Data berhasil disimpan';
 							notificationType = 'success';
 							notificationOpen = true;
-						} else if (result.type === 'failure') {
+						} else if (result?.type === 'failure') {
 							notificationMsg = 'Terjadi kesalahan';
 							notificationType = 'error';
 							notificationOpen = true;

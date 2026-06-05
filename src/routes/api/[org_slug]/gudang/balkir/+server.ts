@@ -5,7 +5,7 @@ import { eq, desc, or, and, like } from 'drizzle-orm';
 import { getOrSetCache, CacheKeys, CacheTTL } from '$lib/server/redis';
 
 /** @type {import('./$types').RequestHandler} */
-export const GET = async ({ url, params, locals }) => {
+export const GET: import("./$types").RequestHandler = async ({ url, params, locals }) => {
 	// Validasi Sesi & Organisasi
 	if (!locals.user || !locals.user.organization) {
 		return json({ success: false, message: 'Unauthorized' }, { status: 401 });
@@ -125,7 +125,7 @@ export const GET = async ({ url, params, locals }) => {
 										and(
 											eq(item.id, movement.itemId),
 											searchName ? like(item.name, `%${searchName}%`) : undefined,
-											searchType ? eq(item.type, searchType) : undefined
+											searchType ? eq(item.type, searchType as any) : undefined
 										)
 									)
 							),
@@ -138,7 +138,7 @@ export const GET = async ({ url, params, locals }) => {
 										and(
 											eq(equipment.id, movement.equipmentId),
 											searchName ? like(item.name, `%${searchName}%`) : undefined,
-											searchType ? eq(item.type, searchType) : undefined
+											searchType ? eq(item.type, searchType as any) : undefined
 										)
 									)
 							)

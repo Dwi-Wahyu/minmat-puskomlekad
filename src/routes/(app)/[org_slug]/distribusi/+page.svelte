@@ -14,7 +14,7 @@
 	} from '@lucide/svelte';
 	import { page } from '$app/state';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	function getStatusVariant(status: string) {
 		switch (status) {

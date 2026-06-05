@@ -38,7 +38,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			let globalCounter = 0;
 			return rawData.reduce(
 				(acc, curr) => {
-					let existingOrg = acc.find((o) => o.orgName === curr.orgName);
+					let existingOrg = acc.find((o: any) => o.orgName === curr.orgName);
 
 					if (existingOrg) {
 						existingOrg.items.push({

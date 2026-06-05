@@ -324,33 +324,33 @@ export const actions: Actions = {
 
 				for (const item of items) {
 					// VALIDASI: equipment.status HARUS = READY
-					if (item.equipment.status !== 'READY') {
-						throw new Error(`Alat ${item.equipment.serialNumber} tidak dalam status READY`);
+					if (item.equipment!.status !== 'READY') {
+						throw new Error(`Alat ${item.equipment!.serialNumber} tidak dalam status READY`);
 					}
 					// VALIDASI: equipment.condition TIDAK BOLEH RUSAK_BERAT
-					if (item.equipment.condition === 'RUSAK_BERAT') {
-						throw new Error(`Alat ${item.equipment.serialNumber} dalam kondisi RUSAK_BERAT`);
+					if (item.equipment!.condition === 'RUSAK_BERAT') {
+						throw new Error(`Alat ${item.equipment!.serialNumber} dalam kondisi RUSAK_BERAT`);
 					}
 
 					// Update status alat
 					await tx
 						.update(equipment)
 						.set({ status: 'IN_USE' })
-						.where(eq(equipment.id, item.equipmentId));
+						.where(eq(equipment.id, item.equipmentId!));
 
 					// Catat Movement (WAJIB)
 					await tx.insert(movement).values({
 						id: uuidv4(),
 						equipmentId: item.equipmentId,
-						itemId: item.equipment.itemId,
+						itemId: item.equipment!.itemId,
 						organizationId: lendingData.organizationId,
 						eventType: 'LOAN_OUT',
 						classification: 'KOMUNITY',
 						specificLocationName: lendingData.unit,
-						fromWarehouseId: item.equipment.warehouseId,
+						fromWarehouseId: item.equipment!.warehouseId,
 						referenceType: 'LENDING',
 						referenceId: id,
-						qty: 1,
+						qty: '1',
 						notes: `Alat dipinjam oleh unit: ${lendingData.unit}`,
 						picId: user.id
 					});
@@ -428,27 +428,28 @@ export const actions: Actions = {
 
 				for (const item of items) {
 					// VALIDASI: equipment.status HARUS = IN_USE
-					if (item.equipment.status !== 'IN_USE') {
-						throw new Error(`Alat ${item.equipment.serialNumber} tidak dalam status IN_USE`);
+					if (item.equipment!.status !== 'IN_USE') {
+						throw new Error(`Alat ${item.equipment!.serialNumber} tidak dalam status IN_USE`);
 					}
 
 					// Update status alat
 					await tx
 						.update(equipment)
 						.set({ status: 'READY' })
-						.where(eq(equipment.id, item.equipmentId));
+						.where(eq(equipment.id, item.equipmentId!));
 
 					// Catat Movement (WAJIB)
 					await tx.insert(movement).values({
 						id: uuidv4(),
 						equipmentId: item.equipmentId,
+						itemId: item.equipment!.itemId,
 						organizationId: lendingData.organizationId,
 						eventType: 'LOAN_RETURN',
 						classification: 'KOMUNITY',
 						specificLocationName: 'Gudang',
 						referenceType: 'LENDING',
 						referenceId: id,
-						qty: 1,
+						qty: '1',
 						notes: `Alat telah dikembalikan dari peminjaman unit ${lendingData.unit}`,
 						picId: user.id
 					});

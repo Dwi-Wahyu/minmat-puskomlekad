@@ -28,7 +28,7 @@
 		FileText
 	} from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	// State Dialog
 	let notificationOpen = $state(false);
@@ -379,13 +379,13 @@
 					<Table.Body>
 						{#each data.lending.items as item (item.id)}
 							<Table.Row>
-								<Table.Cell class="font-medium">{item.equipment.item.name}</Table.Cell>
+								<Table.Cell class="font-medium">{item.equipment!.item.name}</Table.Cell>
 								<Table.Cell
-									><code class="rounded bg-muted px-1 text-xs">{item.equipment.serialNumber}</code
+									><code class="rounded bg-muted px-1 text-xs">{item.equipment!.serialNumber}</code
 									></Table.Cell
 								>
-								<Table.Cell>{item.equipment.brand}</Table.Cell>
-								<Table.Cell>{item.equipment.warehouse?.name}</Table.Cell>
+								<Table.Cell>{item.equipment!.brand}</Table.Cell>
+								<Table.Cell>{item.equipment!.warehouse?.name}</Table.Cell>
 								<Table.Cell class="text-right font-bold">{item.qty}</Table.Cell>
 							</Table.Row>
 						{/each}
@@ -442,13 +442,13 @@
 		return ({ result }) => {
 			overrideLoading = false;
 			overrideDialogOpen = false;
-			if (result.type === 'success') {
-				notificationMsg = result.data?.message;
+			if (result?.type === 'success') {
+				notificationMsg = ((result?.data as any)?.message as string) || '';
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
-			} else if (result.type === 'failure') {
-				notificationMsg = result.data?.message || 'Gagal melakukan override perintah langsung';
+			} else if (result?.type === 'failure') {
+				notificationMsg = (result?.data as any)?.message || 'Gagal melakukan override perintah langsung';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -469,13 +469,13 @@
 		return ({ result }) => {
 			approveLoading = false;
 			approveDialogOpen = false;
-			if (result.type === 'success') {
-				notificationMsg = result.data?.message;
+			if (result?.type === 'success') {
+				notificationMsg = ((result?.data as any)?.message as string) || '';
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
-			} else if (result.type === 'failure') {
-				notificationMsg = result.data?.message || 'Gagal menyetujui peminjaman';
+			} else if (result?.type === 'failure') {
+				notificationMsg = (result?.data as any)?.message || 'Gagal menyetujui peminjaman';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -495,13 +495,13 @@
 		return ({ result }) => {
 			rejectLoading = false;
 			rejectDialogOpen = false;
-			if (result.type === 'success') {
-				notificationMsg = result.data?.message;
+			if (result?.type === 'success') {
+				notificationMsg = ((result?.data as any)?.message as string) || '';
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
-			} else if (result.type === 'failure') {
-				notificationMsg = result.data?.message || 'Gagal menolak peminjaman';
+			} else if (result?.type === 'failure') {
+				notificationMsg = (result?.data as any)?.message || 'Gagal menolak peminjaman';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -522,13 +522,13 @@
 		return ({ result }) => {
 			startLoading = false;
 			startDialogOpen = false;
-			if (result.type === 'success') {
-				notificationMsg = result.data?.message;
+			if (result?.type === 'success') {
+				notificationMsg = ((result?.data as any)?.message as string) || '';
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
-			} else if (result.type === 'failure') {
-				notificationMsg = result.data?.message || 'Gagal memproses pengambilan barang';
+			} else if (result?.type === 'failure') {
+				notificationMsg = (result?.data as any)?.message || 'Gagal memproses pengambilan barang';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -548,13 +548,13 @@
 		return ({ result }) => {
 			returnLoading = false;
 			returnDialogOpen = false;
-			if (result.type === 'success') {
-				notificationMsg = result.data?.message;
+			if (result?.type === 'success') {
+				notificationMsg = ((result?.data as any)?.message as string) || '';
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
-			} else if (result.type === 'failure') {
-				notificationMsg = result.data?.message || 'Gagal memproses pengembalian barang';
+			} else if (result?.type === 'failure') {
+				notificationMsg = (result?.data as any)?.message || 'Gagal memproses pengembalian barang';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -575,15 +575,15 @@
 		return ({ result }) => {
 			deleteLoading = false;
 			deleteDialogOpen = false;
-			if (result.type === 'success') {
+			if (result?.type === 'success') {
 				notificationMsg = 'Pengajuan telah dihapus';
 				notificationType = 'success';
 				notificationOpen = true;
 				setTimeout(() => {
 					window.location.href = `/${page.params.org_slug}/peminjaman`;
 				}, 1500);
-			} else if (result.type === 'failure') {
-				notificationMsg = result.data?.message || 'Gagal menghapus pengajuan';
+			} else if (result?.type === 'failure') {
+				notificationMsg = (result?.data as any)?.message || 'Gagal menghapus pengajuan';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -601,7 +601,7 @@
 	title="Hapus Pengajuan"
 	description="Apakah Anda yakin ingin menghapus pengajuan peminjaman ini? Tindakan ini tidak dapat dibatalkan."
 	actionLabel="Hapus"
-	onAction={() => document.getElementById('delete-form').requestSubmit()}
+	onAction={() => (document.getElementById('delete-form') as HTMLFormElement)?.requestSubmit()}
 />
 
 <ConfirmationDialog
@@ -611,7 +611,7 @@
 	title="Setujui Peminjaman"
 	description="Apakah Anda yakin ingin menyetujui pengajuan peminjaman alat ini?"
 	actionLabel="Setujui"
-	onAction={() => document.getElementById('approve-form').requestSubmit()}
+	onAction={() => (document.getElementById('approve-form') as HTMLFormElement)?.requestSubmit()}
 />
 
 <ConfirmationDialog
@@ -623,7 +623,7 @@
 	actionLabel="Konfirmasi Perintah"
 	onAction={() => {
 		if (!overrideReason) return alert('Alasan perintah harus diisi');
-		document.getElementById('override-form').requestSubmit();
+		(document.getElementById('override-form') as HTMLFormElement)?.requestSubmit();
 	}}
 >
 	<div class="mt-4">
@@ -646,7 +646,7 @@
 	actionLabel="Tolak"
 	onAction={() => {
 		if (!rejectReason) return alert('Alasan harus diisi');
-		document.getElementById('reject-form').requestSubmit();
+		(document.getElementById('reject-form') as HTMLFormElement)?.requestSubmit();
 	}}
 >
 	<div class="mt-4">
@@ -667,7 +667,7 @@
 	title="Konfirmasi Pengambilan"
 	description="Konfirmasi bahwa barang telah diserahterimakan kepada unit peminjam."
 	actionLabel="Konfirmasi"
-	onAction={() => document.getElementById('start-form').requestSubmit()}
+	onAction={() => (document.getElementById('start-form') as HTMLFormElement)?.requestSubmit()}
 />
 
 <ConfirmationDialog
@@ -677,7 +677,7 @@
 	title="Konfirmasi Pengembalian"
 	description="Pastikan semua alat telah diperiksa kondisinya sebelum dikembalikan ke gudang."
 	actionLabel="Selesai"
-	onAction={() => document.getElementById('return-form').requestSubmit()}
+	onAction={() => (document.getElementById('return-form') as HTMLFormElement)?.requestSubmit()}
 />
 
 <NotificationDialog

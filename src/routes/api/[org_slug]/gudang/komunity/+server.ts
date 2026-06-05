@@ -5,7 +5,7 @@ import { eq, desc, and, like, or } from 'drizzle-orm';
 import { getOrSetCache, CacheKeys, CacheTTL } from '$lib/server/redis';
 
 /** @type {import('./$types').RequestHandler} */
-export const GET = async ({ url, params, locals }) => {
+export const GET: import("./$types").RequestHandler = async ({ url, params, locals }) => {
 	// Validasi Sesi & Organisasi
 	if (!locals.user || !locals.user.organization) {
 		return json({ success: false, message: 'Unauthorized' }, { status: 401 });
@@ -22,7 +22,7 @@ export const GET = async ({ url, params, locals }) => {
 			const data = await getOrSetCache(
 				cacheKey,
 				async () => {
-					let results = [];
+					let results: any[] = [];
 
 					// 1. Ambil DATA ASSET (Equipment)
 					const equipmentList = await db.query.equipment.findMany({
@@ -147,7 +147,7 @@ export const GET = async ({ url, params, locals }) => {
 		}
 
 		// Jika ada filter, langsung query DB tanpa cache
-		let results = [];
+		let results: any[] = [];
 
 		if (!searchType || searchType === 'ASSET') {
 			const equipmentList = await db.query.equipment.findMany({

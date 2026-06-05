@@ -31,7 +31,7 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 	const certificateNumber = formData.get('certificateNumber') as string;
 	const location = formData.get('location') as string;
 	const area = formData.get('area') as string;
-	const status = formData.get('status') as 'MILIK_TNI' | 'SEWA';
+	const status = formData.get('status') as 'MILIK_TNI' | 'LAINNYA';
 	const usage = formData.get('usage') as string;
 	const description = formData.get('description') as string;
 	const latitude = formData.get('latitude') as string;

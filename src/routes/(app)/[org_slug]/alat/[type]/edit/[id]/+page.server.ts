@@ -43,7 +43,7 @@ export const load: PageServerLoad = async ({ params }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, params }) => {
+	default: async ({ request, params }: any) => {
 		const { id, type } = params;
 		const formData = await request.formData();
 
@@ -129,7 +129,7 @@ export const actions: Actions = {
 				.where(eq(equipment.id, id));
 
 			// Invalidate cache
-			await invalidateOrgInventoryCache(current.equipment.organizationId);
+			await invalidateOrgInventoryCache(current.equipment.organizationId!);
 
 			return { success: true, message: 'Data alat berhasil diperbarui' };
 		} catch (error: any) {

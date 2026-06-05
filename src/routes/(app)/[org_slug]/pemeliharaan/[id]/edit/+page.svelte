@@ -19,7 +19,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let formData = $state({
 		equipmentId: '',
@@ -116,10 +116,10 @@
 				method="POST" 
 				use:enhance={() => {
 					return async ({ result, update }) => {
-						if (result.type === 'success' || (result.type === 'redirect' && result.location.includes('pemeliharaan'))) {
+						if (result?.type === 'success' || (result?.type === 'redirect' && result.location.includes('pemeliharaan'))) {
 							showSuccessNotification();
-						} else if (result.type === 'failure') {
-							showErrorNotification(result.data?.message || 'Terjadi kesalahan');
+						} else if (result?.type === 'failure') {
+							showErrorNotification((result?.data as any)?.message || 'Terjadi kesalahan');
 						}
 						await update();
 					};

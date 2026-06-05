@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ params }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, params }) => {
+	default: async ({ request, params }: any) => {
 		const { id } = params;
 		const formData = await request.formData();
 

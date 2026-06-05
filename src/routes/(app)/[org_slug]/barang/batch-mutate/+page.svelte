@@ -164,7 +164,7 @@
 	}
 
 	function applyGlobalSettings() {
-		batchItems = batchItems.map((item) => ({
+		batchItems = batchItems.map((item: any) => ({
 			...item,
 			eventType: globalEventType,
 			qty: globalQty,

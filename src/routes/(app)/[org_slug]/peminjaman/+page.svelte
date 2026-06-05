@@ -17,7 +17,7 @@
 		AlertCircle
 	} from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	const statusConfig = {
 		DRAFT: {

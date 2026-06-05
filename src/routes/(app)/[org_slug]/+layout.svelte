@@ -85,9 +85,9 @@
 				</button>
 
 				<NotificationBell
-					notifications={data.notifications}
-					unreadCount={data.unreadCount}
-					organizationId={data.user.organization.id}
+					notifications={(data as any).notifications}
+					unreadCount={(data as any).unreadCount}
+					organizationId={(data as any).user.organization.id}
 				/>
 			</div>
 		</header>

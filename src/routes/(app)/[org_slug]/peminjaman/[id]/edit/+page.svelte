@@ -14,7 +14,7 @@
 	} from '$lib/components/ui/card';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	// State form
 	let unit = $state('');
@@ -46,7 +46,7 @@
 	$effect(() => {
 		if (data.equipment.length > 0) {
 			const initial: Record<string, { selected: boolean; qty: number }> = {};
-			data.equipment.forEach((eq) => {
+			data.equipment.forEach((eq: any) => {
 				initial[eq.id] = {
 					selected: eq.isSelected || false,
 					qty: eq.selectedQty || 1
@@ -172,8 +172,8 @@
 		use:enhance={() => {
 			return async ({ result, update }) => {
 				isSubmitting = true;
-				if (result.type === 'failure') {
-					showErrorNotification(result.data?.message || 'Terjadi kesalahan');
+				if (result?.type === 'failure') {
+					showErrorNotification((result?.data as any)?.message || 'Terjadi kesalahan');
 				}
 				isSubmitting = false;
 				await update();

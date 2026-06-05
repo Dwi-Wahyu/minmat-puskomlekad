@@ -20,7 +20,7 @@
 	import * as SearchableSelect from '$lib/components/ui/searchable-select';
 	import { Plus, Pencil, Trash2, RefreshCcw, Search, Info } from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	// State UI Dialogs
 	let showFormDialog = $state(false);
@@ -43,7 +43,7 @@
 	let searchQuery = $state('');
 
 	let filteredConversions = $derived(
-		data.conversions.filter((conv) =>
+		data.conversions.filter((conv: any) =>
 			conv.item?.name?.toLowerCase().includes(searchQuery.toLowerCase())
 		)
 	);
@@ -100,7 +100,7 @@
 	$effect(() => {
 		const targetId = isEditing ? formData.itemId : formData.itemIds[0];
 		if (targetId) {
-			const selectedItem = data.items.find((i) => i.id === targetId);
+			const selectedItem = data.items.find((i: any) => i.id === targetId);
 			if (selectedItem) {
 				formData.toUnit = selectedItem.baseUnit;
 			}
@@ -109,11 +109,11 @@
 
 	const selectedItemName = $derived(() => {
 		if (isEditing) {
-			return data.items.find((i) => i.id === formData.itemId)?.name || 'Pilih item...';
+			return data.items.find((i: any) => i.id === formData.itemId)?.name || 'Pilih item...';
 		}
 		if (formData.itemIds.length === 0) return 'Pilih satu atau lebih item...';
 		if (formData.itemIds.length === 1) {
-			return data.items.find((i) => i.id === formData.itemIds[0])?.name;
+			return data.items.find((i: any) => i.id === formData.itemIds[0])?.name;
 		}
 		return `${formData.itemIds.length} item dipilih`;
 	});
@@ -262,9 +262,9 @@
 				errorMessage = '';
 				return async ({ result, update }) => {
 					formLoading = false;
-					if (result.type === 'failure') {
-						errorMessage = result.data?.message || 'Terjadi kesalahan input.';
-					} else if (result.type === 'success') {
+					if (result?.type === 'failure') {
+						errorMessage = (result?.data as any)?.message || 'Terjadi kesalahan input.';
+					} else if (result?.type === 'success') {
 						await invalidateAll();
 						showFormDialog = false;
 						handleNotification(
@@ -419,11 +419,11 @@
 		return async ({ result }) => {
 			deleteLoading = false;
 			deleteDialogOpen = false;
-			if (result.type === 'success') {
+			if (result?.type === 'success') {
 				await invalidateAll();
 				handleNotification('Berhasil', 'Data konversi telah dihapus.', 'success');
-			} else if (result.type === 'failure') {
-				handleNotification('Gagal', result.data?.message || 'Gagal menghapus data.', 'error');
+			} else if (result?.type === 'failure') {
+				handleNotification('Gagal', (result?.data as any)?.message || 'Gagal menghapus data.', 'error');
 			}
 		};
 	}}

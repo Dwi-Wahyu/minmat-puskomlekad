@@ -84,7 +84,7 @@
 	});
 
 	let selectedOrgName = $derived(
-		data.organizations.find((o) => o.id === data.selectedOrgId)?.name || 'Pilih Kesatuan'
+		data.organizations.find((o: any) => o.id === data.selectedOrgId)?.name || 'Pilih Kesatuan'
 	);
 
 	const typeOptions = [
@@ -140,7 +140,7 @@
 				<Label for="type-filter">Jenis</Label>
 				<Select.Root type="single" bind:value={typeFilter} onValueChange={updateFilters}>
 					<Select.Trigger class="w-[180px] border-2">
-						{typeOptions.find((o) => o.value === typeFilter)?.label || 'Semua Jenis'}
+						{typeOptions.find((o: any) => o.value === typeFilter)?.label || 'Semua Jenis'}
 					</Select.Trigger>
 					<Select.Content>
 						{#each typeOptions as opt}
@@ -154,7 +154,7 @@
 				<Label for="category-filter">Kategori Alat</Label>
 				<Select.Root type="single" bind:value={categoryFilter} onValueChange={updateFilters}>
 					<Select.Trigger class="w-[180px] border-2">
-						{categoryOptions.find((o) => o.value === categoryFilter)?.label || 'Semua Kategori'}
+						{categoryOptions.find((o: any) => o.value === categoryFilter)?.label || 'Semua Kategori'}
 					</Select.Trigger>
 					<Select.Content>
 						{#each categoryOptions as opt}

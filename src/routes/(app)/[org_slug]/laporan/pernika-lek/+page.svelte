@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { RotateCw } from '@lucide/svelte';
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let isLoading = $state(false);
 
@@ -24,8 +24,8 @@
 		// FIX: Definisikan tipe data eksplisit untuk menghindari error TS7034
 		const csvRows: string[] = [];
 
-		data.groupedReports.forEach((org) => {
-			org.items.forEach((item) => {
+		data.groupedReports.forEach((org: any) => {
+			org.items.forEach((item: any) => {
 				csvRows.push(
 					[
 						item.index,

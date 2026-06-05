@@ -11,7 +11,7 @@
 	import { Search, Plus, Pencil, Trash2, Ellipsis, MapPin, FileText } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);
@@ -86,8 +86,8 @@
 						</Table.Cell>
 						<Table.Cell>{item.area} m²</Table.Cell>
 						<Table.Cell>
-							<Badge variant="outline" class={statusColors[item.status]}>
-								{item.status.replace('_', ' ')}
+							<Badge variant="outline" class={statusColors[item.status!]}>
+								{item.status!.replace('_', ' ')}
 							</Badge>
 						</Table.Cell>
 						<Table.Cell>{item.usage}</Table.Cell>
@@ -160,7 +160,7 @@
 		deleteLoading = false;
 		deleteDialogOpen = false;
 
-		if (result.type === 'success') {
+		if (result?.type === 'success') {
 			notificationMsg = 'Data tanah berhasil dihapus';
 			notificationType = 'success';
 			notificationOpen = true;

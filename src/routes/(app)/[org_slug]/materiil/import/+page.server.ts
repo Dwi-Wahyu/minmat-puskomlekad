@@ -6,7 +6,7 @@ import { error, fail } from '@sveltejs/kit';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const load = async ({ params, locals }) => {
+export const load: import("./$types").PageServerLoad = async ({ params, locals }) => {
 	const sessionUser = locals.user;
 	if (!sessionUser) throw error(401, 'Unauthorized');
 
@@ -46,7 +46,7 @@ export const load = async ({ params, locals }) => {
 };
 
 export const actions = {
-	import: async ({ request, params, locals }) => {
+	import: async ({ request, params, locals }: any) => {
 		const sessionUser = locals.user;
 		if (!sessionUser) return fail(401, { message: 'Unauthorized' });
 

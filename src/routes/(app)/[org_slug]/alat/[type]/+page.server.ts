@@ -62,7 +62,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	// Menggunakan subquery untuk mendapatkan max createdAt per equipmentId
 	const equipmentIds = dataRaw.map((e) => e.id);
 
-	let lastMovements: (typeof movement.$inferSelect)[] = [];
+	let lastMovements: any[] = [];
 
 	if (equipmentIds.length > 0) {
 		// Subquery: ambil createdAt terbaru per equipmentId

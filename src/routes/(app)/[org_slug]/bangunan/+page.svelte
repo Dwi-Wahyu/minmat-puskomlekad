@@ -11,7 +11,7 @@
 	import { Search, Plus, Pencil, Trash2, Ellipsis, Building2 } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);
@@ -98,8 +98,8 @@
 							</Badge>
 						</Table.Cell>
 						<Table.Cell>
-							<Badge variant="outline" class={statusColors[item.status]}>
-								{item.status.replace('_', ' ')}
+							<Badge variant="outline" class={statusColors[item.status!]}>
+								{item.status!.replace('_', ' ')}
 							</Badge>
 						</Table.Cell>
 						<Table.Cell class="text-right">
@@ -159,7 +159,7 @@
 		deleteLoading = false;
 		deleteDialogOpen = false;
 
-		if (result.type === 'success') {
+		if (result?.type === 'success') {
 			notificationMsg = 'Data bangunan berhasil dihapus';
 			notificationType = 'success';
 			notificationOpen = true;

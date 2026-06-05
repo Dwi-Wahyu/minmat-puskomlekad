@@ -19,7 +19,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	const logs = $derived(data.logs);
 	let selectedLog = $state<any>(null);

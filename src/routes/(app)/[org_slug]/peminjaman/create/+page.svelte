@@ -10,7 +10,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { FileText, Search, ChevronDown, ChevronUp, Check, Warehouse, Tags } from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	// State form
 	let unit = $state('');
@@ -45,7 +45,7 @@
 	$effect(() => {
 		if (data.groupedEquipment.length > 0) {
 			const initial: Record<string, { selected: boolean; qty: number; manualIds: string[] }> = {};
-			data.groupedEquipment.forEach((group) => {
+			data.groupedEquipment.forEach((group: any) => {
 				// Cek apakah grup ini berisi alat yang dipilih sebelumnya dari URL
 				const isPreselected = group.preselected;
 				initial[group.id] = {
@@ -62,7 +62,7 @@
 
 	// Filter equipment berdasarkan pencarian
 	const filteredEquipment = $derived(
-		data.groupedEquipment.filter((group) => {
+		data.groupedEquipment.filter((group: any) => {
 			const searchLower = searchQuery.toLowerCase();
 			return (
 				group.name.toLowerCase().includes(searchLower) ||
@@ -201,16 +201,16 @@
 			enctype="multipart/form-data"
 			use:enhance={() => {
 				return async ({ result }) => {
-					if (result.type === 'success') {
+					if (result?.type === 'success') {
 						notificationType = 'success';
 						notificationTitle = 'Berhasil!';
-						notificationDescription = result.data?.message || 'Pengajuan peminjaman telah dikirim.';
+						notificationDescription = (result?.data as any)?.message || 'Pengajuan peminjaman telah dikirim.';
 						showNotification = true;
-					} else if (result.type === 'failure') {
+					} else if (result?.type === 'failure') {
 						notificationType = 'error';
 						notificationTitle = 'Gagal!';
 						notificationDescription =
-							result.data?.message || 'Terjadi kesalahan saat memproses data.';
+							(result?.data as any)?.message || 'Terjadi kesalahan saat memproses data.';
 						showNotification = true;
 					}
 				};

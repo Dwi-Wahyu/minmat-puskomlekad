@@ -6,11 +6,13 @@
 	let {
 		show = $bindable(false),
 		title = 'Judul Modal',
-		description = 'Deskripsi konten modal di sini.'
+		description = 'Deskripsi konten modal di sini.',
+		children
 	} = $props<{
 		show: boolean;
 		title?: string;
 		description?: string;
+		children?: import('svelte').Snippet;
 	}>();
 
 	function close() {
@@ -43,7 +45,11 @@
 			</div>
 
 			<div class="p-6 text-muted-foreground">
-				<p>{description}</p>
+				{#if children}
+					{@render children()}
+				{:else}
+					<p>{description}</p>
+				{/if}
 			</div>
 
 			<div class="flex justify-end gap-3 bg-muted/50 p-4">

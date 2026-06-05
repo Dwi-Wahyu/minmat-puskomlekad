@@ -32,7 +32,7 @@ export const load: PageServerLoad = async ({ params }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, params }) => {
+	default: async ({ request, params }: any) => {
 		try {
 			const { org_slug } = params;
 			const formData = await request.formData();

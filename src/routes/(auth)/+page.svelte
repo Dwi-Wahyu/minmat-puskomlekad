@@ -7,10 +7,10 @@
 
 	function handleSignIn() {
 		return async ({ result }: { result: any }) => {
-			if (result.type === 'redirect') {
+			if (result?.type === 'redirect') {
 				toast.success('Login Berhasil', 'Selamat datang kembali di sistem MINMAT.');
-			} else if (result.type === 'failure') {
-				toast.error('Login Gagal', result.data?.message || 'Periksa kembali email dan password Anda.');
+			} else if (result?.type === 'failure') {
+				toast.error('Login Gagal', (result?.data as any)?.message || 'Periksa kembali email dan password Anda.');
 			}
 
 			// Menjalankan aksi bawaan SvelteKit (termasuk redirect)

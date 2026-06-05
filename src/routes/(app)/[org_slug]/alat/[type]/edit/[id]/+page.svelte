@@ -7,7 +7,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { ChevronLeft, Save, Loader2 } from '@lucide/svelte';
 
-	let { data } = $props();
+	let { data }: any = $props();
 
 	let loading = $state(false);
 	let notificationOpen = $state(false);
@@ -60,11 +60,11 @@
 			loading = true;
 			return ({ result }) => {
 				loading = false;
-				if (result.type === 'success') {
+				if (result?.type === 'success') {
 					notificationMsg = 'Berhasil';
 					notificationType = 'success';
 					notificationOpen = true;
-				} else if (result.type === 'failure') {
+				} else if (result?.type === 'failure') {
 					notificationMsg = 'Terjadi kesalahan';
 					notificationType = 'error';
 					notificationOpen = true;
@@ -127,7 +127,7 @@
 					name="condition"
 					id="condition"
 					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-					value={data.equipment.condition}
+					value={data.equipment!.condition}
 				>
 					<option value="BAIK">Baik</option>
 					<option value="RUSAK_RINGAN">Rusak Ringan</option>
@@ -141,7 +141,7 @@
 					name="status"
 					id="status"
 					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-					value={data.equipment.status}
+					value={data.equipment!.status!}
 				>
 					<option value="READY">Ready (Tersedia)</option>
 					<option value="IN_USE">In Use (Digunakan)</option>

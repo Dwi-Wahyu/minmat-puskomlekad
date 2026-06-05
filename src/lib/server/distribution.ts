@@ -1,5 +1,5 @@
 import { db } from './db';
-import { distribution, distributionItem, movement, approval, stock, equipment, auditLog } from './db/schema';
+import { distribution, distributionItem, movement, approval, stock, equipment, auditLog, warehouse } from './db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and, sql } from 'drizzle-orm';
 import { createNotification } from './notification';
@@ -46,14 +46,12 @@ export async function createDistribution(params: CreateDistributionParams) {
 			if (!itemData.equipmentId && !itemData.itemId) {
 				throw new Error('A distribution item must have either equipmentId or itemId');
 			}
-
 			await tx.insert(distributionItem).values({
 				id: uuidv4(),
 				distributionId,
 				equipmentId: itemData.equipmentId || null,
 				itemId: itemData.itemId || null,
-				quantity: itemData.quantity,
-				unit: itemData.unit || null,
+				quantity: String(itemData.quantity),
 				note: itemData.note || null,
 				createdAt: new Date()
 			});
@@ -114,8 +112,8 @@ export async function validateDistribution(distributionId: string, userId: strin
 						sql`${stock.warehouseId} IN ${warehouseIds}`
 					));
 
-				const qty = totalStock[0]?.total || 0;
-				if (qty < itemData.quantity) {
+				const qty = Number(totalStock[0]?.total || 0);
+				if (qty < Number(itemData.quantity)) {
 					throw new Error(`Stok tidak mencukupi di kesatuan pengirim. Tersedia: ${qty}, Dibutuhkan: ${itemData.quantity}`);
 				}
 			}
@@ -235,7 +233,7 @@ export async function shipDistribution(distributionId: string, userId: string, f
 					id: uuidv4(),
 					equipmentId: itemData.equipmentId,
 					eventType: 'DISTRIBUTE_OUT',
-					qty: 1,
+					qty: '1',
 					fromWarehouseId,
 					classification: 'TRANSITO',
 					referenceType: 'DISTRIBUTION',
@@ -265,14 +263,14 @@ export async function shipDistribution(distributionId: string, userId: string, f
 				}
 
 				await tx.update(stock)
-					.set({ qty: currentStock.qty - itemData.quantity })
+					.set({ qty: String(Number(currentStock.qty) - Number(itemData.quantity)) })
 					.where(eq(stock.id, currentStock.id));
 
 				// Insert movement for consumable
 				await tx.insert(movement).values({
 					id: uuidv4(),
 					itemId: itemData.itemId,
-					qty: itemData.quantity,
+					qty: String(itemData.quantity),
 					unit: itemData.unit,
 					eventType: 'DISTRIBUTE_OUT',
 					fromWarehouseId,
@@ -349,7 +347,7 @@ export async function receiveDistribution(distributionId: string, userId: string
 					id: uuidv4(),
 					equipmentId: itemData.equipmentId,
 					eventType: 'DISTRIBUTE_IN',
-					qty: 1,
+					qty: '1',
 					toWarehouseId,
 					classification: 'KOMUNITY',
 					referenceType: 'DISTRIBUTION',
@@ -371,14 +369,14 @@ export async function receiveDistribution(distributionId: string, userId: string
 
 				if (existingStock) {
 					await tx.update(stock)
-						.set({ qty: existingStock.qty + itemData.quantity })
+						.set({ qty: String(Number(existingStock.qty) + Number(itemData.quantity)) })
 						.where(eq(stock.id, existingStock.id));
 				} else {
 					await tx.insert(stock).values({
 						id: uuidv4(),
 						itemId: itemData.itemId,
 						warehouseId: toWarehouseId,
-						qty: itemData.quantity,
+						qty: String(itemData.quantity),
 						updatedAt: new Date()
 					});
 				}
@@ -387,7 +385,7 @@ export async function receiveDistribution(distributionId: string, userId: string
 				await tx.insert(movement).values({
 					id: uuidv4(),
 					itemId: itemData.itemId,
-					qty: itemData.quantity,
+					qty: String(itemData.quantity),
 					unit: itemData.unit,
 					eventType: 'DISTRIBUTE_IN',
 					toWarehouseId,

@@ -1,4 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { equipment, maintenance, user } from '$lib/server/db/schema';
 import { v4 as uuidv4 } from 'uuid';
@@ -58,7 +58,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 };
 
 export const actions = {
-	default: async ({ request, params }) => {
+	default: async ({ request, params }: any) => {
 		const { org_slug } = params;
 		const formData = await request.formData();
 
@@ -67,7 +67,7 @@ export const actions = {
 		const rawTechnicianId = formData.get('technicianId')?.toString();
 
 		const data = {
-			equipmentIds: formData.getAll('equipmentId').map(id => id.toString()),
+			equipmentIds: formData.getAll('equipmentId').map((id: any) => id.toString()),
 			maintenanceType: formData.get('maintenanceType')?.toString(),
 			description: formData.get('description')?.toString(),
 			scheduledDate:
@@ -103,7 +103,7 @@ export const actions = {
 			console.error(err);
 
 			if (err instanceof z.ZodError) {
-				return fail(400, { errors: err.errors });
+				return fail(400, { errors: (err as any).errors });
 			}
 			return fail(500, { message: 'Kesalahan server internal' });
 		}
