@@ -2,17 +2,24 @@
 	import { enhance, applyAction } from '$app/forms';
 	import type { ActionData } from './$types';
 	import { toast } from '$lib/components/ui/toast';
+	import { Loader2 } from '@lucide/svelte';
 
 	let { form }: { form: ActionData } = $props();
+	let isLoading = $state(false);
 
 	function handleSignIn() {
+		isLoading = true;
 		return async ({ result }: { result: any }) => {
 			if (result?.type === 'redirect') {
 				toast.success('Login Berhasil', 'Selamat datang kembali di sistem MINMAT.');
 			} else if (result?.type === 'failure') {
-				toast.error('Login Gagal', (result?.data as any)?.message || 'Periksa kembali email dan password Anda.');
+				toast.error(
+					'Login Gagal',
+					(result?.data as any)?.message || 'Periksa kembali email dan password Anda.'
+				);
 			}
 
+			isLoading = false;
 			// Menjalankan aksi bawaan SvelteKit (termasuk redirect)
 			await applyAction(result);
 		};
@@ -22,7 +29,7 @@
 <div class="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-6">
 	<div class="absolute inset-0 z-0 opacity-20">
 		<div
-			class="absolute inset-0 bg-[url('/backgrounds/login-background.png')] bg-cover bg-center"
+			class="absolute inset-0 bg-[url('/backgrounds/login-background.webp')] bg-cover bg-center"
 		></div>
 		<div class="absolute inset-0 bg-gradient-to-b from-primary/10 to-background"></div>
 	</div>
@@ -103,9 +110,15 @@
 
 				<button
 					type="submit"
-					class="w-full rounded-lg bg-primary py-3.5 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] active:scale-[0.98]"
+					disabled={isLoading}
+					class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3.5 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] active:scale-[0.98] disabled:opacity-70"
 				>
-					Masuk
+					{#if isLoading}
+						<Loader2 class="size-4 animate-spin" />
+						<span>Mohon Tunggu...</span>
+					{:else}
+						Masuk
+					{/if}
 				</button>
 			</form>
 
