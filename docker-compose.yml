@@ -54,6 +54,7 @@ services:
     environment:
       # PENTING: Gunakan nama service 'db' sebagai host, bukan localhost
       DATABASE_URL: ${DATABASE_URL}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       PORT: ${PORT}
     ports:
