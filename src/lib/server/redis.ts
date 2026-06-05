@@ -1,13 +1,18 @@
 import Redis from 'ioredis';
 import { env } from '$env/dynamic/private';
 
-const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
+const redisUrl = env.REDIS_URL || process.env.REDIS_URL || 'redis://redis:6379';
+
+const isBuildTime =
+	(typeof process !== 'undefined' && process.env.NODE_ENV === 'test') ||
+	(!env.REDIS_URL && typeof window === 'undefined');
 
 // Konfigurasi Redis yang lebih aman untuk production
 export const redis = new Redis(redisUrl, {
 	maxRetriesPerRequest: 1,
 	enableOfflineQueue: false, // Jangan antre perintah jika koneksi mati agar tidak membuat request HTTP menggantung
-	connectTimeout: 5000,
+	connectTimeout: isBuildTime ? 500 : 5000,
+	lazyConnect: true,
 	reconnectOnError: (err) => {
 		const targetError = 'READONLY';
 		if (err.message.includes(targetError)) {
@@ -18,7 +23,11 @@ export const redis = new Redis(redisUrl, {
 });
 
 redis.on('error', (err) => {
-	console.error('Redis connection error:', err);
+	if (isBuildTime) {
+		console.warn('Redis connection deferred during build time.');
+	} else {
+		console.error('Redis connection error:', err);
+	}
 });
 
 redis.on('connect', () => {
@@ -28,7 +37,11 @@ redis.on('connect', () => {
 /**
  * Utility to get or set cache
  */
-export async function getOrSetCache<T>(key: string, fetchFn: () => Promise<T>, ttl = 3600): Promise<T> {
+export async function getOrSetCache<T>(
+	key: string,
+	fetchFn: () => Promise<T>,
+	ttl = 3600
+): Promise<T> {
 	try {
 		const cachedValue = await redis.get(key);
 		if (cachedValue) {
@@ -123,7 +136,7 @@ export const CacheKeys = {
 
 	// Laporan
 	laporanBtk16: (orgSlug: string) => `report:btk-16:${orgSlug}`,
-	laporanPernikaLek: (orgSlug: string) => `report:pernika-lek:${orgSlug}`,
+	laporanPernikaLek: (orgSlug: string) => `report:pernika-lek:${orgSlug}`
 };
 
 /**
@@ -135,7 +148,7 @@ export const CacheTTL = {
 	EQUIPMENT_LIST: 300, // 5 menit
 	GUDANG: 300, // 5 menit
 	ITEM_CONSUMABLE: 300, // 5 menit
-	LAPORAN: 3600, // 1 jam
+	LAPORAN: 3600 // 1 jam
 };
 
 /**
@@ -153,7 +166,7 @@ export async function invalidateOrgInventoryCache(orgId: string): Promise<void> 
 		invalidateCache(CacheKeys.gudangKomunity(orgId)),
 		invalidateCache(CacheKeys.gudangTransito(orgId)),
 		invalidateCachePattern(`equipment:list:${orgId}:*`),
-		invalidateCache(CacheKeys.itemConsumable(orgId)),
+		invalidateCache(CacheKeys.itemConsumable(orgId))
 	]);
 }
 
