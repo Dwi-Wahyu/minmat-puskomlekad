@@ -45,6 +45,7 @@ services:
       context: .
       args:
         - DATABASE_URL=${DATABASE_URL} # Mengoper variabel saat build time
+        - BETTER_AUTH_URL=${BETTER_AUTH_URL}
     depends_on:
       db:
         condition: service_healthy
