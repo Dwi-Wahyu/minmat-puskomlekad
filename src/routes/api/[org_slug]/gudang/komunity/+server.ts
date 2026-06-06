@@ -15,9 +15,13 @@ export const GET: import("./$types").RequestHandler = async ({ url, params, loca
 	const searchName = url.searchParams.get('name');
 	const searchType = url.searchParams.get('type'); // ASSET atau CONSUMABLE
 
+	const page = Number(url.searchParams.get('page')) || 1;
+	const limit = Number(url.searchParams.get('limit')) || 10;
+	const hasPagination = url.searchParams.has('page') || url.searchParams.has('limit');
+
 	try {
-		// Hanya cache request tanpa filter (list penuh)
-		if (!searchName && !searchType) {
+		// Hanya cache request tanpa filter (list penuh) dan tanpa paginasi
+		if (!searchName && !searchType && !hasPagination) {
 			const cacheKey = CacheKeys.gudangKomunity(organizationId);
 			const data = await getOrSetCache(
 				cacheKey,
@@ -268,9 +272,20 @@ export const GET: import("./$types").RequestHandler = async ({ url, params, loca
 
 		const filteredItems = results.filter((item) => item.stok > 0 || item.masuk > 0 || item.keluar > 0);
 
+		const totalItems = filteredItems.length;
+		const totalPages = Math.ceil(totalItems / limit);
+		const startIndex = (page - 1) * limit;
+		const paginatedItems = filteredItems.slice(startIndex, startIndex + limit);
+
 		return json({
 			success: true,
-			data: filteredItems
+			data: paginatedItems,
+			pagination: {
+				page,
+				limit,
+				totalItems,
+				totalPages
+			}
 		});
 	} catch (error) {
 		console.error('API Komunity Error:', error);

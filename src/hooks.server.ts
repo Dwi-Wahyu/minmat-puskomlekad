@@ -17,16 +17,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.user = null;
 	}
 
-	// 1. Otorisasi org_slug jika event.params.org_slug terdefinisi
+	// Otorisasi org_slug jika event.params.org_slug terdefinisi
 	const orgSlug = event.params.org_slug;
 	if (orgSlug) {
 		// Pastikan user sudah login untuk semua halaman/API di bawah /[org_slug]
 		if (!event.locals.user) {
 			if (event.url.pathname.startsWith('/api')) {
-				return new Response(JSON.stringify({ error: 'Unauthorized: Silakan login terlebih dahulu' }), {
-					status: 401,
-					headers: { 'Content-Type': 'application/json' }
-				});
+				return new Response(
+					JSON.stringify({ error: 'Unauthorized: Silakan login terlebih dahulu' }),
+					{
+						status: 401,
+						headers: { 'Content-Type': 'application/json' }
+					}
+				);
 			}
 			throw redirect(302, '/login');
 		}
@@ -50,7 +53,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 		if (isOperator && isWriteRequest) {
 			const path = event.url.pathname;
-			
+
 			// Cek apakah route ini diperbolehkan untuk mutasi/movement oleh operator
 			// Route yang diperbolehkan:
 			// - Mutasi alat: [org_slug]/alat/[type]/mutate/[id]
@@ -59,20 +62,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 			// - Batch mutasi barang: [org_slug]/barang/batch-mutate
 			// - Distribusi (validate, ship, receive): [org_slug]/distribusi/[id]
 			// - Profil / Logout
-			const isAllowedOperatorWrite = 
-				path.includes('/mutate/') || 
-				path.includes('/batch-mutate') || 
-				path.includes('/distribusi/') || 
-				path.includes('/profil') || 
-				path.includes('/logout') || 
+			const isAllowedOperatorWrite =
+				path.includes('/mutate/') ||
+				path.includes('/batch-mutate') ||
+				path.includes('/distribusi/') ||
+				path.includes('/profil') ||
+				path.includes('/logout') ||
 				path.startsWith('/api/notifications');
 
 			if (!isAllowedOperatorWrite) {
-				throw error(403, 'Forbidden: Operator hanya diizinkan untuk membuat mutasi dan pergerakan inventaris');
+				throw error(
+					403,
+					'Forbidden: Operator hanya diizinkan untuk membuat mutasi dan pergerakan inventaris'
+				);
 			}
 		}
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });
 };
-

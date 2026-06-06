@@ -1,10 +1,8 @@
 <script lang="ts">
 	import { enhance, applyAction } from '$app/forms';
-	import type { ActionData } from './$types';
 	import { toast } from '$lib/components/ui/toast';
 	import { Loader2 } from '@lucide/svelte';
 
-	let { form }: { form: ActionData } = $props();
 	let isLoading = $state(false);
 
 	function handleSignIn() {
