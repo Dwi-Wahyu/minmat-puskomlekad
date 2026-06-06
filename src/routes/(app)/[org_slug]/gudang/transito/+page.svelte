@@ -6,6 +6,8 @@
 	import * as Select from '$lib/components/ui/select';
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
+	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { getTransitoData } from './transito.remote';
 	import { Search, Building2, Filter } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -13,15 +15,18 @@
 	let { data }: { data: PageData } = $props();
 
 	// Filters State
-	let searchQuery = $state('');
-	let typeFilter = $state('');
-	let categoryFilter = $state('');
+	let searchQuery = $state(page.url.searchParams.get('search') || '');
+	let typeFilter = $state(page.url.searchParams.get('type') || '');
+	let categoryFilter = $state(page.url.searchParams.get('category') || '');
 
-	$effect(() => {
-		searchQuery = data.filters.search;
-		typeFilter = data.filters.type;
-		categoryFilter = data.filters.category;
-	});
+	const transitoQuery = $derived(
+		getTransitoData({
+			orgId: page.url.searchParams.get('orgId') || '',
+			search: page.url.searchParams.get('search') || '',
+			type: page.url.searchParams.get('type') || '',
+			category: page.url.searchParams.get('category') || ''
+		})
+	);
 
 	function updateFilters() {
 		const newUrl = new URL(page.url);
@@ -45,7 +50,7 @@
 	}
 
 	let selectedOrgName = $derived(
-		data.organizations.find((o: any) => o.id === data.selectedOrgId)?.name || 'Pilih Kesatuan'
+		transitoQuery.current?.organizations.find((o: any) => o.id === transitoQuery.current?.selectedOrgId)?.name || 'Pilih Kesatuan'
 	);
 
 	const typeOptions = [
@@ -69,12 +74,12 @@
 		</header>
 
 		<div class="flex flex-wrap items-end gap-4">
-			{#if data.isMabes}
+			{#if transitoQuery.current?.isMabes}
 				<div class="flex flex-col gap-1.5">
 					<Label for="org-filter">Filter Kesatuan</Label>
 					<SearchableSelect.Root
 						type="single"
-						value={data.selectedOrgId}
+						value={transitoQuery.current.selectedOrgId}
 						onValueChange={handleOrgChange}
 					>
 						<SearchableSelect.Trigger class="w-[200px] border-2">
@@ -82,7 +87,7 @@
 							{selectedOrgName}
 						</SearchableSelect.Trigger>
 						<SearchableSelect.Content>
-							{#each data.organizations as org (org.id)}
+							{#each transitoQuery.current.organizations as org (org.id)}
 								<SearchableSelect.Item value={org.id} label={org.name}
 									>{org.name}</SearchableSelect.Item
 								>
@@ -154,43 +159,76 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each data.movements as item (item.id)}
-					<Table.Row>
-						<Table.Cell>
-							<div class="font-semibold">{item.nama}</div>
-							{#if item.sn}
-								<div class="font-mono text-xs text-muted-foreground">SN: {item.sn}</div>
-							{/if}
-						</Table.Cell>
-						<Table.Cell>
-							<div class="text-xs font-medium text-muted-foreground uppercase">
-								{item.tipe === 'ASSET' ? 'Alat' : 'Barang'}
-							</div>
-							{#if item.kategori}
-								<div class="text-xs text-primary">{item.kategori}</div>
-							{/if}
-						</Table.Cell>
-						<Table.Cell>
-							<span class="text-base font-medium">{Number(item.qty)}</span>
-							<span class="ml-1 text-xs text-muted-foreground">{item.satuan}</span>
-						</Table.Cell>
-						<Table.Cell>
-							<span class="text-sm">{item.fromWarehouse}</span>
-						</Table.Cell>
-						<Table.Cell>
-							<span class="text-sm">{item.lokasi || '-'}</span>
-						</Table.Cell>
-						<Table.Cell>
-							<span class="text-sm">{item.notes || '-'}</span>
-						</Table.Cell>
-					</Table.Row>
+				{#if transitoQuery.loading}
+					{#each Array(5) as _, i (i)}
+						<Table.Row>
+							<Table.Cell>
+								<div class="flex flex-col gap-2">
+									<Skeleton class="h-5 w-[150px]" />
+									<Skeleton class="h-3 w-[100px]" />
+								</div>
+							</Table.Cell>
+							<Table.Cell>
+								<div class="flex flex-col gap-1">
+									<Skeleton class="h-4 w-12" />
+									<Skeleton class="h-3 w-16" />
+								</div>
+							</Table.Cell>
+							<Table.Cell>
+								<Skeleton class="h-6 w-12" />
+							</Table.Cell>
+							<Table.Cell>
+								<Skeleton class="h-4 w-24" />
+							</Table.Cell>
+							<Table.Cell>
+								<Skeleton class="h-4 w-20" />
+							</Table.Cell>
+							<Table.Cell>
+								<Skeleton class="h-4 w-32" />
+							</Table.Cell>
+						</Table.Row>
+					{/each}
+				{:else if transitoQuery.current && transitoQuery.current.movements.length > 0}
+					{#each transitoQuery.current.movements as item (item.id)}
+						<Table.Row>
+							<Table.Cell>
+								<div class="font-semibold">{item.nama}</div>
+								{#if item.sn}
+									<div class="font-mono text-xs text-muted-foreground">SN: {item.sn}</div>
+								{/if}
+							</Table.Cell>
+							<Table.Cell>
+								<div class="text-xs font-medium text-muted-foreground uppercase">
+									{item.tipe === 'ASSET' ? 'Alat' : 'Barang'}
+								</div>
+								{#if item.kategori}
+									<div class="text-xs text-primary">{item.kategori}</div>
+								{/if}
+							</Table.Cell>
+							<Table.Cell>
+								<span class="text-base font-medium">{Number(item.qty)}</span>
+								<span class="ml-1 text-xs text-muted-foreground">{item.satuan}</span>
+							</Table.Cell>
+							<Table.Cell>
+								<span class="text-sm">{item.fromWarehouse}</span>
+							</Table.Cell>
+							<Table.Cell>
+								<span class="text-sm">{item.lokasi || '-'}</span>
+							</Table.Cell>
+							<Table.Cell>
+								<span class="text-sm">{item.notes || '-'}</span>
+							</Table.Cell>
+						</Table.Row>
+					{/each}
 				{:else}
 					<Table.Row>
-						<Table.Cell colspan={6} class="h-32 text-center text-muted-foreground">
-							Data transito tidak ditemukan.
+						<Table.Cell colspan={6} class="h-32 text-center text-muted-foreground italic">
+							Data transito tidak ditemukan{page.url.searchParams.get('search')
+								? ` untuk pencarian "${page.url.searchParams.get('search')}"`
+								: ''}.
 						</Table.Cell>
 					</Table.Row>
-				{/each}
+				{/if}
 			</Table.Body>
 		</Table.Root>
 	</div>

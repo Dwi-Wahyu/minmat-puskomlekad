@@ -3,6 +3,8 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { goto, invalidateAll } from '$app/navigation';
+	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { getBarangData } from './barang.remote';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -27,17 +29,26 @@
 
 	let { data }: { data: PageData } = $props();
 
+	const barangQuery = $derived(
+		getBarangData({
+			name: page.url.searchParams.get('name') || '',
+			page: Number(page.url.searchParams.get('page')) || 1
+		})
+	);
+
 	// Selection state
 	let selectedIds = $state<string[]>([]);
 	const isAllSelected = $derived(
-		data.consumables.length > 0 && selectedIds.length === data.consumables.length
+		barangQuery.current?.consumables &&
+			barangQuery.current.consumables.length > 0 &&
+			selectedIds.length === barangQuery.current.consumables.length
 	);
 
 	function toggleSelectAll() {
 		if (isAllSelected) {
 			selectedIds = [];
-		} else {
-			selectedIds = data.consumables.map((item: any) => item.id);
+		} else if (barangQuery.current?.consumables) {
+			selectedIds = barangQuery.current.consumables.map((item: any) => item.id);
 		}
 	}
 
@@ -76,7 +87,8 @@
 	);
 
 	const warehouseTrigger = $derived(
-		data.warehouses.find((w: any) => w.id === mutateWarehouseId)?.name ?? 'Pilih Gudang'
+		barangQuery.current?.warehouses.find((w: any) => w.id === mutateWarehouseId)?.name ??
+			'Pilih Gudang'
 	);
 
 	function confirmDelete(id: string) {
@@ -157,7 +169,7 @@
 					name="name"
 					placeholder="Cari nama barang atau deskripsi..."
 					class="pl-10"
-					value={data.filters.name}
+					value={page.url.searchParams.get('name')}
 				/>
 			</div>
 			<Button type="submit" variant="secondary" class="gap-2">
@@ -187,103 +199,142 @@
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
-					{#each data.consumables as item, i (item.id)}
-						<Table.Row class="transition-colors hover:bg-muted/30">
-							<Table.Cell class="text-center">
-								<Checkbox
-									checked={selectedIds.includes(item.id)}
-									onCheckedChange={() => toggleSelect(item.id)}
-									aria-label="Pilih item"
-								/>
-							</Table.Cell>
-							<Table.Cell class="text-center font-medium text-muted-foreground">
-								{i + 1 + (data.pagination.currentPage - 1) * 10}
-							</Table.Cell>
-							<Table.Cell>
-								<div class="flex flex-col gap-1">
-									<span class="font-semibold text-foreground">{item.name}</span>
-									<span class="font-mono text-[10px] text-muted-foreground"
-										>ID: {item.id.slice(0, 8)}</span
-									>
-								</div>
-							</Table.Cell>
-							<Table.Cell class="text-center">
-								<div class="flex flex-col items-center gap-0.5">
-									<span class="font-medium text-foreground">
-										{formatStock(item.totalStock || 0, item.baseUnit, item.conversions || [])}
-									</span>
-									{#if item.conversions?.length > 0 && Number(item.totalStock || 0) > 0}
-										<span class="text-[10px] text-muted-foreground italic">
-											(Total: {Number(item.totalStock)}
-											{item.baseUnit})
+					{#if barangQuery.loading}
+						{#each Array(10) as _, i (i)}
+							<Table.Row class="hover:bg-transparent">
+								<Table.Cell class="text-center">
+									<Skeleton class="h-4 w-4 mx-auto" />
+								</Table.Cell>
+								<Table.Cell class="text-center">
+									<Skeleton class="h-4 w-4 mx-auto" />
+								</Table.Cell>
+								<Table.Cell>
+									<div class="flex flex-col gap-2">
+										<Skeleton class="h-5 w-[180px]" />
+										<Skeleton class="h-3 w-[100px]" />
+									</div>
+								</Table.Cell>
+								<Table.Cell>
+									<div class="flex flex-col items-center gap-1">
+										<Skeleton class="h-4 w-24" />
+										<Skeleton class="h-3 w-16" />
+									</div>
+								</Table.Cell>
+								<Table.Cell>
+									<Skeleton class="h-6 w-16 rounded-full" />
+								</Table.Cell>
+								<Table.Cell class="text-right">
+									<Skeleton class="h-8 w-8 ml-auto" />
+								</Table.Cell>
+							</Table.Row>
+						{/each}
+					{:else if barangQuery.current && barangQuery.current.consumables.length > 0}
+						{#each barangQuery.current.consumables as item, i (item.id)}
+							<Table.Row class="transition-colors hover:bg-muted/30">
+								<Table.Cell class="text-center">
+									<Checkbox
+										checked={selectedIds.includes(item.id)}
+										onCheckedChange={() => toggleSelect(item.id)}
+										aria-label="Pilih item"
+									/>
+								</Table.Cell>
+								<Table.Cell class="text-center font-medium text-muted-foreground">
+									{i + 1 + (barangQuery.current.pagination.currentPage - 1) * 10}
+								</Table.Cell>
+								<Table.Cell>
+									<div class="flex flex-col gap-1">
+										<span class="font-semibold text-foreground">{item.name}</span>
+										<span class="font-mono text-[10px] text-muted-foreground"
+											>ID: {item.id.slice(0, 8)}</span
+										>
+									</div>
+								</Table.Cell>
+								<Table.Cell class="text-center">
+									<div class="flex flex-col items-center gap-0.5">
+										<span class="font-medium text-foreground">
+											{formatStock(item.totalStock || 0, item.baseUnit, item.conversions || [])}
 										</span>
-									{/if}
-								</div>
-							</Table.Cell>
-							<Table.Cell>
-								<Badge variant="outline" class="border-blue-200 bg-blue-50 text-blue-700">
-									{item.baseUnit}
-								</Badge>
-							</Table.Cell>
-							<Table.Cell class="text-right">
-								<DropdownMenu.Root>
-									<DropdownMenu.Trigger>
-										<Ellipsis class="size-4" />
-									</DropdownMenu.Trigger>
-									<DropdownMenu.Content align="end" class="w-48">
-										<DropdownMenu.Item onclick={() => openMutate(item.id)} class="gap-2">
-											<ArrowRightLeft class="size-4" /> Mutasi Manual
-										</DropdownMenu.Item>
-										<DropdownMenu.Item
-											onclick={() => goto(`/${page.params.org_slug}/barang/edit/${item.id}`)}
-											class="gap-2"
-										>
-											<Pencil class="size-4" /> Edit Data
-										</DropdownMenu.Item>
-										<DropdownMenu.Separator />
-										<DropdownMenu.Item
-											onclick={() => confirmDelete(item.id)}
-											class="gap-2 text-red-600"
-										>
-											<Trash2 class="size-4" /> Hapus Barang
-										</DropdownMenu.Item>
-									</DropdownMenu.Content>
-								</DropdownMenu.Root>
-							</Table.Cell>
-						</Table.Row>
+										{#if item.conversions?.length > 0 && Number(item.totalStock || 0) > 0}
+											<span class="text-[10px] text-muted-foreground italic">
+												(Total: {Number(item.totalStock)}
+												{item.baseUnit})
+											</span>
+										{/if}
+									</div>
+								</Table.Cell>
+								<Table.Cell>
+									<Badge variant="outline" class="border-blue-200 bg-blue-50 text-blue-700">
+										{item.baseUnit}
+									</Badge>
+								</Table.Cell>
+								<Table.Cell class="text-right">
+									<DropdownMenu.Root>
+										<DropdownMenu.Trigger>
+											<Ellipsis class="size-4" />
+										</DropdownMenu.Trigger>
+										<DropdownMenu.Content align="end" class="w-48">
+											<DropdownMenu.Item onclick={() => openMutate(item.id)} class="gap-2">
+												<ArrowRightLeft class="size-4" /> Mutasi Manual
+											</DropdownMenu.Item>
+											<DropdownMenu.Item
+												onclick={() => goto(`/${page.params.org_slug}/barang/edit/${item.id}`)}
+												class="gap-2"
+											>
+												<Pencil class="size-4" /> Edit Data
+											</DropdownMenu.Item>
+											<DropdownMenu.Separator />
+											<DropdownMenu.Item
+												onclick={() => confirmDelete(item.id)}
+												class="gap-2 text-red-600"
+											>
+												<Trash2 class="size-4" /> Hapus Barang
+											</DropdownMenu.Item>
+										</DropdownMenu.Content>
+									</DropdownMenu.Root>
+								</Table.Cell>
+							</Table.Row>
+						{/each}
 					{:else}
 						<Table.Row>
 							<Table.Cell colspan={6} class="h-32 text-center text-muted-foreground italic">
-								Tidak ada data barang ditemukan.
+								Tidak ada data barang ditemukan{page.url.searchParams.get('name')
+									? ` untuk pencarian "${page.url.searchParams.get('name')}"`
+									: ''}.
 							</Table.Cell>
 						</Table.Row>
-					{/each}
+					{/if}
 				</Table.Body>
 			</Table.Root>
 		</div>
 
-		{#if data.pagination.totalPages > 1}
+		{#if barangQuery.current && barangQuery.current.pagination.totalPages > 1}
 			<div
 				class="flex flex-col gap-4 border-t bg-muted/20 px-6 py-4 md:flex-row md:items-center md:justify-between"
 			>
 				<p class="text-sm font-medium text-muted-foreground">
-					Halaman <span class="font-bold text-foreground">{data.pagination.currentPage}</span> dari {data
-						.pagination.totalPages}
+					Halaman <span class="font-bold text-foreground"
+						>{barangQuery.current.pagination.currentPage}</span
+					> dari {barangQuery.current.pagination.totalPages}
 				</p>
 				<div class="flex gap-2">
 					<Button
 						variant="outline"
 						size="sm"
-						disabled={data.pagination.currentPage <= 1}
-						href="?page={data.pagination.currentPage - 1}&name={data.filters.name}"
+						disabled={barangQuery.current.pagination.currentPage <= 1}
+						href="?page={barangQuery.current.pagination.currentPage - 1}&name={page.url.searchParams.get(
+							'name'
+						) || ''}"
 					>
 						Sebelumnya
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
-						disabled={data.pagination.currentPage >= data.pagination.totalPages}
-						href="?page={data.pagination.currentPage + 1}&name={data.filters.name}"
+						disabled={barangQuery.current.pagination.currentPage >=
+							barangQuery.current.pagination.totalPages}
+						href="?page={barangQuery.current.pagination.currentPage + 1}&name={page.url.searchParams.get(
+							'name'
+						) || ''}"
 					>
 						Selanjutnya
 					</Button>
@@ -394,10 +445,12 @@
 					{warehouseTrigger}
 				</Select.Trigger>
 				<Select.Content>
-					{#each data.warehouses as wh (wh.id)}
+				{#if barangQuery.current?.warehouses}
+					{#each barangQuery.current.warehouses as wh (wh.id)}
 						<Select.Item value={wh.id} label={wh.name}>{wh.name}</Select.Item>
 					{/each}
-				</Select.Content>
+				{/if}
+			</Select.Content>
 			</Select.Root>
 		</div>
 		<div class="space-y-2">

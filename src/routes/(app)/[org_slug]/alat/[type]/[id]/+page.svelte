@@ -47,16 +47,9 @@
 	</div>
 
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-		{#if data.equipment.item.imagePath}
+		<!-- {#if data.equipment.item.imagePath}
 			<Card.Root class="overflow-hidden md:col-span-3">
 				<div class="flex flex-col gap-6 p-6 md:flex-row">
-					<div class="size-64 shrink-0 overflow-hidden rounded-lg border bg-muted shadow-sm">
-						<img
-							src="/uploads/item/{data.equipment.item.imagePath}"
-							alt={data.equipment.item.name}
-							class="size-full object-cover"
-						/>
-					</div>
 					<div class="flex flex-col justify-center gap-2">
 						<h2 class="text-2xl font-bold">{data.equipment.item.name}</h2>
 						<p class="text-muted-foreground">
@@ -67,13 +60,14 @@
 								{data.equipment!.condition.replace('_', ' ')}
 							</Badge>
 							<Badge variant="secondary" class={equipmentStatusColors[data.equipment!.status!]}>
-								{equipmentStatusLabels[data.equipment!.status!] || data.equipment!.status!.replace('_', ' ')}
+								{equipmentStatusLabels[data.equipment!.status!] ||
+									data.equipment!.status!.replace('_', ' ')}
 							</Badge>
 						</div>
 					</div>
 				</div>
 			</Card.Root>
-		{/if}
+		{/if} -->
 
 		<!-- Main Info -->
 		<Card.Root class={data.equipment.item.imagePath ? 'md:col-span-2' : 'md:col-span-2'}>
@@ -82,40 +76,53 @@
 					<Package class="size-5 text-blue-600" />
 					{data.equipment.item.name}
 				</Card.Title>
-				<Card.Description>ID Aset: {data.equipment.id}</Card.Description>
+				<Card.Description>{data.equipment.id}</Card.Description>
 			</Card.Header>
-			<Card.Content class="grid grid-cols-2 gap-x-4 gap-y-6">
-				<div class="space-y-1">
-					<span class="text-xs font-semibold text-muted-foreground uppercase">Serial Number</span>
-					<p class="font-mono text-lg">{data.equipment.serialNumber || '-'}</p>
-				</div>
-				<div class="space-y-1">
-					<span class="text-xs font-semibold text-muted-foreground uppercase">Brand / Merek</span>
-					<p class="text-lg">{data.equipment.brand || '-'}</p>
-				</div>
-				<div class="space-y-1">
-					<span class="text-xs font-semibold text-muted-foreground uppercase">Kondisi</span>
-					<div>
-						<Badge variant="outline" class={conditionColors[data.equipment!.condition]}>
-							{data.equipment!.condition.replace('_', ' ')}
-						</Badge>
+			<Card.Content>
+				{#if data.equipment.item.imagePath}
+					<div class="mb-6 size-64 shrink-0 overflow-hidden rounded-lg border bg-muted shadow-sm">
+						<img
+							src="/uploads/item/{data.equipment.item.imagePath}"
+							alt={data.equipment.item.name}
+							class="size-full object-cover"
+						/>
 					</div>
-				</div>
-				<div class="space-y-1">
-					<span class="text-xs font-semibold text-muted-foreground uppercase"
-						>Status Operasional</span
-					>
-					<div>
-						<Badge variant="secondary" class={equipmentStatusColors[data.equipment!.status!]}>
-							{equipmentStatusLabels[data.equipment!.status!] || data.equipment!.status!.replace('_', ' ')}
-						</Badge>
+				{/if}
+				<div class="grid grid-cols-2 gap-x-4 gap-y-6">
+					<div class="space-y-1">
+						<span class="text-xs font-semibold text-muted-foreground uppercase">Serial Number</span>
+						<p class="font-mono text-lg">{data.equipment.serialNumber || '-'}</p>
 					</div>
-				</div>
-				<div class="col-span-2 space-y-1">
-					<span class="text-xs font-semibold text-muted-foreground uppercase">Deskripsi Item</span>
-					<p class="text-sm text-muted-foreground">
-						{data.equipment.item.description || 'Tidak ada deskripsi.'}
-					</p>
+					<div class="space-y-1">
+						<span class="text-xs font-semibold text-muted-foreground uppercase">Brand / Merek</span>
+						<p class="text-lg">{data.equipment.brand || '-'}</p>
+					</div>
+					<div class="space-y-1">
+						<span class="text-xs font-semibold text-muted-foreground uppercase">Kondisi</span>
+						<div>
+							<Badge variant="outline" class={conditionColors[data.equipment!.condition]}>
+								{data.equipment!.condition.replace('_', ' ')}
+							</Badge>
+						</div>
+					</div>
+					<div class="space-y-1">
+						<span class="text-xs font-semibold text-muted-foreground uppercase"
+							>Status Operasional</span
+						>
+						<div>
+							<Badge variant="secondary" class={equipmentStatusColors[data.equipment!.status!]}>
+								{equipmentStatusLabels[data.equipment!.status!] ||
+									data.equipment!.status!.replace('_', ' ')}
+							</Badge>
+						</div>
+					</div>
+					<div class="col-span-2 space-y-1">
+						<span class="text-xs font-semibold text-muted-foreground uppercase">Deskripsi Item</span
+						>
+						<p class="text-sm text-muted-foreground">
+							{data.equipment.item.description || 'Tidak ada deskripsi.'}
+						</p>
+					</div>
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -163,7 +170,7 @@
 				>
 					{#each data.history as log (log.id)}
 						<div
-							class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group"
+							class="group relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse"
 						>
 							<!-- Icon/Dot -->
 							<div

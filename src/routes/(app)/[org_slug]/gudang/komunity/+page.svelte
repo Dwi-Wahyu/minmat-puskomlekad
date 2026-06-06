@@ -7,6 +7,8 @@
 	import * as Select from '$lib/components/ui/select';
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
+	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { getKomunityData } from './komunity.remote';
 	import { Search, ChevronLeft, ChevronRight, Building2, Filter } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -14,23 +16,26 @@
 	let { data }: { data: PageData } = $props();
 
 	// Filters State
-	let searchQuery = $state('');
-	let typeFilter = $state('');
-	let categoryFilter = $state('');
+	let searchQuery = $state(page.url.searchParams.get('search') || '');
+	let typeFilter = $state(page.url.searchParams.get('type') || '');
+	let categoryFilter = $state(page.url.searchParams.get('category') || '');
 
-	$effect(() => {
-		searchQuery = data.filters.search;
-		typeFilter = data.filters.type;
-		categoryFilter = data.filters.category;
-	});
+	const komunityQuery = $derived(
+		getKomunityData({
+			orgId: page.url.searchParams.get('orgId') || '',
+			search: page.url.searchParams.get('search') || '',
+			type: page.url.searchParams.get('type') || '',
+			category: page.url.searchParams.get('category') || ''
+		})
+	);
 
 	let currentPage = $state(1);
 	let itemsPerPage = $state(10);
 
-	let totalItems = $derived(data.items.length);
+	let totalItems = $derived(komunityQuery.current?.items.length || 0);
 	let totalPages = $derived(Math.ceil(totalItems / itemsPerPage));
 	let paginatedItems = $derived(
-		data.items.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+		komunityQuery.current?.items.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) || []
 	);
 
 	function updateFilters() {
@@ -56,7 +61,7 @@
 	}
 
 	let selectedOrgName = $derived(
-		data.organizations.find((o: any) => o.id === data.selectedOrgId)?.name || 'Pilih Kesatuan'
+		komunityQuery.current?.organizations.find((o: any) => o.id === komunityQuery.current?.selectedOrgId)?.name || 'Pilih Kesatuan'
 	);
 
 	const typeOptions = [
@@ -79,12 +84,12 @@
 			<p class="text-sm text-muted-foreground">Pergerakan inventaris gudang komunity</p>
 		</div>
 		<div class="flex flex-wrap items-end gap-3">
-			{#if data.isMabes}
+			{#if komunityQuery.current?.isMabes}
 				<div class="flex flex-col gap-1.5">
 					<Label for="org-filter">Filter Kesatuan</Label>
 					<SearchableSelect.Root
 						type="single"
-						value={data.selectedOrgId}
+						value={komunityQuery.current.selectedOrgId}
 						onValueChange={handleOrgChange}
 					>
 						<SearchableSelect.Trigger class="w-[200px] border-2">
@@ -92,7 +97,7 @@
 							{selectedOrgName}
 						</SearchableSelect.Trigger>
 						<SearchableSelect.Content>
-							{#each data.organizations as org (org.id)}
+							{#each komunityQuery.current.organizations as org (org.id)}
 								<SearchableSelect.Item value={org.id} label={org.name}
 									>{org.name}</SearchableSelect.Item
 								>
@@ -173,10 +178,47 @@
 				</Table.Header>
 
 				<Table.Body>
-					{#if paginatedItems.length === 0}
+					{#if komunityQuery.loading}
+						{#each Array(5) as _, i (i)}
+							<Table.Row class="border-b border-border">
+								<Table.Cell class="border-r border-border">
+									<div class="flex flex-col gap-2">
+										<Skeleton class="h-5 w-[150px]" />
+										<Skeleton class="h-3 w-[100px]" />
+									</div>
+								</Table.Cell>
+								<Table.Cell class="border-r border-border">
+									<Skeleton class="h-5 w-8 mx-auto" />
+								</Table.Cell>
+								<Table.Cell class="border-r border-border">
+									<Skeleton class="h-5 w-8 mx-auto" />
+								</Table.Cell>
+								<Table.Cell class="border-r border-border">
+									<Skeleton class="h-5 w-8 mx-auto" />
+								</Table.Cell>
+								<Table.Cell class="border-r border-border">
+									<Skeleton class="h-5 w-8 mx-auto" />
+								</Table.Cell>
+								<Table.Cell class="border-r border-border">
+									<Skeleton class="h-5 w-8 mx-auto" />
+								</Table.Cell>
+								<Table.Cell class="border-r border-border">
+									<Skeleton class="h-5 w-8 mx-auto" />
+								</Table.Cell>
+								<Table.Cell class="border-r border-border">
+									<Skeleton class="h-3 w-[100px]" />
+								</Table.Cell>
+								<Table.Cell>
+									<Skeleton class="h-5 w-12 mx-auto" />
+								</Table.Cell>
+							</Table.Row>
+						{/each}
+					{:else if paginatedItems.length === 0}
 						<Table.Row>
-							<Table.Cell colspan={12} class="h-32 text-center text-muted-foreground">
-								Tidak ada data yang sesuai dengan filter.
+							<Table.Cell colspan={12} class="h-32 text-center text-muted-foreground italic">
+								Tidak ada data yang sesuai dengan filter{page.url.searchParams.get('search')
+									? ` untuk pencarian "${page.url.searchParams.get('search')}"`
+									: ''}.
 							</Table.Cell>
 						</Table.Row>
 					{:else}

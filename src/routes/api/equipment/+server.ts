@@ -13,18 +13,31 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	const limit = Number(url.searchParams.get('limit')) || 20;
 	const offset = (page - 1) * limit;
 
+	const isCentralOrSuper = user.role === 'superadmin' || user.organization?.parentId === null;
+
 	let whereClause;
 	
-	if (search) {
-		whereClause = and(
-			eq(equipment.organizationId, user.organization.id),
-			or(
+	if (isCentralOrSuper) {
+		if (search) {
+			whereClause = or(
 				like(equipment.serialNumber, `%${search}%`),
 				like(item.name, `%${search}%`)
-			)
-		);
+			);
+		} else {
+			whereClause = undefined;
+		}
 	} else {
-		whereClause = eq(equipment.organizationId, user.organization.id);
+		if (search) {
+			whereClause = and(
+				eq(equipment.organizationId, user.organization.id),
+				or(
+					like(equipment.serialNumber, `%${search}%`),
+					like(item.name, `%${search}%`)
+				)
+			);
+		} else {
+			whereClause = eq(equipment.organizationId, user.organization.id);
+		}
 	}
 
 	const list = await db.query.equipment.findMany({
@@ -60,9 +73,14 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 // POST: Tambah equipment baru
 export const POST: RequestHandler = async ({ locals, request }) => {
-	const { user } = requirePermission('inventory', 'create', locals);
-
 	const body = await request.json();
+	const targetOrgId = body.organizationId || locals.user?.organization?.id;
+
+	const { user } = requirePermission('inventory', 'create', locals, targetOrgId);
+
+	// Tentukan orgId: superadmin/pusat dapat menentukan orgId tujuan, satker dikunci ke orgId sendiri
+	const isCentralOrSuper = user.role === 'superadmin' || user.organization?.parentId === null;
+	const orgId = isCentralOrSuper ? targetOrgId : user.organization.id;
 
 	const newEquipment = await db.insert(equipment).values({
 		id: crypto.randomUUID(),
@@ -70,10 +88,11 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		brand: body.brand,
 		itemId: body.itemId,
 		warehouseId: body.warehouseId,
-		organizationId: user.organization.id, // Selalu ikat ke organisasi user
+		organizationId: orgId, // Ikat ke organisasi yang sesuai
 		condition: body.condition ?? 'BAIK',
 		status: 'READY'
 	});
 
 	return json({ success: true, id: newEquipment[0].insertId }, { status: 201 });
 };
+

@@ -1,13 +1,42 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
-	import { RotateCw } from '@lucide/svelte';
+	import { RotateCw, ChevronLeft, ChevronRight } from '@lucide/svelte';
+	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { Button } from '$lib/components/ui/button';
+	import * as Select from '$lib/components/ui/select';
+	import { getPernikaLekData } from './pernika-lek.remote';
+
 	let { data }: { data: PageData } = $props();
 
-	let isLoading = $state(false);
+	const limit = $derived(Number(page.url.searchParams.get('limit')) || 50);
+	const currentPage = $derived(Number(page.url.searchParams.get('page')) || 1);
+
+	const pernikaQuery = $derived(
+		getPernikaLekData({
+			page: currentPage,
+			limit: limit
+		})
+	);
+
+	function updateLimit(val: string | undefined) {
+		if (!val) return;
+		const newUrl = new URL(page.url);
+		newUrl.searchParams.set('limit', val);
+		newUrl.searchParams.set('page', '1');
+		goto(newUrl.toString(), { noScroll: true });
+	}
+
+	function goToPage(p: number) {
+		const newUrl = new URL(page.url);
+		newUrl.searchParams.set('page', p.toString());
+		goto(newUrl.toString(), { noScroll: true });
+	}
 
 	function exportCSV() {
-		if (!data.groupedReports.length) return;
+		if (!pernikaQuery.current?.groupedReports.length) return;
 
 		const headers = [
 			'NO',
@@ -25,7 +54,7 @@
 		// FIX: Definisikan tipe data eksplisit untuk menghindari error TS7034
 		const csvRows: string[] = [];
 
-		data.groupedReports.forEach((org: any) => {
+		pernikaQuery.current.groupedReports.forEach((org: any) => {
 			org.items.forEach((item: any) => {
 				csvRows.push(
 					[
@@ -65,33 +94,50 @@
 				Daftar Materiil Berdasarkan Satuan Jajaran
 			</p>
 		</div>
-		<div class="flex shrink-0 items-center gap-2 print:hidden">
-			<form
-				method="POST"
-				action="?/reload"
-				use:enhance={() => {
-					isLoading = true;
-					return async ({ update }) => {
-						await update();
-						isLoading = false;
-					};
-				}}
-			>
-				<button
-					type="submit"
-					disabled={isLoading}
-					class="flex items-center gap-2 whitespace-nowrap rounded-md bg-primary px-6 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow transition hover:bg-primary/90 disabled:opacity-50"
+		<div class="flex flex-wrap items-center gap-4 print:hidden">
+			<div class="flex items-center gap-2">
+				<span class="text-xs font-medium text-muted-foreground">Baris per halaman:</span>
+				<Select.Root type="single" value={limit.toString()} onValueChange={updateLimit}>
+					<Select.Trigger class="h-8 w-20 text-xs">
+						{limit}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="25" label="25">25</Select.Item>
+						<Select.Item value="50" label="50">50</Select.Item>
+						<Select.Item value="100" label="100">100</Select.Item>
+					</Select.Content>
+				</Select.Root>
+			</div>
+
+			<div class="flex shrink-0 items-center gap-2">
+				<form
+					method="POST"
+					action="?/reload"
+					use:enhance={() => {
+						return async ({ result }) => {
+							if (result.type === 'success') {
+								pernikaQuery.refresh();
+							}
+						};
+					}}
 				>
-					<RotateCw class="h-4 w-4 {isLoading ? 'animate-spin' : ''}" />
-					{isLoading ? 'Memproses...' : 'Muat Ulang Data'}
+					<button
+						type="submit"
+						disabled={pernikaQuery.loading}
+						class="flex items-center gap-2 whitespace-nowrap rounded-md bg-primary px-6 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow transition hover:bg-primary/90 disabled:opacity-50"
+					>
+						<RotateCw class="h-4 w-4 {pernikaQuery.loading ? 'animate-spin' : ''}" />
+						{pernikaQuery.loading ? 'Memproses...' : 'Muat Ulang Data'}
+					</button>
+				</form>
+				<button
+					onclick={exportCSV}
+					disabled={pernikaQuery.loading || !pernikaQuery.current?.groupedReports.length}
+					class="whitespace-nowrap rounded-md bg-secondary px-6 py-2 text-xs font-bold uppercase tracking-wider text-secondary-foreground shadow transition hover:bg-secondary/90 disabled:opacity-50"
+				>
+					Ekspor (.CSV)
 				</button>
-			</form>
-			<button
-				onclick={exportCSV}
-				class="whitespace-nowrap rounded-md bg-secondary px-6 py-2 text-xs font-bold uppercase tracking-wider text-secondary-foreground shadow transition hover:bg-secondary/90"
-			>
-				Ekspor (.CSV)
-			</button>
+			</div>
 		</div>
 	</div>
 
@@ -117,44 +163,61 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each data.groupedReports as org}
-					{#each org.items as row, i}
-						<tr class="border-b border-border uppercase hover:bg-muted/30">
-							<td class="border border-border p-2 text-center font-mono">
-								{row.index}
-							</td>
-
-							{#if i === 0}
-								<td
-									class="border border-border bg-muted/50 p-2 px-4 text-center font-bold"
-									rowspan={org.items.length}
-								>
-									{org.orgName}
-								</td>
-							{/if}
-
-							<td class="border border-border p-2 px-4 text-left font-semibold">{row.itemName}</td>
-							<td class="border border-border p-2 px-4 text-center">{row.brand || '-'}</td>
-							<td class="border border-border p-2 text-center">{row.unit}</td>
-
-							<td class="border border-border bg-muted/20 p-2 text-center font-bold"
-								>{row.total}</td
-							>
-
-							<td class="border border-border p-2 text-center font-bold text-success"
-								>{row.baik || 0}</td
-							>
-							<td class="border border-border p-2 text-center font-bold text-primary"
-								>{row.rr || 0}</td
-							>
-							<td class="border border-border p-2 text-center font-bold text-destructive"
-								>{row.rb || 0}</td
-							>
-
-							<td class="border border-border p-2 px-4 text-left text-muted-foreground normal-case italic">
-								{row.ket || '-'}
-							</td>
+				{#if pernikaQuery.loading}
+					{#each Array(10) as _, i (i)}
+						<tr class="border-b border-border">
+							<td class="border border-border p-2 text-center"><Skeleton class="h-3 w-4 mx-auto" /></td>
+							<td class="border border-border p-2 px-4"><Skeleton class="h-3 w-20 mx-auto" /></td>
+							<td class="border border-border p-2 px-4"><Skeleton class="h-3 w-32" /></td>
+							<td class="border border-border p-2 px-4 text-center"><Skeleton class="h-3 w-20 mx-auto" /></td>
+							<td class="border border-border p-2 text-center"><Skeleton class="h-3 w-8 mx-auto" /></td>
+							<td class="border border-border p-2 text-center font-bold"><Skeleton class="h-3 w-8 mx-auto" /></td>
+							<td class="border border-border p-2 text-center font-bold text-success"><Skeleton class="h-3 w-4 mx-auto" /></td>
+							<td class="border border-border p-2 text-center font-bold text-primary"><Skeleton class="h-3 w-4 mx-auto" /></td>
+							<td class="border border-border p-2 text-center font-bold text-destructive"><Skeleton class="h-3 w-4 mx-auto" /></td>
+							<td class="border border-border p-2 px-4 text-left"><Skeleton class="h-3 w-24" /></td>
 						</tr>
+					{/each}
+				{:else if pernikaQuery.current && pernikaQuery.current.groupedReports.length > 0}
+					{#each pernikaQuery.current.groupedReports as org (org.orgName)}
+						{#each org.items as row, i (row.index)}
+							<tr class="border-b border-border uppercase hover:bg-muted/30">
+								<td class="border border-border p-2 text-center font-mono">
+									{row.index}
+								</td>
+
+								{#if i === 0}
+									<td
+										class="border border-border bg-muted/50 p-2 px-4 text-center font-bold"
+										rowspan={org.items.length}
+									>
+										{org.orgName}
+									</td>
+								{/if}
+
+								<td class="border border-border p-2 px-4 text-left font-semibold">{row.itemName}</td>
+								<td class="border border-border p-2 px-4 text-center">{row.brand || '-'}</td>
+								<td class="border border-border p-2 text-center">{row.unit}</td>
+
+								<td class="border border-border bg-muted/20 p-2 text-center font-bold"
+									>{row.total}</td
+								>
+
+								<td class="border border-border p-2 text-center font-bold text-success"
+									>{row.baik || 0}</td
+								>
+								<td class="border border-border p-2 text-center font-bold text-primary"
+									>{row.rr || 0}</td
+								>
+								<td class="border border-border p-2 text-center font-bold text-destructive"
+									>{row.rb || 0}</td
+								>
+
+								<td class="border border-border p-2 px-4 text-left text-muted-foreground normal-case italic">
+									{row.ket || '-'}
+								</td>
+							</tr>
+						{/each}
 					{/each}
 				{:else}
 					<tr>
@@ -165,10 +228,66 @@
 							Data tidak tersedia.
 						</td>
 					</tr>
-				{/each}
+				{/if}
 			</tbody>
 		</table>
 	</div>
+
+	{#if pernikaQuery.current && pernikaQuery.current.pagination.totalPages > 1}
+		<div class="flex items-center justify-between border-t py-4">
+			<div class="text-xs text-muted-foreground">
+				Menampilkan <span class="font-semibold text-foreground"
+					>{(currentPage - 1) * limit + 1}</span
+				>
+				-
+				<span class="font-semibold text-foreground"
+					>{Math.min(currentPage * limit, pernikaQuery.current.pagination.totalItems)}</span
+				>
+				dari <span class="font-semibold text-foreground"
+					>{pernikaQuery.current.pagination.totalItems}</span
+				> data
+			</div>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => goToPage(currentPage - 1)}
+					disabled={currentPage <= 1}
+					class="h-8 gap-1 px-2 text-xs"
+				>
+					<ChevronLeft class="h-3 w-3" />
+					Sebelumnya
+				</Button>
+				<div class="flex items-center gap-1">
+					{#each Array(pernikaQuery.current.pagination.totalPages) as _, i}
+						{@const p = i + 1}
+						{#if p === 1 || p === pernikaQuery.current.pagination.totalPages || (p >= currentPage - 1 && p <= currentPage + 1)}
+							<Button
+								variant={currentPage === p ? 'default' : 'ghost'}
+								size="sm"
+								onclick={() => goToPage(p)}
+								class="h-8 w-8 p-0 text-xs"
+							>
+								{p}
+							</Button>
+						{:else if p === currentPage - 2 || p === currentPage + 2}
+							<span class="px-1 text-muted-foreground">...</span>
+						{/if}
+					{/each}
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => goToPage(currentPage + 1)}
+					disabled={currentPage >= pernikaQuery.current.pagination.totalPages}
+					class="h-8 gap-1 px-2 text-xs"
+				>
+					Selanjutnya
+					<ChevronRight class="h-3 w-3" />
+				</Button>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>

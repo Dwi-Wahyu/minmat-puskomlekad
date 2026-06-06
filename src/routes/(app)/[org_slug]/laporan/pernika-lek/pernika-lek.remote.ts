@@ -5,6 +5,12 @@ import { organization } from '$lib/server/db/auth.schema';
 import { eq, sql } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import { getOrSetCache, CacheTTL } from '$lib/server/redis';
+import * as v from 'valibot';
+
+const pernikaSchema = v.object({
+	page: v.optional(v.number(), 1),
+	limit: v.optional(v.number(), 50)
+});
 
 export type PernikaLekReportItem = {
 	orgName: string;
@@ -20,16 +26,26 @@ export type PernikaLekReportItem = {
 };
 
 export type PernikaLekGroupedData = {
-	orgName: string;
-	items: PernikaLekReportItem[];
-}[];
+	groupedReports: {
+		orgName: string;
+		items: PernikaLekReportItem[];
+	}[];
+	pagination: {
+		currentPage: number;
+		totalPages: number;
+		totalItems: number;
+	};
+};
 
-export const getPernikaLekData = query(async (): Promise<PernikaLekGroupedData> => {
+export const getPernikaLekData = query(pernikaSchema, async (args): Promise<PernikaLekGroupedData> => {
 	const { user } = requireAuth();
 	const orgSlug = user.organization.slug;
+	const { page = 1, limit = 50 } = args;
+	const offset = (page - 1) * limit;
+
 	const cacheKey = `report:pernika-lek:${orgSlug}`;
 
-	return await getOrSetCache(
+	const allGrouped = await getOrSetCache(
 		cacheKey,
 		async () => {
 			const rawData = await db
@@ -65,8 +81,36 @@ export const getPernikaLekData = query(async (): Promise<PernikaLekGroupedData> 
 					});
 				}
 				return acc;
-			}, [] as PernikaLekGroupedData);
+			}, [] as { orgName: string; items: PernikaLekReportItem[] }[]);
 		},
 		CacheTTL.LAPORAN
 	);
+
+	// Flatten all items to perform manual pagination while keeping global indexing
+	const allItems = allGrouped.flatMap(org => org.items);
+	const totalItemsCount = allItems.length;
+	const paginatedItems = allItems.slice(offset, offset + limit);
+
+	// Re-group paginated items
+	const regrouped = paginatedItems.reduce((acc, curr) => {
+		let existingOrg = acc.find(o => o.orgName === curr.orgName);
+		if (existingOrg) {
+			existingOrg.items.push(curr);
+		} else {
+			acc.push({
+				orgName: curr.orgName,
+				items: [curr]
+			});
+		}
+		return acc;
+	}, [] as { orgName: string; items: PernikaLekReportItem[] }[]);
+
+	return {
+		groupedReports: regrouped,
+		pagination: {
+			currentPage: page,
+			totalPages: Math.ceil(totalItemsCount / limit),
+			totalItems: totalItemsCount
+		}
+	};
 });

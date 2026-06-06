@@ -103,28 +103,23 @@
 		</div>
 	</div>
 
-	<Card.Root class="overflow-hidden border-border shadow-sm">
-		<Card.Header class="border-b border-border bg-muted/50">
-			<Card.Title
-				class="flex items-center gap-2 text-sm font-bold tracking-wider text-muted-foreground uppercase"
-			>
-				<Info size={16} />
-				Informasi Pemeliharaan
-			</Card.Title>
-		</Card.Header>
-		<Card.Content class="p-6">
-			<form 
-				method="POST" 
+	<Card.Root class="overflow-hidden">
+		<Card.Content>
+			<form
+				method="POST"
 				use:enhance={() => {
 					return async ({ result, update }) => {
-						if (result?.type === 'success' || (result?.type === 'redirect' && result.location.includes('pemeliharaan'))) {
+						if (
+							result?.type === 'success' ||
+							(result?.type === 'redirect' && result.location.includes('pemeliharaan'))
+						) {
 							showSuccessNotification();
 						} else if (result?.type === 'failure') {
 							showErrorNotification((result?.data as any)?.message || 'Terjadi kesalahan');
 						}
 						await update();
 					};
-				}} 
+				}}
 				class="space-y-6"
 			>
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -264,7 +259,7 @@
 					/>
 				</div>
 
-				<div class="flex justify-end gap-3 border-t border-border pt-4">
+				<div class="flex justify-end gap-3">
 					<Button
 						variant="outline"
 						href="/{data.org_slug}/pemeliharaan"

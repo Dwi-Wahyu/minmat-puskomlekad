@@ -31,10 +31,10 @@
 		<div
 			class="absolute inset-0 bg-[url('/backgrounds/login-background.webp')] bg-cover bg-center"
 		></div>
-		<div class="absolute inset-0 bg-gradient-to-b from-primary/10 to-background"></div>
+		<div class="absolute inset-0 bg-linear-to-b from-primary/10 to-background"></div>
 	</div>
 
-	<div class="relative z-10 w-full max-w-[450px]">
+	<div class="relative z-10 w-full max-w-112.5">
 		<div
 			class="overflow-hidden rounded-2xl border border-border bg-card/80 p-8 shadow-2xl backdrop-blur-xl md:p-10"
 		>
@@ -102,11 +102,11 @@
 					>
 				</div>
 
-				{#if form?.message}
+				<!-- {#if form?.message}
 					<div class="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
 						<p class="text-center text-xs font-medium text-destructive">{form.message}</p>
 					</div>
-				{/if}
+				{/if} -->
 
 				<button
 					type="submit"

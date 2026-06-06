@@ -55,17 +55,21 @@
 
 <div class="mx-auto max-w-6xl space-y-8 p-6">
 	<div>
-		<h1 class="text-3xl font-bold tracking-tight text-foreground">Profil Saya</h1>
+		<h1 class="text-3xl font-bold tracking-tight text-foreground">Profil</h1>
 		<p class="text-muted-foreground">Kelola informasi akun dan keamanan sesi Anda.</p>
 	</div>
 
 	{#if form?.success}
-		<div class="flex items-center gap-3 rounded-xl border border-success/20 bg-success/10 px-4 py-3 text-sm text-success">
+		<div
+			class="flex items-center gap-3 rounded-xl border border-success/20 bg-success/10 px-4 py-3 text-sm text-success"
+		>
 			<ShieldCheck class="size-5" />
 			{form.message}
 		</div>
 	{:else if form?.message}
-		<div class="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+		<div
+			class="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+		>
 			<Trash2 class="size-5" />
 			{form.message}
 		</div>
@@ -73,9 +77,9 @@
 
 	<div class="grid gap-8 lg:grid-cols-12">
 		<!-- Profil User -->
-		<div class="lg:col-span-4 space-y-6">
-			<Card.Root class="overflow-hidden border-none shadow-sm ring-1 ring-border">
-				<Card.Header class="bg-muted/30 pb-8 text-center pt-8 border-b">
+		<div class="space-y-6 lg:col-span-4">
+			<Card.Root class="overflow-hidden border-none pt-0 shadow-sm ring-1 ring-border">
+				<Card.Header class="border-b bg-muted/30 pt-8 pb-8 text-center">
 					<div
 						class="mx-auto mb-4 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-background bg-muted shadow-sm"
 					>
@@ -88,22 +92,23 @@
 					<Card.Title class="text-xl">{data.user.name}</Card.Title>
 					<Card.Description class="font-mono text-xs">@{data.user.username}</Card.Description>
 				</Card.Header>
-				<Card.Content class="space-y-6 pt-6">
+				<Card.Content class="space-y-6">
 					<div class="space-y-3">
 						<div class="flex items-center justify-between">
-							<Label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Hak Akses</Label>
-							<span class="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary uppercase">
-								{data.user.role}
-							</span>
+							<Label class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+								>Hak Akses</Label
+							>
 						</div>
 						<div class="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
 							<ShieldCheck class="h-4 w-4 text-muted-foreground" />
 							<span class="font-medium text-foreground uppercase">{data.user.role}</span>
 						</div>
 					</div>
-					
+
 					<div class="space-y-3">
-						<Label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Kesatuan</Label>
+						<Label class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+							>Kesatuan</Label
+						>
 						<div class="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
 							<Globe class="h-4 w-4 text-muted-foreground" />
 							<span class="font-medium text-foreground">{data.user.organization.name}</span>
@@ -111,7 +116,9 @@
 					</div>
 
 					<div class="space-y-3">
-						<Label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email</Label>
+						<Label class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+							>Email</Label
+						>
 						<div class="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
 							<Mail class="h-4 w-4 text-muted-foreground" />
 							<span class="truncate font-medium text-foreground">{data.user.email}</span>
@@ -122,17 +129,21 @@
 		</div>
 
 		<!-- Manajemen Sesi & Password -->
-		<div class="lg:col-span-8 space-y-8">
+		<div class="space-y-8 lg:col-span-8">
 			<!-- Ubah Password -->
 			<Card.Root class="border-none shadow-sm ring-1 ring-border">
 				<Card.Header>
 					<div class="flex items-center gap-3">
-						<div class="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+						<div
+							class="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary"
+						>
 							<KeyRound class="size-5" />
 						</div>
 						<div>
 							<Card.Title>Ubah Password</Card.Title>
-							<Card.Description>Amankan akun Anda dengan mengganti password secara berkala.</Card.Description>
+							<Card.Description
+								>Amankan akun Anda dengan mengganti password secara berkala.</Card.Description
+							>
 						</div>
 					</div>
 				</Card.Header>
@@ -174,7 +185,7 @@
 							</div>
 						</div>
 						<div class="flex justify-end pt-2">
-							<Button type="submit" class="w-full sm:w-auto px-8">Update Password</Button>
+							<Button type="submit" class="w-full px-8 sm:w-auto">Update Password</Button>
 						</div>
 					</form>
 				</Card.Content>
@@ -182,14 +193,23 @@
 
 			<!-- Sesi & Riwayat -->
 			<Tabs.Root bind:value={activeTab} class="space-y-6">
-				<Tabs.List variant="line" class="w-full justify-start border-b rounded-none px-0 h-auto bg-transparent">
-					<Tabs.Trigger value="sessions" class="rounded-none border-b-2 border-transparent data-active:border-primary px-6 py-3 bg-transparent data-active:bg-transparent">
+				<Tabs.List
+					variant="line"
+					class="h-auto w-full justify-start rounded-none border-b bg-transparent px-0"
+				>
+					<Tabs.Trigger
+						value="sessions"
+						class="rounded-none border-b-2 border-transparent bg-transparent px-6 py-3 data-active:border-primary data-active:bg-transparent"
+					>
 						<div class="flex items-center gap-2">
 							<Monitor class="size-4" />
 							<span>Sesi Aktif</span>
 						</div>
 					</Tabs.Trigger>
-					<Tabs.Trigger value="history" class="rounded-none border-b-2 border-transparent data-active:border-primary px-6 py-3 bg-transparent data-active:bg-transparent">
+					<Tabs.Trigger
+						value="history"
+						class="rounded-none border-b-2 border-transparent bg-transparent px-6 py-3 data-active:border-primary data-active:bg-transparent"
+					>
 						<div class="flex items-center gap-2">
 							<History class="size-4" />
 							<span>Riwayat Login</span>
@@ -198,7 +218,7 @@
 				</Tabs.List>
 
 				<Tabs.Content value="sessions">
-					<Card.Root class="border-none shadow-sm ring-1 ring-border overflow-hidden">
+					<Card.Root class="overflow-hidden border-none pt-0 shadow-sm ring-1 ring-border">
 						<Card.Content class="p-0">
 							<Table.Root>
 								<Table.Header class="bg-muted/30">
@@ -219,21 +239,28 @@
 									{:else}
 										{#each data.sessions as sess (sess.id)}
 											{@const Icon = getDeviceIcon(sess.userAgent)}
-											<Table.Row class="hover:bg-muted/20 transition-colors">
+											<Table.Row class="transition-colors hover:bg-muted/20">
 												<Table.Cell class="px-4">
 													<div class="flex items-center gap-3">
-														<div class="flex size-8 items-center justify-center rounded-full bg-muted shadow-inner">
+														<div
+															class="flex size-8 items-center justify-center rounded-full bg-muted shadow-inner"
+														>
 															<Icon class="size-4 text-muted-foreground" />
 														</div>
-														<div class="flex flex-col max-w-[240px]">
-															<span class="truncate text-xs font-medium text-foreground" title={sess.userAgent}>
+														<div class="flex max-w-60 flex-col">
+															<span
+																class="truncate text-xs font-medium text-foreground"
+																title={sess.userAgent}
+															>
 																{sess.userAgent || 'Unknown Device'}
 															</span>
 														</div>
 													</div>
 												</Table.Cell>
 												<Table.Cell class="px-4">
-													<div class="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+													<div
+														class="flex items-center gap-2 font-mono text-xs text-muted-foreground"
+													>
 														<Globe class="size-3" />
 														{sess.ipAddress || 'Unknown'}
 													</div>
@@ -262,7 +289,7 @@
 				</Tabs.Content>
 
 				<Tabs.Content value="history">
-					<Card.Root class="border-none shadow-sm ring-1 ring-border overflow-hidden">
+					<Card.Root class="overflow-hidden border-none pt-0 shadow-sm ring-1 ring-border">
 						<Card.Content class="p-0">
 							<Table.Root>
 								<Table.Header class="bg-muted/30">
@@ -282,10 +309,12 @@
 									{:else}
 										{#each data.loginHistory as log (log.id)}
 											{@const Icon = getDeviceIcon(log.data?.userAgent)}
-											<Table.Row class="hover:bg-muted/20 transition-colors">
+											<Table.Row class="transition-colors hover:bg-muted/20">
 												<Table.Cell class="px-4">
 													<div class="flex items-center gap-3">
-														<div class="flex size-8 items-center justify-center rounded-full bg-muted shadow-inner">
+														<div
+															class="flex size-8 items-center justify-center rounded-full bg-muted shadow-inner"
+														>
 															<Icon class="size-4 text-muted-foreground" />
 														</div>
 														<span
@@ -296,7 +325,7 @@
 														</span>
 													</div>
 												</Table.Cell>
-												<Table.Cell class="px-4 text-xs font-mono text-muted-foreground">
+												<Table.Cell class="px-4 font-mono text-xs text-muted-foreground">
 													{log.data?.ipAddress || 'Unknown'}
 												</Table.Cell>
 												<Table.Cell class="px-4 text-xs text-muted-foreground">

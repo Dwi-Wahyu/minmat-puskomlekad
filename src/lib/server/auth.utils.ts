@@ -35,7 +35,8 @@ export function requireRole(rolesAllowed: string | string[], locals?: App.Locals
 export function requirePermission(
 	resource: keyof typeof accessControl.statements,
 	action: string,
-	locals?: App.Locals
+	locals?: App.Locals,
+	targetOrgId?: string | null
 ) {
 	const { user } = requireAuth(locals);
 
@@ -52,6 +53,32 @@ export function requirePermission(
 		throw error(403, `Forbidden: Role ${user.role} tidak memiliki izin ${String(action)} pada ${String(resource)}`);
 	}
 
+	// Cek batasan organisasi untuk aksi modifikasi/menulis
+	const isWriteAction = ['create', 'update', 'delete', 'approve', 'validate', 'ship', 'receive'].includes(action);
+	if (isWriteAction && user.role !== 'superadmin') {
+		// Pimpinan dan Kakomlek hanya bisa memodifikasi resource organisasinya sendiri (kecuali jika organisasi pusat parentId === null)
+		if (['pimpinan', 'kakomlek'].includes(user.role)) {
+			const isCentralOrg = user.organization && user.organization.parentId === null;
+			if (!isCentralOrg && targetOrgId && targetOrgId !== user.organization?.id) {
+				throw error(403, `Forbidden: Role ${user.role} hanya dapat memodifikasi resource milik organisasinya sendiri`);
+			}
+		}
+
+		// Operator hanya bisa membuat mutasi/movement di organisasinya sendiri
+		if (['operatorPusatDanDaerah', 'operatorBinmatDanBekharrah'].includes(user.role)) {
+			const isOperatorAllowed = (resource === 'movement' && action === 'create') || 
+									  (resource === 'distribution' && ['validate', 'ship', 'receive'].includes(action));
+			if (!isOperatorAllowed) {
+				throw error(403, `Forbidden: Operator hanya diizinkan untuk membuat mutasi dan pergerakan inventaris`);
+			}
+			
+			if (targetOrgId && targetOrgId !== user.organization?.id) {
+				throw error(403, `Forbidden: Operator hanya dapat membuat mutasi/pergerakan di organisasi sendiri`);
+			}
+		}
+	}
+
 	return { user };
 }
+
 

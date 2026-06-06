@@ -5,8 +5,8 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	if (locals.user) {
-		return redirect(302, `${locals.user.organization.slug}/dashboard`);
+	if (locals.user && locals.user.organization?.slug) {
+		return redirect(302, `/${locals.user.organization.slug}/dashboard`);
 	}
 
 	return { user: locals.user };
@@ -22,19 +22,17 @@ export const actions: Actions = {
 			await auth.api.signInUsername({
 				body: {
 					username,
-					password,
-					callbackURL: '/dashboard'
-				},
-				asResponse: true
+					password
+				}
 			});
 		} catch (error) {
-			console.log(error);
+			console.error('SignIn Error:', error);
 
 			if (error instanceof APIError) {
-				return fail(400, { message: error.message || 'Signin failed' });
+				return fail(400, { message: error.message || 'Username atau password salah' });
 			}
 
-			return fail(500, { message: 'Unexpected error' });
+			return fail(500, { message: 'Terjadi kesalahan sistem' });
 		}
 
 		const userResult = await db.query.user.findFirst({
@@ -48,8 +46,15 @@ export const actions: Actions = {
 			}
 		});
 
-		if (!userResult) return fail(400, { message: 'User tidak ditemukan' });
+		if (!userResult || userResult.members.length === 0) {
+			return fail(400, { message: 'User tidak ditemukan atau tidak memiliki organisasi' });
+		}
 
-		return redirect(302, `${userResult.members[0].organization?.slug}/dashboard`);
+		const orgSlug = userResult.members[0].organization?.slug;
+		if (!orgSlug) {
+			return fail(400, { message: 'Organisasi user tidak valid' });
+		}
+
+		return redirect(302, `/${orgSlug}/dashboard`);
 	}
 };

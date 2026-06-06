@@ -264,12 +264,10 @@
 				</h3>
 				<div class="space-y-4">
 					{#each recentEquipments as eq (eq.id)}
-						<div class="group flex cursor-default items-center gap-4">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary"
-							>
-								<Box size={18} />
-							</div>
+						<a
+							href="/{data.org_slug}/alat/{eq.type}/{eq.id}"
+							class="group flex cursor-pointer items-center gap-4"
+						>
 							<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2">
 									<p class="truncate text-sm font-bold text-foreground">{eq.name}</p>
@@ -289,7 +287,7 @@
 										? 'Rusak Ringan'
 										: 'Rusak Berat'}
 							</div>
-						</div>
+						</a>
 					{/each}
 				</div>
 				<a

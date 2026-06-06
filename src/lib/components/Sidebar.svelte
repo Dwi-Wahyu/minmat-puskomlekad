@@ -54,7 +54,9 @@
 		const isSidebarOpen = sidebar.open;
 
 		if (!isSidebarOpen) {
-			untrack(() => { openDropdown = null; });
+			untrack(() => {
+				openDropdown = null;
+			});
 			return;
 		}
 
@@ -62,9 +64,10 @@
 		const activeMenu = menus.find(
 			(m) =>
 				m.isDropdown &&
-				(currentPath.startsWith(m.path) || m.children.some((child) => currentPath.startsWith(child.path)))
+				(currentPath.startsWith(m.path) ||
+					m.children.some((child) => currentPath.startsWith(child.path)))
 		);
-		
+
 		untrack(() => {
 			if (activeMenu && openDropdown !== activeMenu.name) {
 				openDropdown = activeMenu.name;
@@ -165,6 +168,7 @@
 			icon: Building2,
 			isDropdown: true,
 			path: getPath('/fasilitas'),
+			role: ['superadmin', 'pimpinan', 'kakomlek'],
 			children: [
 				{ name: 'Data Tanah', path: getPath('/tanah') },
 				{ name: 'Data Bangunan', path: getPath('/bangunan') },
@@ -172,7 +176,7 @@
 			]
 		},
 		{
-			name: 'Administrasi',
+			name: 'Pengaturan',
 			icon: Settings,
 			isDropdown: true,
 			path: getPath('/pengaturan'),
