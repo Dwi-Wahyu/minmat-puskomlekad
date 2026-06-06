@@ -51,6 +51,11 @@
 	const displayTitle = $derived(
 		title || (type === 'success' ? 'Success!' : type === 'error' ? 'Error!' : 'Info')
 	);
+
+	function handleAction() {
+		open = false;
+		onAction();
+	}
 </script>
 
 <Dialog.Root bind:open>
@@ -78,7 +83,7 @@
 				<!-- <Dialog.Close class={buttonVariants({ variant: 'outline' })}>
 					Continue shopping
 				</Dialog.Close> -->
-				<Button class={cn('min-w-[120px]', config.bg, config.fg, 'hover:opacity-90')} onclick={onAction}>
+				<Button class={cn('min-w-[120px]', config.bg, config.fg, 'hover:opacity-90')} onclick={handleAction}>
 					{actionLabel}
 				</Button>
 			</div>

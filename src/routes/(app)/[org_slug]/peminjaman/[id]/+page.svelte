@@ -31,6 +31,11 @@
 
 	let { data }: { data: PageData } = $props();
 
+	const assets = $derived(data.lending.items.filter((item) => item.equipment?.item?.type === 'ASSET'));
+	const consumables = $derived(
+		data.lending.items.filter((item) => item.equipment?.item?.type === 'CONSUMABLE')
+	);
+
 	// State Dialog
 	let notificationOpen = $state(false);
 	let notificationType = $state<'success' | 'error' | 'info'>('success');
@@ -67,7 +72,11 @@
 			color: 'bg-primary/10 text-primary border-primary/20',
 			icon: CheckCircle2
 		},
-		REJECTED: { label: 'Ditolak', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
+		REJECTED: {
+			label: 'Ditolak',
+			color: 'bg-destructive/10 text-destructive border-destructive/20',
+			icon: XCircle
+		},
 		PERINTAH_LANGSUNG: {
 			label: 'Perintah Langsung',
 			color: 'bg-secondary/10 text-secondary border-secondary/20',
@@ -167,14 +176,20 @@
 			{/if}
 
 			{#if data.canExecute}
-				<Button class="bg-primary text-primary-foreground hover:bg-primary/90" onclick={() => (startDialogOpen = true)}>
+				<Button
+					class="bg-primary text-primary-foreground hover:bg-primary/90"
+					onclick={() => (startDialogOpen = true)}
+				>
 					<PlayCircle class="mr-2 size-4" />
 					Barang Diambil
 				</Button>
 			{/if}
 
 			{#if data.canReturn}
-				<Button class="bg-secondary text-secondary-foreground hover:bg-secondary/90" onclick={() => (returnDialogOpen = true)}>
+				<Button
+					class="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+					onclick={() => (returnDialogOpen = true)}
+				>
 					<RotateCcw class="mr-2 size-4" />
 					Kembalikan Barang
 				</Button>
@@ -225,7 +240,8 @@
 						<div
 							class={cn(
 								'absolute top-5 left-[calc(50%+25px)] h-0.5 w-[calc(100%-50px)] md:top-6',
-								isCompleted && statusOrder.indexOf(data.lending.status!) > statusOrder.indexOf(step.status)
+								isCompleted &&
+									statusOrder.indexOf(data.lending.status!) > statusOrder.indexOf(step.status)
 									? 'bg-success'
 									: 'bg-muted'
 							)}
@@ -239,7 +255,7 @@
 	<Tabs value="info" class="w-full">
 		<TabsList class="grid w-full max-w-md grid-cols-3">
 			<TabsTrigger value="info">Informasi</TabsTrigger>
-			<TabsTrigger value="items">Daftar Alat ({data.lending.items.length})</TabsTrigger>
+			<TabsTrigger value="items">Daftar Inventaris ({data.lending.items.length})</TabsTrigger>
 			<TabsTrigger value="history">Riwayat</TabsTrigger>
 		</TabsList>
 
@@ -279,9 +295,7 @@
 							<Separator />
 							<div class="space-y-2">
 								<Label class="text-xs text-muted-foreground uppercase">Dokumen Pendukung</Label>
-								<div
-									class="flex items-center justify-between rounded-md border bg-muted/50 p-3 transition-colors hover:bg-muted"
-								>
+								<div class="flex items-center justify-between gap-3">
 									<div class="flex items-center gap-3 overflow-hidden">
 										<div class="rounded bg-background p-2 text-primary shadow-sm">
 											<FileText class="size-5" />
@@ -295,13 +309,12 @@
 									</div>
 									<Button
 										variant="outline"
-										size="sm"
+										size="icon"
 										href={data.lending.attachmentPath}
 										download={data.lending.attachmentName}
 										class="shrink-0"
 									>
-										<Download class="mr-2 size-4" />
-										Unduh
+										<Download />
 									</Button>
 								</div>
 							</div>
@@ -322,7 +335,6 @@
 							<div>
 								<Label class="text-xs text-muted-foreground uppercase">Diajukan Oleh</Label>
 								<p class="text-sm font-medium">{data.lending.requestedByUser?.name}</p>
-								<p class="text-xs text-muted-foreground">{data.lending.requestedByUser?.email}</p>
 							</div>
 						</div>
 
@@ -340,7 +352,7 @@
 							<div class="rounded-lg border border-secondary/20 bg-secondary/10 p-4">
 								<div class="mb-1 flex items-center gap-2 font-bold text-secondary">
 									<AlertCircle class="size-4" />
-									Perintah Langsung (Command Override)
+									Perintah Langsung
 								</div>
 								<p class="text-sm text-secondary/80">{data.lending.overrideReason}</p>
 								<p class="mt-2 text-xs font-medium text-secondary italic">
@@ -365,54 +377,129 @@
 			</div>
 		</TabsContent>
 
-		<TabsContent value="items" class="mt-6">
-			<Card.Root>
-				<Table.Root>
-					<Table.Header>
-						<Table.Row>
-							<Table.Head>Nama Alat</Table.Head>
-							<Table.Head>Serial Number</Table.Head>
-							<Table.Head>Brand</Table.Head>
-							<Table.Head>Gudang</Table.Head>
-							<Table.Head class="text-right">Qty</Table.Head>
-						</Table.Row>
-					</Table.Header>
-					<Table.Body>
-						{#each data.lending.items as item (item.id)}
+		<TabsContent value="items" class="mt-6 space-y-6">
+			{#if assets.length > 0}
+				<Card.Root class="py-0">
+					<Card.Header class="px-6 pt-6 pb-2">
+						<Card.Title class="text-lg font-bold">Daftar Alat (Asset)</Card.Title>
+					</Card.Header>
+					<Table.Root>
+						<Table.Header>
 							<Table.Row>
-								<Table.Cell class="font-medium">{item.equipment!.item.name}</Table.Cell>
-								<Table.Cell
-									><code class="rounded bg-muted px-1 text-xs">{item.equipment!.serialNumber}</code
-									></Table.Cell
-								>
-								<Table.Cell>{item.equipment!.brand}</Table.Cell>
-								<Table.Cell>{item.equipment!.warehouse?.name}</Table.Cell>
-								<Table.Cell class="text-right font-bold">{item.qty}</Table.Cell>
+								<Table.Head>Nama Alat</Table.Head>
+								<Table.Head>Serial Number</Table.Head>
+								<Table.Head>Jenis</Table.Head>
+								<Table.Head>Brand</Table.Head>
+								<Table.Head>Gudang</Table.Head>
 							</Table.Row>
-						{/each}
-					</Table.Body>
-				</Table.Root>
-			</Card.Root>
+						</Table.Header>
+						<Table.Body>
+							{#each assets as item (item.id)}
+								<Table.Row>
+									<Table.Cell class="font-medium">{item.equipment?.item?.name || '-'}</Table.Cell>
+									<Table.Cell>
+										{#if item.equipment?.serialNumber}
+											<code class="rounded bg-muted px-1 text-xs">{item.equipment.serialNumber}</code>
+										{:else}
+											-
+										{/if}
+									</Table.Cell>
+									<Table.Cell>{item.equipment?.item?.equipmentType || 'ALAT'}</Table.Cell>
+									<Table.Cell>{item.equipment?.brand || '-'}</Table.Cell>
+									<Table.Cell>{item.equipment?.warehouse?.name || '-'}</Table.Cell>
+								</Table.Row>
+							{/each}
+						</Table.Body>
+					</Table.Root>
+				</Card.Root>
+			{/if}
+
+			{#if consumables.length > 0}
+				<Card.Root class="py-0">
+					<Card.Header class="px-6 pt-6 pb-2">
+						<Card.Title class="text-lg font-bold">Daftar Bahan (Consumable)</Card.Title>
+					</Card.Header>
+					<Table.Root>
+						<Table.Header>
+							<Table.Row>
+								<Table.Head>Nama Bahan</Table.Head>
+								<Table.Head class="text-right">Stock yang Ingin Dipinjam (Qty)</Table.Head>
+							</Table.Row>
+						</Table.Header>
+						<Table.Body>
+							{#each consumables as item (item.id)}
+								<Table.Row>
+									<Table.Cell class="font-medium">{item.equipment?.item?.name || '-'}</Table.Cell>
+									<Table.Cell class="text-right font-bold">{item.qty}</Table.Cell>
+								</Table.Row>
+							{/each}
+						</Table.Body>
+					</Table.Root>
+				</Card.Root>
+			{/if}
+
+			{#if assets.length === 0 && consumables.length === 0}
+				<div class="flex flex-col items-center justify-center p-8 text-center text-muted-foreground border rounded-lg bg-card">
+					<Package class="size-8 mb-2" />
+					<p>Tidak ada daftar inventaris dalam peminjaman ini</p>
+				</div>
+			{/if}
 		</TabsContent>
 
 		<TabsContent value="history" class="mt-6">
 			<Card.Root>
-				<Card.Content class="pt-6">
+				<Card.Content>
 					<div class="space-y-6">
 						{#each data.lending.approvals as log (log.id)}
+							{@const noteText = log.note || ''}
+							{@const isOverride = noteText.startsWith('[COMMAND OVERRIDE]')}
+							{@const isDipinjam = noteText.startsWith('[DIPINJAM]')}
+							{@const isDikembalikan = noteText.startsWith('[DIKEMBALIKAN]')}
+							{@const displayNote = isOverride
+								? noteText.replace('[COMMAND OVERRIDE] ', '')
+								: isDipinjam
+									? noteText.replace('[DIPINJAM] ', '')
+									: isDikembalikan
+										? noteText.replace('[DIKEMBALIKAN] ', '')
+										: noteText}
+
 							<div class="flex gap-4">
 								<div class="flex flex-col items-center">
-									<div class={log.status === 'APPROVED' ? 'text-success' : 'text-destructive'}>
-										<History class="size-5" />
+									<div
+										class={isDipinjam || isDikembalikan
+											? 'text-primary'
+											: isOverride
+												? 'text-secondary'
+												: log.status === 'APPROVED'
+													? 'text-success'
+													: 'text-destructive'}
+									>
+										{#if isDipinjam}
+											<Package class="size-5" />
+										{:else if isDikembalikan}
+											<RotateCcw class="size-5" />
+										{:else if isOverride}
+											<AlertCircle class="size-5" />
+										{:else}
+											<History class="size-5" />
+										{/if}
 									</div>
 									<div class="mt-2 h-full w-px bg-border"></div>
 								</div>
 								<div class="space-y-1 pb-6">
 									<p class="text-sm font-bold">
-										{log.status === 'APPROVED' ? 'Persetujuan Diterima' : 'Pengajuan Ditolak'}
+										{#if isDipinjam}
+											Barang Dipinjam
+										{:else if isDikembalikan}
+											Barang Dikembalikan
+										{:else if isOverride}
+											Perintah Langsung (Override)
+										{:else}
+											{log.status === 'APPROVED' ? 'Persetujuan Diterima' : 'Pengajuan Ditolak'}
+										{/if}
 									</p>
 									<p class="text-xs text-muted-foreground">{formatDate(log.createdAt)}</p>
-									<p class="mt-2 text-sm text-muted-foreground italic">"{log.note}"</p>
+									<p class="mt-2 text-sm text-muted-foreground italic">"{displayNote}"</p>
 									<p class="text-xs font-medium">Oleh: {log.approvedByUser?.name}</p>
 								</div>
 							</div>
@@ -449,7 +536,8 @@
 				notificationOpen = true;
 				invalidateAll();
 			} else if (result?.type === 'failure') {
-				notificationMsg = (result?.data as any)?.message || 'Gagal melakukan override perintah langsung';
+				notificationMsg =
+					(result?.data as any)?.message || 'Gagal melakukan override perintah langsung';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -619,7 +707,7 @@
 	bind:open={overrideDialogOpen}
 	loading={overrideLoading}
 	type="info"
-	title="Perintah Langsung (Command Override)"
+	title="Perintah Langsung"
 	description="Gunakan fitur ini hanya untuk instruksi mendesak atau operasi militer khusus yang melompati jalur persetujuan normal."
 	actionLabel="Konfirmasi Perintah"
 	onAction={() => {
@@ -686,4 +774,5 @@
 	type={notificationType}
 	title={notificationType === 'success' ? 'Berhasil' : 'Terjadi Kesalahan'}
 	description={notificationMsg}
+	onAction={() => (notificationOpen = false)}
 />

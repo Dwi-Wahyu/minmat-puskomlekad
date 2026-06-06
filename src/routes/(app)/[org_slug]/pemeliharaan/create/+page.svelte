@@ -18,8 +18,10 @@
 		X
 	} from '@lucide/svelte';
 	import * as Card from '$lib/components/ui/card';
-	import * as SearchableSelect from '$lib/components/ui/searchable-select';
+	import * as Select from '$lib/components/ui/select';
+	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
+	import { getAvailableEquipmentForMaintenance } from '../pemeliharaan.remote';
 
 	let { data }: { data: PageData } = $props();
 
@@ -51,6 +53,52 @@
 	let notificationTitle = $state('');
 	let notificationDescription = $state('');
 	let notificationActionLabel = $state('OK');
+
+	// State pencarian alat & paginasi remote
+	let searchQuery = $state('');
+	let activeSearchQuery = $state('');
+
+	let equipmentList = $state<any[]>([]);
+	let currentPage = $state(1);
+	let totalPages = $state(1);
+	let totalItems = $state(0);
+	let isEquipmentLoading = $state(false);
+
+	function triggerSearch() {
+		if (activeSearchQuery !== searchQuery) {
+			activeSearchQuery = searchQuery;
+			currentPage = 1;
+		}
+	}
+
+	function toggleEquipment(id: string) {
+		if (formData.equipmentIds.includes(id)) {
+			formData.equipmentIds = formData.equipmentIds.filter((x) => x !== id);
+		} else {
+			formData.equipmentIds = [...formData.equipmentIds, id];
+		}
+	}
+
+	$effect(() => {
+		const pageNum = currentPage;
+		const queryStr = activeSearchQuery;
+
+		isEquipmentLoading = true;
+		getAvailableEquipmentForMaintenance({
+			q: queryStr,
+			page: pageNum
+		})
+			.then((res) => {
+				equipmentList = res.equipment;
+				totalPages = res.pagination.totalPages;
+				totalItems = res.pagination.totalItems;
+				isEquipmentLoading = false;
+			})
+			.catch((err) => {
+				console.error('Gagal mengambil daftar alat:', err);
+				isEquipmentLoading = false;
+			});
+	});
 
 	const maintenanceTypes = ['PERAWATAN', 'PERBAIKAN'];
 	const statusOptions = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
@@ -85,7 +133,7 @@
 	<title>Tambah Pemeliharaan | MINMAT</title>
 </svelte:head>
 
-<div class="mx-auto max-w-4xl space-y-8 p-8">
+<div class="space-y-6 p-6">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
 			<Button
@@ -107,14 +155,7 @@
 		</div>
 	</div>
 
-	<Card.Root class="overflow-hidden border-border pt-0 shadow-sm">
-		<Card.Header class="border-b border-border bg-muted/50 pt-6">
-			<Card.Title
-				class="flex items-center gap-2 text-sm font-bold tracking-wider text-muted-foreground uppercase"
-			>
-				Formulir Pemeliharaan
-			</Card.Title>
-		</Card.Header>
+	<Card.Root>
 		<Card.Content>
 			<form
 				method="POST"
@@ -133,93 +174,208 @@
 				}}
 				class="space-y-6"
 			>
+				<!-- Hidden inputs for custom selects -->
+				<input type="hidden" name="maintenanceType" value={formData.maintenanceType} />
+				<input type="hidden" name="status" value={formData.status} />
+
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-					<!-- Equipment -->
-					<div class="space-y-2 md:col-span-2">
-						<Label for="equipmentId" class="text-xs font-bold text-muted-foreground uppercase"
-							>Peralatan (Bisa pilih lebih dari satu)</Label
-						>
+					<!-- Equipment Selection Table -->
+					<div class="space-y-4 md:col-span-2">
+						<Label>Pilih Peralatan</Label>
 
 						<!-- Hidden Inputs for form submission -->
 						{#each formData.equipmentIds as id (id)}
 							<input type="hidden" name="equipmentId" value={id} />
 						{/each}
 
-						<SearchableSelect.Root type="multiple" bind:value={formData.equipmentIds}>
-							<SearchableSelect.Trigger
-								class="flex h-11 w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-2 text-sm"
-							>
-								{#if formData.equipmentIds.length === 0}
-									<span class="text-muted-foreground">Pilih alat...</span>
-								{:else}
-									<span class="text-foreground">{formData.equipmentIds.length} alat dipilih</span>
-								{/if}
-							</SearchableSelect.Trigger>
-							<SearchableSelect.Content>
-								{#each data.equipment as eq (eq.id)}
-									<SearchableSelect.Item
-										value={eq.id}
-										label={`${eq.item?.name || 'Tanpa Nama'} ${eq.serialNumber ? `(${eq.serialNumber})` : ''}`}
-									>
-										<div class="flex flex-col">
-											<span class="font-medium">{eq.item?.name || 'Tanpa Nama'}</span>
-											{#if eq.serialNumber}
-												<span class="text-[10px] text-muted-foreground">SN: {eq.serialNumber}</span>
-											{/if}
-										</div>
-									</SearchableSelect.Item>
-								{/each}
-							</SearchableSelect.Content>
-						</SearchableSelect.Root>
+						<!-- Search Filter -->
+						<div class="flex gap-2">
+							<Input
+								type="text"
+								placeholder="Cari nama alat..."
+								bind:value={searchQuery}
+								onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), triggerSearch())}
+							/>
+							<Button type="button" variant="secondary" onclick={triggerSearch}>Cari</Button>
+						</div>
 
-						<!-- List of Selected Badges -->
-						{#if formData.equipmentIds.length > 0}
-							<div class="mt-3 flex flex-wrap gap-2">
-								{#each formData.equipmentIds as id (id)}
-									<Badge
-										variant="secondary"
-										class="flex items-center gap-1.5 rounded-lg bg-muted px-2 py-1 text-xs text-foreground hover:bg-accent"
+						<!-- Table -->
+						<div class="overflow-hidden rounded-xl border bg-card">
+							<Table.Root>
+								<Table.Header>
+									<Table.Row>
+										<Table.Head class="w-12 text-center"></Table.Head>
+										<Table.Head>Nama Alat</Table.Head>
+										<Table.Head>Serial Number</Table.Head>
+										<Table.Head>Gudang</Table.Head>
+										<Table.Head>Kondisi</Table.Head>
+									</Table.Row>
+								</Table.Header>
+								<Table.Body>
+									{#if isEquipmentLoading}
+										<!-- Skeleton Loading (5 rows) -->
+										{#each Array(5) as _}
+											<Table.Row>
+												<Table.Cell class="text-center">
+													<div class="mx-auto h-4 w-4 animate-pulse rounded bg-muted"></div>
+												</Table.Cell>
+												<Table.Cell>
+													<div class="h-4 w-40 animate-pulse rounded bg-muted"></div>
+												</Table.Cell>
+												<Table.Cell>
+													<div class="h-4 w-28 animate-pulse rounded bg-muted"></div>
+												</Table.Cell>
+												<Table.Cell>
+													<div class="h-4 w-20 animate-pulse rounded bg-muted"></div>
+												</Table.Cell>
+												<Table.Cell>
+													<div class="h-4 w-24 animate-pulse rounded bg-muted"></div>
+												</Table.Cell>
+												<Table.Cell>
+													<div class="h-4 w-16 animate-pulse rounded bg-muted"></div>
+												</Table.Cell>
+											</Table.Row>
+										{/each}
+									{:else if equipmentList.length === 0}
+										<Table.Row>
+											<Table.Cell colspan={6} class="h-24 text-center text-muted-foreground">
+												Tidak ada alat ditemukan.
+											</Table.Cell>
+										</Table.Row>
+									{:else}
+										{#each equipmentList as eq (eq.id)}
+											{@const isSelected = formData.equipmentIds.includes(eq.id)}
+											<Table.Row
+												class="cursor-pointer transition-colors hover:bg-muted/50"
+												onclick={() => toggleEquipment(eq.id)}
+											>
+												<Table.Cell class="text-center" onclick={(e) => e.stopPropagation()}>
+													<input
+														type="checkbox"
+														checked={isSelected}
+														onchange={() => toggleEquipment(eq.id)}
+														class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+													/>
+												</Table.Cell>
+												<Table.Cell class="max-w-40">
+													<h1 class="text-wrap">
+														{eq.item?.name || 'Tanpa Nama'}
+													</h1>
+												</Table.Cell>
+												<Table.Cell>
+													{#if eq.serialNumber}
+														<code class="rounded bg-muted px-1 text-xs">{eq.serialNumber}</code>
+													{:else}
+														-
+													{/if}
+												</Table.Cell>
+												<Table.Cell>{eq.warehouse?.name || '-'}</Table.Cell>
+												<Table.Cell>
+													<Badge
+														variant="outline"
+														class={eq.condition === 'BAIK'
+															? 'border-success/20 bg-success/10 text-success'
+															: eq.condition === 'RUSAK_RINGAN'
+																? 'bg-warning/10 text-warning border-warning/20'
+																: 'border-destructive/20 bg-destructive/10 text-destructive'}
+													>
+														{eq.condition}
+													</Badge>
+												</Table.Cell>
+											</Table.Row>
+										{/each}
+									{/if}
+								</Table.Body>
+							</Table.Root>
+						</div>
+
+						<!-- Pagination -->
+						{#if totalPages > 1}
+							<div class="flex items-center justify-between">
+								<span class="text-xs text-muted-foreground">
+									Menampilkan {equipmentList.length} dari {totalItems} entri
+								</span>
+								<div class="flex items-center gap-2">
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										disabled={currentPage === 1 || isEquipmentLoading}
+										onclick={() => (currentPage = Math.max(1, currentPage - 1))}
+										class="h-8 rounded-lg"
 									>
-										<Box size={12} class="text-muted-foreground" />
-										{getEquipmentLabel(id)}
-										<button
-											type="button"
-											onclick={() => removeEquipment(id)}
-											class="ml-1 text-muted-foreground hover:text-foreground"
+										Sebelumnya
+									</Button>
+									<span class="text-xs font-medium">Halaman {currentPage} dari {totalPages}</span>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										disabled={currentPage === totalPages || isEquipmentLoading}
+										onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))}
+										class="h-8 rounded-lg"
+									>
+										Selanjutnya
+									</Button>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Selected list as badges -->
+						{#if formData.equipmentIds.length > 0}
+							<div class="space-y-1.5 pt-2">
+								<Label>
+									Alat Terpilih ({formData.equipmentIds.length}):
+								</Label>
+								<div class="flex flex-wrap gap-2">
+									{#each formData.equipmentIds as id (id)}
+										<Badge
+											variant="secondary"
+											class="flex items-center gap-1.5 rounded-lg bg-muted px-2 py-1 text-xs text-foreground hover:bg-accent"
 										>
-											<X size={14} />
-										</button>
-									</Badge>
-								{/each}
+											<Box size={12} class="text-muted-foreground" />
+											{getEquipmentLabel(id)}
+											<button
+												type="button"
+												onclick={() => removeEquipment(id)}
+												class="ml-1 text-muted-foreground hover:text-foreground"
+											>
+												<X size={14} />
+											</button>
+										</Badge>
+									{/each}
+								</div>
 							</div>
 						{/if}
 					</div>
 
 					<!-- Tipe -->
 					<div class="space-y-2">
-						<Label for="maintenanceType" class="text-xs font-bold text-muted-foreground uppercase"
-							>Tipe Pemeliharaan</Label
-						>
-						<select
-							id="maintenanceType"
-							name="maintenanceType"
+						<Label for="maintenanceType"
+							>Tipe Pemeliharaan
+							<span class="text-red-500">*</span>
+						</Label>
+						<Select.Root
+							type="single"
 							bind:value={formData.maintenanceType}
-							required
-							class="flex h-11 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm transition-all outline-none focus:border-primary focus:ring-2 focus:ring-ring"
+							onValueChange={(v) => (formData.maintenanceType = v)}
 						>
-							{#each maintenanceTypes as type (type)}
-								<option value={type}>{type}</option>
-							{/each}
-						</select>
+							<Select.Trigger class="w-full">
+								{formData.maintenanceType || 'Pilih Tipe'}
+							</Select.Trigger>
+							<Select.Content>
+								{#each maintenanceTypes as type (type)}
+									<Select.Item value={type}>{type}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
 					</div>
 
 					<!-- Tanggal Jadwal -->
 					<div class="space-y-2">
-						<Label
-							for="scheduledDate"
-							class="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase"
-						>
-							<Calendar size={14} /> Tanggal Jadwal
+						<Label for="scheduledDate">
+							Tanggal Jadwal
+							<span class="text-red-500">*</span>
 						</Label>
 						<Input
 							id="scheduledDate"
@@ -227,75 +383,43 @@
 							type="datetime-local"
 							bind:value={formData.scheduledDate}
 							required
-							class="h-11 rounded-xl border-border"
 						/>
 					</div>
 
 					<!-- Status -->
 					<div class="space-y-2">
-						<Label
-							for="status"
-							class="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase"
-						>
-							<Activity size={14} /> Status
-						</Label>
-						<select
-							id="status"
-							name="status"
+						<Label for="status">Status</Label>
+						<Select.Root
+							type="single"
 							bind:value={formData.status}
-							required
-							class="flex h-11 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm transition-all outline-none focus:border-primary focus:ring-2 focus:ring-ring"
+							onValueChange={(v) => (formData.status = v)}
 						>
-							{#each statusOptions as status (status)}
-								<option value={status}>{status}</option>
-							{/each}
-						</select>
+							<Select.Trigger class="w-full">
+								{formData.status || 'Pilih Status'}
+							</Select.Trigger>
+							<Select.Content>
+								{#each statusOptions as status (status)}
+									<Select.Item value={status}>{status}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
 					</div>
 
 					<!-- Tanggal Selesai -->
 					<div class="space-y-2">
-						<Label
-							for="completionDate"
-							class="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase"
-						>
-							<Clock size={14} /> Tanggal Selesai (Opsional)
-						</Label>
+						<Label for="completionDate">Tanggal Selesai</Label>
 						<Input
 							id="completionDate"
 							name="completionDate"
 							type="datetime-local"
 							bind:value={formData.completionDate}
-							class="h-11 rounded-xl border-border"
 						/>
-					</div>
-
-					<!-- Teknisi -->
-					<div class="space-y-2">
-						<Label
-							for="technicianId"
-							class="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase"
-						>
-							<UserIcon size={14} /> Teknisi (Opsional)
-						</Label>
-						<select
-							id="technicianId"
-							name="technicianId"
-							bind:value={formData.technicianId}
-							class="flex h-11 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm transition-all outline-none focus:border-primary focus:ring-2 focus:ring-ring"
-						>
-							<option value="">Pilih teknisi</option>
-							{#each data.technicians as tech (tech.id)}
-								<option value={tech.id}>{tech.name}</option>
-							{/each}
-						</select>
 					</div>
 				</div>
 
 				<!-- Deskripsi -->
 				<div class="space-y-2">
-					<Label for="description" class="text-xs font-bold text-muted-foreground uppercase"
-						>Deskripsi Pekerjaan</Label
-					>
+					<Label for="description">Deskripsi Pekerjaan</Label>
 					<Textarea
 						id="description"
 						name="description"
@@ -307,16 +431,9 @@
 					/>
 				</div>
 
-				<div class="flex justify-end gap-3 border-t border-border pt-4">
-					<Button
-						variant="outline"
-						href="/{data.org_slug}/pemeliharaan"
-						class="h-11 rounded-xl px-6">Batal</Button
-					>
-					<Button
-						type="submit"
-						class="h-11 gap-2 rounded-xl bg-primary px-8 text-primary-foreground shadow-sm hover:bg-primary/90"
-					>
+				<div class="flex justify-end gap-3">
+					<Button variant="outline" href="/{data.org_slug}/pemeliharaan">Batal</Button>
+					<Button type="submit">
 						<Save size={18} />
 						Simpan Data
 					</Button>

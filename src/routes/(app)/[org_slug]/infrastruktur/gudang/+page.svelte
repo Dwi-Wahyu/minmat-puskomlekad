@@ -32,7 +32,7 @@
 				Kelola lokasi gudang penyimpanan materiil di organisasi Anda.
 			</p>
 		</div>
-		<Button href="/{page.params.org_slug}/gudang-management/create" class="gap-2">
+		<Button href="/{page.params.org_slug}/infrastruktur/gudang/create" class="gap-2">
 			<Plus class="size-4" />
 			Tambah Gudang
 		</Button>
@@ -74,7 +74,7 @@
 									variant="outline"
 									size="sm"
 									class="h-8 gap-1.5 px-2"
-									href="/{page.params.org_slug}/gudang-management/edit/{wh.id}"
+									href="/{page.params.org_slug}/infrastruktur/gudang/edit/{wh.id}"
 								>
 									<Pencil class="size-3.5" />
 									<span class="hidden lg:inline">Edit</span>

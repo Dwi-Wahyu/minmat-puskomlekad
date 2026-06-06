@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import { warehouse } from '$lib/server/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
-import { redis, getOrSetCache, CacheKeys, CacheTTL } from '$lib/server/redis';
+import { getOrSetCache, CacheTTL } from '$lib/server/redis';
 
 export type WarehouseData = Awaited<ReturnType<typeof db.query.warehouse.findMany>>;
 

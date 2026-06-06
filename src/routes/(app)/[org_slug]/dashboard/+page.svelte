@@ -291,7 +291,7 @@
 					{/each}
 				</div>
 				<a
-					href="/{data.org_slug}/gudang/komunity"
+					href="/{data.org_slug}/stok/komunity"
 					class="group mt-6 flex w-full items-center justify-center gap-1 py-2 text-xs font-bold text-primary hover:text-primary/80"
 				>
 					Lihat Semua Inventaris
@@ -314,7 +314,7 @@
 			>
 		</a>
 		<a
-			href="/{data.org_slug}/gudang/transito"
+			href="/{data.org_slug}/stok/transito"
 			class="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/20 hover:bg-primary/5"
 		>
 			<ArrowLeftRight size={22} class="text-muted-foreground group-hover:text-primary" />
@@ -324,7 +324,7 @@
 			>
 		</a>
 		<a
-			href="/{data.org_slug}/gudang/transito?movementEvent=['TRANSFER_IN', 'LOAN_IN', 'DISTRIBUTE_IN', 'MAINTENANCE_IN']"
+			href="/{data.org_slug}/stok/transito?movementEvent=['TRANSFER_IN', 'LOAN_IN', 'DISTRIBUTE_IN', 'MAINTENANCE_IN']"
 			class="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/20 hover:bg-primary/5"
 		>
 			<ArrowDownToLine size={22} class="text-muted-foreground group-hover:text-primary" />
@@ -334,7 +334,7 @@
 			>
 		</a>
 		<a
-			href="/{data.org_slug}/gudang/transito?movementEvent=['TRANSFER_OUT', 'LOAN_OUT', 'DISTRIBUTE_OUT', 'MAINTENANCE_OUT']"
+			href="/{data.org_slug}/stok/transito?movementEvent=['TRANSFER_OUT', 'LOAN_OUT', 'DISTRIBUTE_OUT', 'MAINTENANCE_OUT']"
 			class="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/20 hover:bg-primary/5"
 		>
 			<ArrowUpFromLine size={22} class="text-muted-foreground group-hover:text-primary" />

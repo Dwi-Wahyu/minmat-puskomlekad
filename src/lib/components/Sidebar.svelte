@@ -125,9 +125,9 @@
 			isDropdown: true,
 			path: getPath('/gudang'),
 			children: [
-				{ name: 'Gudang Komunity', path: getPath('/gudang/komunity') },
-				{ name: 'Gudang Transito', path: getPath('/gudang/transito') },
-				{ name: 'Gudang Balkir', path: getPath('/gudang/balkir') }
+				{ name: 'Gudang Komunity', path: getPath('/stok/komunity') },
+				{ name: 'Gudang Transito', path: getPath('/stok/transito') },
+				{ name: 'Gudang Balkir', path: getPath('/stok/balkir') }
 			]
 		},
 		{
@@ -170,9 +170,9 @@
 			path: getPath('/fasilitas'),
 			role: ['superadmin', 'pimpinan', 'kakomlek'],
 			children: [
-				{ name: 'Data Tanah', path: getPath('/tanah') },
-				{ name: 'Data Bangunan', path: getPath('/bangunan') },
-				{ name: 'Manajemen Gudang', path: getPath('/gudang-management') }
+				{ name: 'Data Tanah', path: getPath('/infrastruktur/tanah') },
+				{ name: 'Data Bangunan', path: getPath('/infrastruktur/bangunan') },
+				{ name: 'Manajemen Gudang', path: getPath('/infrastruktur/gudang') }
 			]
 		},
 		{

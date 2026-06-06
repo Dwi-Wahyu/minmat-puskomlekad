@@ -317,6 +317,16 @@ export const actions: Actions = {
 					newValue: JSON.stringify({ status: 'DIPINJAM' })
 				});
 
+				// Catat History Peminjaman ke tabel approval
+				await tx.insert(approval).values({
+					id: uuidv4(),
+					referenceType: 'LENDING',
+					referenceId: id,
+					approvedBy: user.id,
+					status: 'APPROVED',
+					note: `[DIPINJAM] Barang telah diambil/dipinjam oleh unit: ${lendingData.unit}`
+				});
+
 				const items = await tx.query.lendingItem.findMany({
 					where: eq(lendingItem.lendingId, id),
 					with: { equipment: true }
@@ -419,6 +429,16 @@ export const actions: Actions = {
 					recordId: id,
 					oldValue: JSON.stringify({ status: lendingData.status }),
 					newValue: JSON.stringify({ status: 'KEMBALI' })
+				});
+
+				// Catat History Pengembalian ke tabel approval
+				await tx.insert(approval).values({
+					id: uuidv4(),
+					referenceType: 'LENDING',
+					referenceId: id,
+					approvedBy: user.id,
+					status: 'APPROVED',
+					note: `[DIKEMBALIKAN] Barang telah dikembalikan ke gudang`
 				});
 
 				const items = await tx.query.lendingItem.findMany({

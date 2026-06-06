@@ -54,7 +54,7 @@
 <div class="flex flex-col gap-6 p-6">
 	<div class="mx-auto w-full max-w-3xl">
 		<div class="mb-4 flex items-center gap-4">
-			<Button variant="outline" size="icon" href="/{page.params.org_slug}/bangunan">
+			<Button variant="outline" size="icon" href="/{page.params.org_slug}/infrastruktur/bangunan">
 				<ChevronLeft class="size-4" />
 			</Button>
 			<div>
@@ -192,7 +192,11 @@
 				</div>
 
 				<div class="flex justify-end gap-3">
-					<Button variant="outline" href="/{page.params.org_slug}/bangunan" disabled={loading}>
+					<Button
+						variant="outline"
+						href="/{page.params.org_slug}/infrastruktur/bangunan"
+						disabled={loading}
+					>
 						Batal
 					</Button>
 					<Button type="submit" class="gap-2" disabled={loading}>
@@ -216,7 +220,7 @@
 	description={notificationMsg}
 	onAction={() => {
 		if (notificationType === 'success') {
-			goto(`/${page.params.org_slug}/bangunan`);
+			goto(`/${page.params.org_slug}/infrastruktur/bangunan`);
 		}
 	}}
 />

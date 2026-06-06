@@ -20,7 +20,7 @@
 	});
 
 	function handleBack() {
-		goto(`/${page.params.org_slug}/gudang-management`);
+		goto(`/${page.params.org_slug}/infrastruktur/gudang`);
 	}
 </script>
 

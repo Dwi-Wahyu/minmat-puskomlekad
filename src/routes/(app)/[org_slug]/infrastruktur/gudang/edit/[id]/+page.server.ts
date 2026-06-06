@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		where: and(eq(warehouse.id, params.id), eq(warehouse.organizationId, user.organization.id))
 	});
 
-	if (!data) throw redirect(302, `/${params.org_slug}/gudang-management`);
+	if (!data) throw redirect(302, `/${params.org_slug}/infrastruktur/gudang`);
 
 	return {
 		warehouse: data
@@ -36,7 +36,9 @@ export const actions: Actions = {
 			await db
 				.update(warehouse)
 				.set({ name, location })
-				.where(and(eq(warehouse.id, params.id), eq(warehouse.organizationId, user.organization.id)));
+				.where(
+					and(eq(warehouse.id, params.id), eq(warehouse.organizationId, user.organization.id))
+				);
 			return { success: true, message: 'Perubahan gudang berhasil disimpan' };
 		} catch (error) {
 			console.error('Error updating warehouse:', error);

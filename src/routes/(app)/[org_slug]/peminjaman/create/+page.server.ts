@@ -41,7 +41,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}
 
 	let targetOrg = null;
-	let availableEquipment = [];
 
 	if (targetOrgId) {
 		// Validasi: target harus ada dalam daftar yang diperbolehkan
@@ -52,50 +51,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			targetOrg = await db.query.organization.findFirst({
 				where: eq(organization.id, targetOrgId)
 			});
-
-			if (targetOrg) {
-				// Ambil equipment yang tersedia (READY) di organisasi target
-				const rawEquipment = await db.query.equipment.findMany({
-					where: and(eq(equipment.status, 'READY'), eq(equipment.organizationId, targetOrgId)),
-					with: {
-						item: true,
-						warehouse: true
-					}
-				});
-
-				// Grouping berdasarkan itemId + warehouseId + condition
-				const groups: Record<string, any> = {};
-				rawEquipment.forEach((eqp) => {
-					const key = `${eqp.itemId}-${eqp.warehouseId}-${eqp.condition}`;
-					if (!groups[key]) {
-						groups[key] = {
-							id: key,
-							itemId: eqp.itemId,
-							warehouseId: eqp.warehouseId,
-							name: eqp.item.name,
-							brand: eqp.brand,
-							condition: eqp.condition,
-							warehouseName: eqp.warehouse?.name,
-							totalAvailable: 0,
-							equipments: [] // Daftar alat individu dalam grup ini
-						};
-					}
-					groups[key].totalAvailable++;
-					groups[key].equipments.push({
-						id: eqp.id,
-						serialNumber: eqp.serialNumber,
-						condition: eqp.condition,
-						status: eqp.status
-					});
-
-					// Jika alat ini dipre-select dari URL, tandai grupnya
-					if (eqp.id === preselectedEquipmentId) {
-						groups[key].preselected = true;
-					}
-				});
-
-				availableEquipment = Object.values(groups);
-			}
 		} else if (user.organization.parentId && parentOrg) {
 			// Jika anak mencoba meminjam dari selain induk, redirect ke induk
 			throw redirect(302, `?targetOrgId=${parentOrg.id}`);
@@ -103,12 +58,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}
 
 	return {
-		groupedEquipment: availableEquipment,
+		groupedEquipment: [],
 		targetOrg,
 		organizations: allowedOrganizations,
 		preselectedEquipmentId,
 		orgSlug: user.organization.slug
 	};
+
 };
 
 export const actions: Actions = {

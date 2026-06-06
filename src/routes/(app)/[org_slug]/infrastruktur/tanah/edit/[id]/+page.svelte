@@ -18,35 +18,25 @@
 	let notificationMsg = $state('');
 	let notificationType = $state<'success' | 'error' | 'info'>('success');
 
-	const conditionOptions = [
-		{ value: 'BAIK', label: 'BAIK' },
-		{ value: 'RUSAK', label: 'RUSAK' }
-	];
-
 	const statusOptions = [
 		{ value: 'MILIK_TNI', label: 'MILIK TNI' },
 		{ value: 'LAINNYA', label: 'LAINNYA' }
 	];
 
-	let selectedCondition = $state('');
 	let selectedStatus = $state('');
 
 	$effect(() => {
-		selectedCondition = conditionOptions.find((o: any) => o.value === data.building.condition)?.value ??
-			conditionOptions[0].value;
-		selectedStatus = statusOptions.find((o: any) => o.value === data.building.status)?.value ?? statusOptions[0].value;
+		selectedStatus =
+			statusOptions.find((o: any) => o.value === data.land.status)?.value ?? statusOptions[0].value;
 	});
 
-	const conditionTrigger = $derived(
-		conditionOptions.find((o: any) => o.value === selectedCondition)?.label ?? 'Pilih Kondisi'
-	);
 	const statusTrigger = $derived(
 		statusOptions.find((o: any) => o.value === selectedStatus)?.label ?? 'Pilih Status'
 	);
 	let imagePreview = $state<string | null>(null);
 
 	$effect(() => {
-		imagePreview = data.building.photoPath ? `/uploads/building/${data.building.photoPath}` : null;
+		imagePreview = data.land.photoPath ? `/uploads/land/${data.land.photoPath}` : null;
 	});
 
 	function handleImageChange(event: Event) {
@@ -59,9 +49,7 @@
 			};
 			reader.readAsDataURL(file);
 		} else {
-			imagePreview = data.building.photoPath
-				? `/uploads/building/${data.building.photoPath}`
-				: null;
+			imagePreview = data.land.photoPath ? `/uploads/land/${data.land.photoPath}` : null;
 		}
 	}
 </script>
@@ -69,12 +57,12 @@
 <div class="flex flex-col gap-6 p-6">
 	<div class="mx-auto w-full max-w-3xl">
 		<div class="mb-4 flex items-center gap-4">
-			<Button variant="outline" size="icon" href="/{page.params.org_slug}/bangunan">
+			<Button variant="outline" size="icon" href="/{page.params.org_slug}/infrastruktur/tanah">
 				<ChevronLeft class="size-4" />
 			</Button>
 			<div>
-				<h1 class="text-3xl font-bold tracking-tight text-foreground">Edit Data Bangunan</h1>
-				<p class="text-sm text-muted-foreground">Perbarui informasi data bangunan di bawah ini.</p>
+				<h1 class="text-3xl font-bold tracking-tight text-foreground">Edit Data Tanah</h1>
+				<p class="text-sm text-muted-foreground">Perbarui informasi data tanah di bawah ini.</p>
 			</div>
 		</div>
 
@@ -101,49 +89,34 @@
 			>
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 					<div class="space-y-2">
-						<Label for="code">Kode Bangunan *</Label>
-						<Input id="code" name="code" value={data.building.code} required />
-					</div>
-
-					<div class="space-y-2">
-						<Label for="name">Nama Bangunan *</Label>
-						<Input id="name" name="name" value={data.building.name} required />
-					</div>
-
-					<div class="space-y-2">
-						<Label for="type">Tipe / Fungsi *</Label>
-						<Input id="type" name="type" value={data.building.type} required />
-					</div>
-
-					<div class="space-y-2">
-						<Label for="area">Luas Bangunan (m²) *</Label>
+						<Label for="certificateNumber">Nomor Sertifikat</Label>
 						<Input
-							id="area"
-							name="area"
-							type="number"
-							step="0.01"
-							value={data.building.area}
+							id="certificateNumber"
+							name="certificateNumber"
+							value={data.land.certificateNumber}
 							required
 						/>
 					</div>
 
 					<div class="space-y-2">
-						<Label for="condition">Kondisi *</Label>
-						<Select.Root type="single" name="condition" bind:value={selectedCondition}>
-							<Select.Trigger class="w-full">
-								{conditionTrigger}
-							</Select.Trigger>
-							<Select.Content>
-								{#each conditionOptions as option}
-									<Select.Item value={option.value} label={option.label}>{option.label}</Select.Item
-									>
-								{/each}
-							</Select.Content>
-						</Select.Root>
+						<Label for="area">Luas Tanah (m²)</Label>
+						<Input
+							id="area"
+							name="area"
+							type="number"
+							step="0.01"
+							value={data.land.area}
+							required
+						/>
 					</div>
 
 					<div class="space-y-2">
-						<Label for="status">Kepemilikan *</Label>
+						<Label for="usage">Peruntukan / Penggunaan</Label>
+						<Input id="usage" name="usage" value={data.land.usage} required />
+					</div>
+
+					<div class="space-y-2">
+						<Label for="status">Kepemilikan</Label>
 						<Select.Root type="single" name="status" bind:value={selectedStatus}>
 							<Select.Trigger class="w-full">
 								{statusTrigger}
@@ -158,22 +131,22 @@
 					</div>
 
 					<div class="col-span-1 space-y-2 md:col-span-2">
-						<Label for="location">Lokasi / Alamat *</Label>
-						<Textarea id="location" name="location" value={data.building.location} required />
+						<Label for="location">Lokasi / Alamat</Label>
+						<Textarea id="location" name="location" value={data.land.location} required />
 					</div>
 
 					<div class="space-y-2">
 						<Label for="latitude">Latitude (Opsional)</Label>
-						<Input id="latitude" name="latitude" value={data.building.latitude} />
+						<Input id="latitude" name="latitude" value={data.land.latitude} />
 					</div>
 
 					<div class="space-y-2">
 						<Label for="longitude">Longitude (Opsional)</Label>
-						<Input id="longitude" name="longitude" value={data.building.longitude} />
+						<Input id="longitude" name="longitude" value={data.land.longitude} />
 					</div>
 
 					<div class="col-span-1 space-y-2 md:col-span-2">
-						<Label for="image">Foto Bangunan</Label>
+						<Label for="image">Foto Tanah</Label>
 						<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
 							<div
 								class="flex size-32 items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-muted"
@@ -202,12 +175,16 @@
 
 					<div class="col-span-1 space-y-2 md:col-span-2">
 						<Label for="description">Keterangan Tambahan</Label>
-						<Textarea id="description" name="description" value={data.building.description} />
+						<Textarea id="description" name="description" value={data.land.description} />
 					</div>
 				</div>
 
 				<div class="flex justify-end gap-3">
-					<Button variant="outline" href="/{page.params.org_slug}/bangunan" disabled={loading}>
+					<Button
+						variant="outline"
+						href="/{page.params.org_slug}/infrastruktur/tanah"
+						disabled={loading}
+					>
 						Batal
 					</Button>
 					<Button type="submit" class="gap-2" disabled={loading}>
@@ -231,7 +208,7 @@
 	description={notificationMsg}
 	onAction={() => {
 		if (notificationType === 'success') {
-			goto(`/${page.params.org_slug}/bangunan`);
+			goto(`/${page.params.org_slug}/infrastruktur/tanah`);
 		}
 	}}
 />
