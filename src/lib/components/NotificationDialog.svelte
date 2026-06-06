@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { Check, X, Info } from '@lucide/svelte';
 	import { cn } from '$lib/utils.js';
 
@@ -59,7 +59,7 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class={cn('overflow-visible border-t-4 p-0 sm:max-w-[400px]', config.border)}>
+	<Dialog.Content class={cn('overflow-visible border-t-4 p-0 sm:max-w-100', config.border)}>
 		<div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
 			<div class={cn('rounded-full border-4 border-card p-3 shadow-lg', config.bg, config.fg)}>
 				{#if config.icon}
@@ -80,10 +80,10 @@
 			</Dialog.Header>
 
 			<div class="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
-				<!-- <Dialog.Close class={buttonVariants({ variant: 'outline' })}>
-					Continue shopping
-				</Dialog.Close> -->
-				<Button class={cn('min-w-[120px]', config.bg, config.fg, 'hover:opacity-90')} onclick={handleAction}>
+				<Button
+					class={cn('min-w-30', config.bg, config.fg, 'hover:opacity-90')}
+					onclick={handleAction}
+				>
 					{actionLabel}
 				</Button>
 			</div>

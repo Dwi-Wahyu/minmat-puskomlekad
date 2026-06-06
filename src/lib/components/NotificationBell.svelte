@@ -22,7 +22,7 @@
 		action?: NotificationAction | null;
 	};
 
-	let { notifications = [] as Notification[], unreadCount = 0, organizationId = '' } = $props();
+	let { notifications = [] as Notification[], unreadCount = 0, organizationId = '', orgSlug = '' } = $props();
 
 	function formatRelativeTime(date: Date | string | number) {
 		const now = new Date().getTime();
@@ -82,16 +82,11 @@
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
 		{#snippet child({ props })}
-			<Button
-				variant="ghost"
-				size="icon"
-				class="relative h-10 w-10 rounded-full"
-				{...props}
-			>
+			<Button variant="ghost" size="icon" class="relative h-10 w-10 rounded-full" {...props}>
 				<Bell class="h-5 w-5" />
 				{#if unreadCount > 0}
 					<span
-						class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground"
+						class="text-destructive-foreground absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold"
 					>
 						{unreadCount > 99 ? '99+' : unreadCount}
 					</span>
@@ -99,7 +94,7 @@
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
-	<DropdownMenu.Content align="end" class="w-80 p-0 overflow-hidden">
+	<DropdownMenu.Content align="end" class="w-80 overflow-hidden p-0">
 		<div class="flex items-center justify-between border-b p-4">
 			<h3 class="text-sm font-semibold">Notifikasi</h3>
 			{#if notifications.length > 0}
@@ -114,7 +109,7 @@
 			{/if}
 		</div>
 
-		<div class="max-h-[400px] overflow-y-auto">
+		<div class="max-h-100 overflow-y-auto">
 			{#if notifications.length === 0}
 				<div class="flex flex-col items-center justify-center px-4 py-10 text-center">
 					<div class="mb-2 rounded-full bg-muted p-3">
@@ -195,7 +190,7 @@
 					variant="ghost"
 					class="h-8 w-full text-xs font-medium"
 					size="sm"
-					href="/{organizationId}/notifikasi"
+					href="/{orgSlug}/notifikasi"
 				>
 					Tampilkan Semua
 				</Button>

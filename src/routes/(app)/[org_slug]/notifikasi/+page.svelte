@@ -6,6 +6,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { invalidateAll } from '$app/navigation';
 	import { cn } from '$lib/utils';
+	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -53,13 +54,18 @@
 		if (res.ok) invalidateAll();
 	}
 
-	async function clearAll() {
-		if (!confirm('Hapus semua notifikasi Anda?')) return;
+	let isConfirmClearAllOpen = $state(false);
+	let isClearingAll = $state(false);
+
+	async function confirmClearAll() {
+		isClearingAll = true;
 		const res = await fetch('/api/notifications', {
 			method: 'DELETE',
 			body: JSON.stringify({ clearAll: true, organizationId: data.user.organization.id }),
 			headers: { 'Content-Type': 'application/json' }
 		});
+		isClearingAll = false;
+		isConfirmClearAllOpen = false;
 		if (res.ok) invalidateAll();
 	}
 
@@ -70,72 +76,96 @@
 	};
 </script>
 
-<div class="p-8 max-w-4xl mx-auto">
-	<div class="flex items-center justify-between mb-8">
+<div class="mx-auto max-w-4xl p-8">
+	<div class="mb-8 flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold tracking-tight">Semua Notifikasi</h1>
+			<h1 class="text-2xl font-bold tracking-tight">Notifikasi</h1>
 			<p class="text-muted-foreground">Kelola semua pemberitahuan sistem dan aktivitas Anda.</p>
 		</div>
 		{#if data.notifications.length > 0}
-			<Button variant="outline" size="sm" class="text-destructive hover:bg-destructive/10" onclick={clearAll}>
+			<Button
+				variant="outline"
+				size="sm"
+				class="text-destructive hover:bg-destructive/10"
+				onclick={() => (isConfirmClearAllOpen = true)}
+			>
 				<Trash2 class="mr-2 h-4 w-4" />
 				Hapus Semua
 			</Button>
 		{/if}
 	</div>
 
+	<ConfirmationDialog
+		bind:open={isConfirmClearAllOpen}
+		loading={isClearingAll}
+		type="error"
+		title="Hapus Semua Notifikasi"
+		description="Apakah Anda yakin ingin menghapus semua notifikasi? Tindakan ini tidak dapat dibatalkan."
+		actionLabel="Hapus Semua"
+		onAction={confirmClearAll}
+	/>
+
 	{#if data.notifications.length === 0}
-		<Card.Root class="flex flex-col items-center justify-center py-20 text-center border-dashed">
-			<div class="rounded-full bg-muted p-6 mb-4">
+		<Card.Root class="flex flex-col items-center justify-center border-dashed py-20 text-center">
+			<div class="rounded-full bg-muted p-6">
 				<Inbox class="h-10 w-10 text-muted-foreground/40" />
 			</div>
 			<Card.Title>Tidak ada notifikasi</Card.Title>
-			<Card.Description class="mt-2 max-w-xs">
+			<Card.Description class="max-w-xs">
 				Anda belum memiliki notifikasi saat ini. Pemberitahuan baru akan muncul di sini.
 			</Card.Description>
 		</Card.Root>
 	{:else}
 		<div class="space-y-4">
 			{#each data.notifications as notif (notif.id)}
-				<Card.Root class={cn(
-					"transition-all duration-200 border-l-4",
-					!notif.read ? "bg-primary/5 border-l-primary shadow-sm" : "border-l-transparent bg-white"
-				)}>
-					<Card.Content class="p-6">
+				<Card.Root class={cn(!notif.read && 'border-l-4 border-l-primary bg-primary/5')}>
+					<Card.Content>
 						<div class="flex items-start justify-between gap-4">
-							<div class="space-y-1 flex-1">
-								<div class="flex items-center gap-2 mb-2">
-									<Badge class={cn("text-[10px] uppercase font-bold px-2 py-0", (priorityColors as any)[notif.priority])}>
+							<div class="flex-1 space-y-1">
+								<div class="mb-2 flex items-center gap-2">
+									<Badge
+										class={cn(
+											'px-2 py-0 text-[10px] font-bold uppercase',
+											(priorityColors as any)[notif.priority]
+										)}
+									>
 										{notif.priority}
 									</Badge>
-									<div class="flex items-center text-xs text-muted-foreground gap-1">
+									<div class="flex items-center gap-1 text-xs text-muted-foreground">
 										<Clock class="h-3 w-3" />
 										{formatRelativeTime(notif.createdAt)}
 									</div>
-									<div class="flex items-center text-xs text-muted-foreground gap-1 ml-2 border-l pl-2">
+									<div
+										class="ml-2 flex items-center gap-1 border-l pl-2 text-xs text-muted-foreground"
+									>
 										<Calendar class="h-3 w-3" />
 										{formatDate(notif.createdAt)}
 									</div>
 								</div>
-								
-								<h3 class={cn("text-lg font-bold leading-tight", !notif.read ? "text-foreground" : "text-foreground/80")}>
+
+								<h3
+									class={cn(
+										'text-lg leading-tight font-bold',
+										!notif.read ? 'text-foreground' : 'text-foreground/80'
+									)}
+								>
 									{notif.title}
 								</h3>
-								
-								<p class="text-muted-foreground text-sm leading-relaxed">
+
+								<p class="text-sm leading-relaxed text-muted-foreground">
 									{notif.body}
 								</p>
 
 								{#if notif.action?.webPath}
 									<div class="pt-3">
-										<Button 
-											href={notif.action.webPath} 
-											variant="secondary" 
-											size="sm" 
+										<Button
+											href={notif.action.webPath}
+											variant="secondary"
+											size="sm"
 											class="h-8 text-xs"
 											onclick={() => !notif.read && markAsRead(notif.id)}
 										>
-											Lihat Detail Transaksi
+											Lihat Detail
 										</Button>
 									</div>
 								{/if}
@@ -143,20 +173,20 @@
 
 							<div class="flex flex-col gap-2">
 								{#if !notif.read}
-									<Button 
-										variant="ghost" 
-										size="icon" 
-										class="h-8 w-8 text-primary hover:bg-primary/10" 
+									<Button
+										variant="ghost"
+										size="icon"
+										class="h-8 w-8 text-primary hover:bg-primary/10"
 										onclick={() => markAsRead(notif.id)}
 										title="Tandai sudah baca"
 									>
 										<Check class="h-4 w-4" />
 									</Button>
 								{/if}
-								<Button 
-									variant="ghost" 
-									size="icon" 
-									class="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" 
+								<Button
+									variant="ghost"
+									size="icon"
+									class="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
 									onclick={() => clearNotification(notif.id)}
 									title="Hapus"
 								>

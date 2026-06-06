@@ -88,6 +88,7 @@
 					notifications={(data as any).notifications}
 					unreadCount={(data as any).unreadCount}
 					organizationId={(data as any).user.organization.id}
+					orgSlug={(data as any).user.organization.slug}
 				/>
 			</div>
 		</header>
