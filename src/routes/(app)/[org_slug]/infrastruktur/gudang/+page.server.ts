@@ -6,7 +6,7 @@ import { fail, redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { user } = locals;
-	if (!user) throw redirect(302, '/login');
+	if (!user) throw redirect(302, '/');
 
 	const warehouses = await db.query.warehouse.findMany({
 		where: eq(warehouse.organizationId, user.organization.id),
@@ -34,7 +34,8 @@ export const actions: Actions = {
 		} catch (error) {
 			console.error('Error deleting warehouse:', error);
 			return fail(500, {
-				message: 'Gagal menghapus gudang. Pastikan gudang tidak sedang digunakan oleh data materiil.'
+				message:
+					'Gagal menghapus gudang. Pastikan gudang tidak sedang digunakan oleh data materiil.'
 			});
 		}
 	}

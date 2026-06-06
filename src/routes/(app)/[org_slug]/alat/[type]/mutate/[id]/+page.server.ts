@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const { id, org_slug } = params;
 	const { user } = locals;
 
-	if (!user) throw redirect(302, '/login');
+	if (!user) throw redirect(302, '/');
 
 	const [data, org] = await Promise.all([
 		db.query.equipment.findFirst({

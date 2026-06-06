@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { enhance, applyAction } from '$app/forms';
 	import { toast } from '$lib/components/ui/toast';
-	import { Loader2 } from '@lucide/svelte';
+	import Button from '@/components/ui/button/button.svelte';
+	import { Download, Loader2 } from '@lucide/svelte';
 
 	let isLoading = $state(false);
 
@@ -27,7 +28,7 @@
 <div class="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-6">
 	<div class="absolute inset-0 z-0 opacity-20">
 		<div
-			class="absolute inset-0 bg-[url('/backgrounds/login-background.webp')] bg-cover bg-center"
+			class="absolute inset-0 bg-[url('/backgrounds/-background.webp')] bg-cover bg-center"
 		></div>
 		<div class="absolute inset-0 bg-linear-to-b from-primary/10 to-background"></div>
 	</div>
@@ -120,8 +121,14 @@
 				</button>
 			</form>
 
+			<Button size="sm" variant="link" href="/builds/mobile-v0.1.apk" class="mt-4 w-full">
+				<Download />
+
+				Unduh Aplikasi
+			</Button>
+
 			<p
-				class="mt-10 text-center text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
+				class="mt-4 text-center text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
 			>
 				&copy; 2026 PUSKOMLEKAD.
 			</p>

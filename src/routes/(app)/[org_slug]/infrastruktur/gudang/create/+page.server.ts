@@ -6,7 +6,7 @@ import type { Actions } from './$types';
 export const actions: Actions = {
 	default: async ({ request, locals, params }) => {
 		const { user } = locals;
-		if (!user) throw redirect(302, '/login');
+		if (!user) throw redirect(302, '/');
 
 		const formData = await request.formData();
 		const name = formData.get('name') as string;

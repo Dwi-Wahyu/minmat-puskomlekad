@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const currentUser = locals.user;
 	const { org_slug } = params;
 
-	if (!currentUser) throw redirect(302, '/login');
+	if (!currentUser) throw redirect(302, '/');
 
 	const userId = currentUser.id;
 
@@ -58,7 +58,7 @@ export const actions: Actions = {
 
 			// Jika user menghapus sesinya sendiri, arahkan ke login
 			if (token === locals.session?.token) {
-				throw redirect(302, '/login');
+				throw redirect(302, '/');
 			}
 
 			return { success: true, message: 'Sesi berhasil dihapus' };

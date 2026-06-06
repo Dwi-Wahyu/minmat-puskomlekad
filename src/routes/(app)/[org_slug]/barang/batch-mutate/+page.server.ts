@@ -7,7 +7,7 @@ import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { user } = locals;
-	if (!user) throw redirect(302, '/login');
+	if (!user) throw redirect(302, '/');
 
 	const { org_slug } = params;
 	const ids = url.searchParams.get('ids')?.split(',') || [];

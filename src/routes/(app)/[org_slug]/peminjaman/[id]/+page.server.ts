@@ -1,6 +1,13 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { lending, lendingItem, approval, equipment, movement, auditLog } from '$lib/server/db/schema';
+import {
+	lending,
+	lendingItem,
+	approval,
+	equipment,
+	movement,
+	auditLog
+} from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { createNotification } from '$lib/server/notification';
@@ -10,7 +17,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const { id, org_slug } = params;
 	const { user } = locals;
 
-	if (!user) throw redirect(302, '/login');
+	if (!user) throw redirect(302, '/');
 
 	const lendingDetail = await db.query.lending.findFirst({
 		where: eq(lending.id, id),
@@ -33,7 +40,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	if (!lendingDetail) throw redirect(303, `/${org_slug.replace('.', '-')}/peminjaman`);
 
-	// Otorisasi: 
+	// Otorisasi:
 	// 1. Hanya Satuan Pemilik (lending.organizationId) yang bisa Approve/Reject/Proses
 	// 2. Tidak boleh approve/override pengajuan sendiri
 	const isRequester = user.id === lendingDetail.requestedBy;
@@ -44,24 +51,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		!isRequester &&
 		(user.role === 'kakomlek' || user.role === 'pimpinan') &&
 		lendingDetail.status === 'DRAFT';
-	
-	const canOverride = 
-		isLender && 
-		!isRequester && 
-		user.role === 'pimpinan' && 
-		lendingDetail.status === 'DRAFT';
 
-	const canExecute = 
-		isLender && 
+	const canOverride =
+		isLender && !isRequester && user.role === 'pimpinan' && lendingDetail.status === 'DRAFT';
+
+	const canExecute =
+		isLender &&
 		(lendingDetail.status === 'APPROVED' || lendingDetail.status === 'PERINTAH_LANGSUNG');
-	
-	const canReturn = 
-		isLender && 
-		lendingDetail.status === 'DIPINJAM';
 
-	const canDelete = 
-		isRequester && 
-		lendingDetail.status === 'DRAFT';
+	const canReturn = isLender && lendingDetail.status === 'DIPINJAM';
+
+	const canDelete = isRequester && lendingDetail.status === 'DRAFT';
 
 	return {
 		lending: lendingDetail,
@@ -413,7 +413,9 @@ export const actions: Actions = {
 			});
 
 			if (lendingData?.status !== 'DIPINJAM') {
-				return fail(400, { message: 'Hanya peminjaman berstatus DIPINJAM yang dapat dikembalikan' });
+				return fail(400, {
+					message: 'Hanya peminjaman berstatus DIPINJAM yang dapat dikembalikan'
+				});
 			}
 
 			await db.transaction(async (tx) => {

@@ -31,7 +31,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					}
 				);
 			}
-			throw redirect(302, '/login');
+			throw redirect(302, '/');
 		}
 
 		const user = event.locals.user;

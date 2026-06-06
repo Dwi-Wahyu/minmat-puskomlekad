@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const currentUser = locals.user;
 
 	if (!currentUser) {
-		throw redirect(302, '/login');
+		throw redirect(302, '/');
 	}
 
 	// Cek role superadmin

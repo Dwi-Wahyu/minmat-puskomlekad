@@ -6,7 +6,7 @@ import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const { user } = locals;
-	if (!user) throw redirect(302, '/login');
+	if (!user) throw redirect(302, '/');
 
 	const data = await db.query.warehouse.findFirst({
 		where: and(eq(warehouse.id, params.id), eq(warehouse.organizationId, user.organization.id))
@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 export const actions: Actions = {
 	default: async ({ request, params, locals }) => {
 		const { user } = locals;
-		if (!user) throw redirect(302, '/login');
+		if (!user) throw redirect(302, '/');
 
 		const formData = await request.formData();
 		const name = formData.get('name') as string;

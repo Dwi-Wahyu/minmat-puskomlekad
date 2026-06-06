@@ -7,7 +7,7 @@ import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { user } = locals;
-	if (!user) throw redirect(302, '/login');
+	if (!user) throw redirect(302, '/');
 
 	const ids = url.searchParams.get('ids')?.split(',') || [];
 
@@ -40,7 +40,7 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const batchDataRaw = formData.get('batchData') as string;
-		
+
 		if (!batchDataRaw) {
 			return fail(400, { message: 'Data mutasi tidak boleh kosong' });
 		}
@@ -50,7 +50,14 @@ export const actions: Actions = {
 		try {
 			await db.transaction(async (tx) => {
 				for (const item of batchItems) {
-					const { equipmentId, eventType, classification, toWarehouseId, specificLocationName, notes } = item;
+					const {
+						equipmentId,
+						eventType,
+						classification,
+						toWarehouseId,
+						specificLocationName,
+						notes
+					} = item;
 
 					const currentEquipment = await tx.query.equipment.findFirst({
 						where: eq(equipment.id, equipmentId)

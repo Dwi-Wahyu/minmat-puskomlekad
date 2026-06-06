@@ -10,7 +10,7 @@ import path from 'path';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { user } = locals;
-	if (!user || !user.organization) throw redirect(302, '/login');
+	if (!user || !user.organization) throw redirect(302, '/');
 
 	let targetOrgId = url.searchParams.get('targetOrgId');
 	const preselectedEquipmentId = url.searchParams.get('equipmentId');
@@ -64,7 +64,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		preselectedEquipmentId,
 		orgSlug: user.organization.slug
 	};
-
 };
 
 export const actions: Actions = {
