@@ -115,13 +115,7 @@
 				</button>
 			</form>
 
-			<Button
-				size="sm"
-				variant="link"
-				href="/builds/mobile-v0.1.apk"
-				download="mobile-v0.1.apk"
-				class="mt-4 w-full"
-			>
+			<Button size="sm" variant="link" href="/builds/mobile-v0.1.apk" class="mt-4 w-full">
 				<Download />
 				Unduh Aplikasi
 			</Button>
