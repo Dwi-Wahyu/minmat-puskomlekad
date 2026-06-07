@@ -154,14 +154,14 @@
 				<ArrowRightLeft class="size-4" />
 				Mutasi Batch {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
 			</Button> -->
-			<Button href="/{page.params.org_slug}/barang/create" class="gap-2">
+			<Button href="/{page.params.org_slug}/barang/create" class="w-full md:w-auto">
 				<Plus class="size-4" />
 				Tambah Barang
 			</Button>
 		</div>
 	</div>
 
-	<div class="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm">
+	<div class="flex items-center gap-4">
 		<form method="GET" class="flex flex-1 items-center gap-2">
 			<div class="relative flex-1">
 				<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -184,15 +184,15 @@
 			<Table.Root>
 				<Table.Header>
 					<Table.Row class="bg-muted/50">
-						<Table.Head class="w-[50px] text-center">
+						<Table.Head class="w-12.5 text-center">
 							<Checkbox
 								checked={isAllSelected}
 								onCheckedChange={toggleSelectAll}
 								aria-label="Pilih semua"
 							/>
 						</Table.Head>
-						<Table.Head class="w-[50px] text-center">No</Table.Head>
-						<Table.Head class="min-w-[200px]">Nama Barang</Table.Head>
+						<Table.Head class="w-12.5 text-center">No</Table.Head>
+						<Table.Head class="min-w-50">Nama Barang</Table.Head>
 						<Table.Head class="text-center">Total Stok</Table.Head>
 						<Table.Head>Satuan Dasar</Table.Head>
 						<Table.Head class="text-right">Aksi</Table.Head>
@@ -203,15 +203,15 @@
 						{#each Array(10) as _, i (i)}
 							<Table.Row class="hover:bg-transparent">
 								<Table.Cell class="text-center">
-									<Skeleton class="h-4 w-4 mx-auto" />
+									<Skeleton class="mx-auto h-4 w-4" />
 								</Table.Cell>
 								<Table.Cell class="text-center">
-									<Skeleton class="h-4 w-4 mx-auto" />
+									<Skeleton class="mx-auto h-4 w-4" />
 								</Table.Cell>
 								<Table.Cell>
 									<div class="flex flex-col gap-2">
-										<Skeleton class="h-5 w-[180px]" />
-										<Skeleton class="h-3 w-[100px]" />
+										<Skeleton class="h-5 w-45" />
+										<Skeleton class="h-3 w-50" />
 									</div>
 								</Table.Cell>
 								<Table.Cell>
@@ -224,7 +224,7 @@
 									<Skeleton class="h-6 w-16 rounded-full" />
 								</Table.Cell>
 								<Table.Cell class="text-right">
-									<Skeleton class="h-8 w-8 ml-auto" />
+									<Skeleton class="ml-auto h-8 w-8" />
 								</Table.Cell>
 							</Table.Row>
 						{/each}
@@ -314,16 +314,16 @@
 				<p class="text-sm font-medium text-muted-foreground">
 					Halaman <span class="font-bold text-foreground"
 						>{barangQuery.current.pagination.currentPage}</span
-					> dari {barangQuery.current.pagination.totalPages}
+					>
+					dari {barangQuery.current.pagination.totalPages}
 				</p>
 				<div class="flex gap-2">
 					<Button
 						variant="outline"
 						size="sm"
 						disabled={barangQuery.current.pagination.currentPage <= 1}
-						href="?page={barangQuery.current.pagination.currentPage - 1}&name={page.url.searchParams.get(
-							'name'
-						) || ''}"
+						href="?page={barangQuery.current.pagination.currentPage -
+							1}&name={page.url.searchParams.get('name') || ''}"
 					>
 						Sebelumnya
 					</Button>
@@ -332,9 +332,8 @@
 						size="sm"
 						disabled={barangQuery.current.pagination.currentPage >=
 							barangQuery.current.pagination.totalPages}
-						href="?page={barangQuery.current.pagination.currentPage + 1}&name={page.url.searchParams.get(
-							'name'
-						) || ''}"
+						href="?page={barangQuery.current.pagination.currentPage +
+							1}&name={page.url.searchParams.get('name') || ''}"
 					>
 						Selanjutnya
 					</Button>
@@ -445,12 +444,12 @@
 					{warehouseTrigger}
 				</Select.Trigger>
 				<Select.Content>
-				{#if barangQuery.current?.warehouses}
-					{#each barangQuery.current.warehouses as wh (wh.id)}
-						<Select.Item value={wh.id} label={wh.name}>{wh.name}</Select.Item>
-					{/each}
-				{/if}
-			</Select.Content>
+					{#if barangQuery.current?.warehouses}
+						{#each barangQuery.current.warehouses as wh (wh.id)}
+							<Select.Item value={wh.id} label={wh.name}>{wh.name}</Select.Item>
+						{/each}
+					{/if}
+				</Select.Content>
 			</Select.Root>
 		</div>
 		<div class="space-y-2">

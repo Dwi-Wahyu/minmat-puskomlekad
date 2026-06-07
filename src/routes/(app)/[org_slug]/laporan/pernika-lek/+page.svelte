@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
@@ -8,8 +7,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Select from '$lib/components/ui/select';
 	import { getPernikaLekData } from './pernika-lek.remote';
-
-	let { data }: { data: PageData } = $props();
 
 	const limit = $derived(Number(page.url.searchParams.get('limit')) || 50);
 	const currentPage = $derived(Number(page.url.searchParams.get('page')) || 1);
@@ -86,11 +83,11 @@
 	}
 </script>
 
-<div class="min-h-screen space-y-6 bg-background p-8 text-foreground">
+<div class="space-y-6 p-6">
 	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-xl font-bold uppercase underline">LAPORAN MATERIIL PERNIKA DAN LEK</h1>
-			<p class="text-sm font-semibold italic text-muted-foreground">
+			<p class="text-sm font-semibold text-muted-foreground italic">
 				Daftar Materiil Berdasarkan Satuan Jajaran
 			</p>
 		</div>
@@ -124,7 +121,7 @@
 					<button
 						type="submit"
 						disabled={pernikaQuery.loading}
-						class="flex items-center gap-2 whitespace-nowrap rounded-md bg-primary px-6 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow transition hover:bg-primary/90 disabled:opacity-50"
+						class="flex items-center gap-2 rounded-md bg-primary px-6 py-2 text-xs font-bold tracking-wider whitespace-nowrap text-primary-foreground uppercase shadow transition hover:bg-primary/90 disabled:opacity-50"
 					>
 						<RotateCw class="h-4 w-4 {pernikaQuery.loading ? 'animate-spin' : ''}" />
 						{pernikaQuery.loading ? 'Memproses...' : 'Muat Ulang Data'}
@@ -133,7 +130,7 @@
 				<button
 					onclick={exportCSV}
 					disabled={pernikaQuery.loading || !pernikaQuery.current?.groupedReports.length}
-					class="whitespace-nowrap rounded-md bg-secondary px-6 py-2 text-xs font-bold uppercase tracking-wider text-secondary-foreground shadow transition hover:bg-secondary/90 disabled:opacity-50"
+					class="rounded-md bg-secondary px-6 py-2 text-xs font-bold tracking-wider whitespace-nowrap text-secondary-foreground uppercase shadow transition hover:bg-secondary/90 disabled:opacity-50"
 				>
 					Ekspor (.CSV)
 				</button>
@@ -166,15 +163,29 @@
 				{#if pernikaQuery.loading}
 					{#each Array(10) as _, i (i)}
 						<tr class="border-b border-border">
-							<td class="border border-border p-2 text-center"><Skeleton class="h-3 w-4 mx-auto" /></td>
-							<td class="border border-border p-2 px-4"><Skeleton class="h-3 w-20 mx-auto" /></td>
+							<td class="border border-border p-2 text-center"
+								><Skeleton class="mx-auto h-3 w-4" /></td
+							>
+							<td class="border border-border p-2 px-4"><Skeleton class="mx-auto h-3 w-20" /></td>
 							<td class="border border-border p-2 px-4"><Skeleton class="h-3 w-32" /></td>
-							<td class="border border-border p-2 px-4 text-center"><Skeleton class="h-3 w-20 mx-auto" /></td>
-							<td class="border border-border p-2 text-center"><Skeleton class="h-3 w-8 mx-auto" /></td>
-							<td class="border border-border p-2 text-center font-bold"><Skeleton class="h-3 w-8 mx-auto" /></td>
-							<td class="border border-border p-2 text-center font-bold text-success"><Skeleton class="h-3 w-4 mx-auto" /></td>
-							<td class="border border-border p-2 text-center font-bold text-primary"><Skeleton class="h-3 w-4 mx-auto" /></td>
-							<td class="border border-border p-2 text-center font-bold text-destructive"><Skeleton class="h-3 w-4 mx-auto" /></td>
+							<td class="border border-border p-2 px-4 text-center"
+								><Skeleton class="mx-auto h-3 w-20" /></td
+							>
+							<td class="border border-border p-2 text-center"
+								><Skeleton class="mx-auto h-3 w-8" /></td
+							>
+							<td class="border border-border p-2 text-center font-bold"
+								><Skeleton class="mx-auto h-3 w-8" /></td
+							>
+							<td class="border border-border p-2 text-center font-bold text-success"
+								><Skeleton class="mx-auto h-3 w-4" /></td
+							>
+							<td class="border border-border p-2 text-center font-bold text-primary"
+								><Skeleton class="mx-auto h-3 w-4" /></td
+							>
+							<td class="border border-border p-2 text-center font-bold text-destructive"
+								><Skeleton class="mx-auto h-3 w-4" /></td
+							>
 							<td class="border border-border p-2 px-4 text-left"><Skeleton class="h-3 w-24" /></td>
 						</tr>
 					{/each}
@@ -195,7 +206,8 @@
 									</td>
 								{/if}
 
-								<td class="border border-border p-2 px-4 text-left font-semibold">{row.itemName}</td>
+								<td class="border border-border p-2 px-4 text-left font-semibold">{row.itemName}</td
+								>
 								<td class="border border-border p-2 px-4 text-center">{row.brand || '-'}</td>
 								<td class="border border-border p-2 text-center">{row.unit}</td>
 
@@ -213,7 +225,9 @@
 									>{row.rb || 0}</td
 								>
 
-								<td class="border border-border p-2 px-4 text-left text-muted-foreground normal-case italic">
+								<td
+									class="border border-border p-2 px-4 text-left text-muted-foreground normal-case italic"
+								>
 									{row.ket || '-'}
 								</td>
 							</tr>
@@ -223,7 +237,7 @@
 					<tr>
 						<td
 							colspan="10"
-							class="p-16 text-center text-muted-foreground border border-border italic bg-muted/20"
+							class="border border-border bg-muted/20 p-16 text-center text-muted-foreground italic"
 						>
 							Data tidak tersedia.
 						</td>
@@ -234,7 +248,7 @@
 	</div>
 
 	{#if pernikaQuery.current && pernikaQuery.current.pagination.totalPages > 1}
-		<div class="flex items-center justify-between border-t py-4">
+		<div class="flex flex-col-reverse items-center justify-between gap-4 py-4 md:flex-row md:gap-0">
 			<div class="text-xs text-muted-foreground">
 				Menampilkan <span class="font-semibold text-foreground"
 					>{(currentPage - 1) * limit + 1}</span
@@ -243,7 +257,8 @@
 				<span class="font-semibold text-foreground"
 					>{Math.min(currentPage * limit, pernikaQuery.current.pagination.totalItems)}</span
 				>
-				dari <span class="font-semibold text-foreground"
+				dari
+				<span class="font-semibold text-foreground"
 					>{pernikaQuery.current.pagination.totalItems}</span
 				> data
 			</div>

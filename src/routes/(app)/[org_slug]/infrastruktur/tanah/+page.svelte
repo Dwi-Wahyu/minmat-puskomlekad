@@ -34,20 +34,20 @@
 </script>
 
 <div class="flex flex-col gap-6 p-6">
-	<div class="flex items-center justify-between">
+	<div class="flex flex-col justify-between gap-4 md:flex-row md:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight text-foreground">Data Tanah</h1>
 			<p class="text-sm text-muted-foreground">
 				Kelola informasi data tanah di bawah kewenangan satuan.
 			</p>
 		</div>
-		<Button href="/{page.params.org_slug}/infrastruktur/tanah/create" class="gap-2">
+		<Button href="/{page.params.org_slug}/infrastruktur/tanah/create" class="w-full md:w-fit">
 			<Plus class="size-4" />
 			Tambah Data Tanah
 		</Button>
 	</div>
 
-	<div class="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm">
+	<div class="flex items-center gap-4">
 		<div class="relative flex-1">
 			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 			<form method="GET" class="w-full">

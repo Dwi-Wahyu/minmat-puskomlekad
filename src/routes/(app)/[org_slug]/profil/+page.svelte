@@ -53,7 +53,7 @@
 	}
 </script>
 
-<div class="mx-auto max-w-6xl space-y-8 p-6">
+<div class="space-y-6 p-6">
 	<div>
 		<h1 class="text-3xl font-bold tracking-tight text-foreground">Profil</h1>
 		<p class="text-muted-foreground">Kelola informasi akun dan keamanan sesi Anda.</p>
@@ -75,7 +75,7 @@
 		</div>
 	{/if}
 
-	<div class="grid gap-8 lg:grid-cols-12">
+	<div class="grid gap-6 lg:grid-cols-12">
 		<!-- Profil User -->
 		<div class="space-y-6 lg:col-span-4">
 			<Card.Root class="overflow-hidden border-none pt-0 shadow-sm ring-1 ring-border">
@@ -90,7 +90,7 @@
 						{/if}
 					</div>
 					<Card.Title class="text-xl">{data.user.name}</Card.Title>
-					<Card.Description class="font-mono text-xs">@{data.user.username}</Card.Description>
+					<Card.Description class="font-mono text-xs">{data.user.username}</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-6">
 					<div class="space-y-3">
@@ -294,9 +294,9 @@
 							<Table.Root>
 								<Table.Header class="bg-muted/30">
 									<Table.Row>
-										<Table.Head class="h-12 px-4">Perangkat</Table.Head>
-										<Table.Head class="h-12 px-4">IP Address</Table.Head>
-										<Table.Head class="h-12 px-4">Waktu Login</Table.Head>
+										<Table.Head class="px-4">Perangkat</Table.Head>
+										<Table.Head class="px-4">IP Address</Table.Head>
+										<Table.Head class="px-4">Waktu Login</Table.Head>
 									</Table.Row>
 								</Table.Header>
 								<Table.Body>
@@ -318,7 +318,7 @@
 															<Icon class="size-4 text-muted-foreground" />
 														</div>
 														<span
-															class="max-w-[280px] truncate text-xs font-medium text-foreground"
+															class="max-w-70 truncate text-xs font-medium text-foreground"
 															title={log.data?.userAgent}
 														>
 															{log.data?.userAgent || 'Unknown Device'}

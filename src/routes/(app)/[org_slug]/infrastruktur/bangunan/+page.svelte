@@ -37,14 +37,14 @@
 </script>
 
 <div class="flex flex-col gap-6 p-6">
-	<div class="flex items-center justify-between">
+	<div class="flex flex-col items-center justify-between gap-4 md:flex-row md:gap-0">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight text-foreground">Data Bangunan</h1>
 			<p class="text-sm text-muted-foreground">
 				Kelola informasi data bangunan di bawah kewenangan satuan.
 			</p>
 		</div>
-		<Button href="/{page.params.org_slug}/infrastruktur/bangunan/create" class="gap-2">
+		<Button href="/{page.params.org_slug}/infrastruktur/bangunan/create" class="w-full md:w-fit">
 			<Plus class="size-4" />
 			Tambah Data Bangunan
 		</Button>

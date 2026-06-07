@@ -102,7 +102,7 @@
 	}
 </script>
 
-<div class="space-y-8 p-8">
+<div class="space-y-6 p-6">
 	<div class="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
 		<div>
 			<h1 class="flex items-center gap-3 text-2xl font-bold">Audit Log Sistem</h1>
@@ -115,7 +115,7 @@
 				<Input
 					type="text"
 					placeholder="Cari aksi, tabel..."
-					class="w-64 pl-10"
+					class="pl-10"
 					bind:value={searchQuery}
 					oninput={handleSearchInput}
 				/>

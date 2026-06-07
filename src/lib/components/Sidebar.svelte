@@ -7,12 +7,14 @@
 		Building2,
 		Settings,
 		Map,
-		Package
+		Package,
+		X
 	} from '@lucide/svelte';
 	import { page } from '$app/state';
 	import SidebarDropdown from './SidebarDropdown.svelte';
 	import SidebarLink from './SidebarLink.svelte';
 	import { untrack } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import { getSidebarState } from './ui/sidebar/context.svelte';
 
 	// 1. Definisikan Interface agar tidak ada error "Property 'role' does not exist"
@@ -71,6 +73,16 @@
 		untrack(() => {
 			if (activeMenu && openDropdown !== activeMenu.name) {
 				openDropdown = activeMenu.name;
+			}
+		});
+	});
+
+	// Close sidebar automatically on mobile when route changes or component mounts
+	$effect(() => {
+		const _ = page.url.pathname;
+		untrack(() => {
+			if (typeof window !== 'undefined' && window.innerWidth < 768) {
+				sidebar.setOpen(false);
 			}
 		});
 	});
@@ -210,29 +222,54 @@
 	);
 </script>
 
+{#if sidebar.open}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		transition:fade={{ duration: 200 }}
+		class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs md:hidden"
+		onclick={() => sidebar.setOpen(false)}
+	></div>
+{/if}
+
 <aside
-	class="flex h-screen flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-xl transition-all duration-300 ease-in-out"
-	class:w-64={sidebar.open}
-	class:w-[70px]={!sidebar.open}
+	class="fixed inset-y-0 left-0 z-50 flex h-screen flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-xl transition-all duration-300 ease-in-out w-64 md:relative md:translate-x-0"
+	class:md:w-[70px]={!sidebar.open}
+	class:translate-x-0={sidebar.open}
+	class:-translate-x-full={!sidebar.open}
 >
 	<div class="p-6">
-		<div class="flex items-center gap-3">
-			<img src="/logo.svg" width="35" height="35" alt="" class="shrink-0" />
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-3">
+				<img src="/logo.svg" width="35" height="35" alt="" class="shrink-0" />
 
-			<div
-				class="transition-opacity duration-300"
-				class:opacity-0={!sidebar.open}
-				class:pointer-events-none={!sidebar.open}
-			>
-				<h1
-					class="text-sm leading-tight font-bold tracking-wider whitespace-nowrap text-sidebar-primary"
+				<div
+					class="transition-opacity duration-300"
+					class:opacity-0={!sidebar.open}
+					class:pointer-events-none={!sidebar.open}
 				>
-					MINMAT
-				</h1>
-				<p class="text-[10px] font-medium tracking-tighter whitespace-nowrap uppercase opacity-80">
-					MATKOMLEK
-				</p>
+					<h1
+						class="text-sm leading-tight font-bold tracking-wider whitespace-nowrap text-sidebar-primary"
+					>
+						MINMAT
+					</h1>
+					<p class="text-[10px] font-medium tracking-tighter whitespace-nowrap uppercase opacity-80">
+						MATKOMLEK
+					</p>
+				</div>
 			</div>
+
+			<!-- Tombol Close (Hanya muncul di mobile jika sidebar terbuka) -->
+			{#if sidebar.open}
+				<button
+					type="button"
+					onclick={() => sidebar.setOpen(false)}
+					class="rounded-lg p-2 text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors md:hidden"
+					aria-label="Close Sidebar"
+				>
+					<X size={20} />
+				</button>
+			{/if}
 		</div>
 	</div>
 

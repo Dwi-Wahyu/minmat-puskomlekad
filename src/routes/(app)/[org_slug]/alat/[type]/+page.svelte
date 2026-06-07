@@ -125,14 +125,14 @@
 				<ArrowRightLeft class="size-4" />
 				Mutasi Batch {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
 			</Button> -->
-			<Button href="/{page.params.org_slug}/alat/{page.params.type}/create" class="gap-2">
+			<Button href="/{page.params.org_slug}/alat/{page.params.type}/create" class="w-full md:w-fit">
 				<Plus class="size-4" />
 				Tambah Alat
 			</Button>
 		</div>
 	</div>
 
-	<div class="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm">
+	<div class="flex items-center gap-4">
 		<div class="relative flex-1">
 			<form method="GET" class="flex flex-1 items-center gap-2">
 				<div class="relative flex-1">
@@ -178,21 +178,21 @@
 						{#each Array(10) as _, i (i)}
 							<Table.Row class="hover:bg-transparent">
 								<Table.Cell class="text-center">
-									<Skeleton class="h-4 w-4 mx-auto" />
+									<Skeleton class="mx-auto h-4 w-4" />
 								</Table.Cell>
 								<Table.Cell class="text-center">
-									<Skeleton class="h-4 w-4 mx-auto" />
+									<Skeleton class="mx-auto h-4 w-4" />
 								</Table.Cell>
 								<Table.Cell>
 									<div class="flex flex-col gap-2">
-										<Skeleton class="h-5 w-[200px]" />
-										<Skeleton class="h-4 w-[120px]" />
+										<Skeleton class="h-5 w-50" />
+										<Skeleton class="h-4 w-30" />
 									</div>
 								</Table.Cell>
 								<Table.Cell>
 									<div class="flex items-center gap-2">
 										<Skeleton class="h-4 w-4" />
-										<Skeleton class="h-4 w-[100px]" />
+										<Skeleton class="h-4 w-25" />
 									</div>
 								</Table.Cell>
 								<Table.Cell>
@@ -208,7 +208,7 @@
 									</div>
 								</Table.Cell>
 								<Table.Cell class="text-right">
-									<Skeleton class="h-8 w-8 ml-auto" />
+									<Skeleton class="ml-auto h-8 w-8" />
 								</Table.Cell>
 							</Table.Row>
 						{/each}
@@ -331,7 +331,8 @@
 				<p class="text-sm font-medium text-muted-foreground">
 					Halaman <span class="font-bold text-foreground"
 						>{alatQuery.current.pagination.currentPage}</span
-					> dari {alatQuery.current.pagination.totalPages}
+					>
+					dari {alatQuery.current.pagination.totalPages}
 				</p>
 				<div class="flex gap-2">
 					<Button

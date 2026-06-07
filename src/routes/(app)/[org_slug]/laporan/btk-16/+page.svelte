@@ -73,8 +73,10 @@
 <div class="space-y-4 p-6">
 	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 		<div>
-			<h1 class="text-lg font-bold uppercase underline text-foreground">LAPORAN KONDISI MATERIIL</h1>
-			<h2 class="text-md font-bold uppercase text-foreground">( BTK - 16 )</h2>
+			<h1 class="text-lg font-bold text-foreground uppercase underline">
+				LAPORAN KONDISI MATERIIL
+			</h1>
+			<h2 class="text-md font-bold text-foreground uppercase">( BTK - 16 )</h2>
 		</div>
 		<div class="flex flex-wrap items-center gap-4">
 			<div class="flex items-center gap-2">
@@ -106,7 +108,7 @@
 					<button
 						type="submit"
 						disabled={btkQuery.loading}
-						class="flex items-center gap-2 whitespace-nowrap rounded bg-primary px-4 py-2 text-sm text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+						class="flex items-center gap-2 rounded bg-primary px-4 py-2 text-sm whitespace-nowrap text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
 					>
 						<RotateCw class="h-4 w-4 {btkQuery.loading ? 'animate-spin' : ''}" />
 						{btkQuery.loading ? 'Memproses...' : 'Muat Ulang Data'}
@@ -115,7 +117,7 @@
 				<button
 					onclick={exportCSV}
 					disabled={btkQuery.loading || !btkQuery.current?.reports.length}
-					class="whitespace-nowrap rounded bg-success px-4 py-2 text-sm text-success-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+					class="rounded bg-success px-4 py-2 text-sm whitespace-nowrap text-success-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
 				>
 					Ekspor CSV
 				</button>
@@ -127,36 +129,36 @@
 		<table class="w-full border-collapse text-[11px] text-foreground">
 			<thead>
 				<tr class="bg-muted uppercase">
-					<th class="w-8 border-b border-r px-1 py-2 text-center" rowspan="2">No Urt</th>
-					<th class="border-b border-r px-2 py-2 text-center" rowspan="2">No Kat / Kode Barang</th>
-					<th class="border-b border-r px-2 py-2 text-left" rowspan="2">Nama Material</th>
-					<th class="border-b border-r px-2 py-2 text-center" rowspan="2">Merek / Type</th>
-					<th class="border-b border-r px-2 py-2 text-center" rowspan="2">Satuan</th>
-					<th class="border-b border-r px-2 py-2 text-center" rowspan="2"
+					<th class="w-8 border-r border-b px-1 py-2 text-center" rowspan="2">No Urt</th>
+					<th class="border-r border-b px-2 py-2 text-center" rowspan="2">No Kat / Kode Barang</th>
+					<th class="border-r border-b px-2 py-2 text-left" rowspan="2">Nama Material</th>
+					<th class="border-r border-b px-2 py-2 text-center" rowspan="2">Merek / Type</th>
+					<th class="border-r border-b px-2 py-2 text-center" rowspan="2">Satuan</th>
+					<th class="border-r border-b px-2 py-2 text-center" rowspan="2"
 						>No. Senjata / Rangka / Mesin</th
 					>
-					<th class="border-b border-r px-2 py-1 text-center" colspan="3">Kondisi</th>
+					<th class="border-r border-b px-2 py-1 text-center" colspan="3">Kondisi</th>
 					<th class="border-b px-2 py-2 text-center" rowspan="2">Ket</th>
 				</tr>
 				<tr class="bg-muted uppercase">
-					<th class="w-8 border-b border-r px-1 py-1 text-center">B</th>
-					<th class="w-8 border-b border-r px-1 py-1 text-center">RR</th>
-					<th class="w-8 border-b border-r px-1 py-1 text-center">RB</th>
+					<th class="w-8 border-r border-b px-1 py-1 text-center">B</th>
+					<th class="w-8 border-r border-b px-1 py-1 text-center">RR</th>
+					<th class="w-8 border-r border-b px-1 py-1 text-center">RB</th>
 				</tr>
 			</thead>
 			<tbody>
 				{#if btkQuery.loading}
 					{#each Array(10) as _, i (i)}
 						<tr class="border-b">
-							<td class="border-r p-1 text-center"><Skeleton class="h-3 w-4 mx-auto" /></td>
+							<td class="border-r p-1 text-center"><Skeleton class="mx-auto h-3 w-4" /></td>
 							<td class="border-r p-1 px-2"><Skeleton class="h-3 w-16" /></td>
 							<td class="border-r p-1 px-2"><Skeleton class="h-3 w-32" /></td>
 							<td class="border-r p-1 px-2"><Skeleton class="h-3 w-20" /></td>
-							<td class="border-r p-1 text-center"><Skeleton class="h-3 w-8 mx-auto" /></td>
-							<td class="border-r p-1 px-2 text-center"><Skeleton class="h-3 w-24 mx-auto" /></td>
-							<td class="border-r p-1 text-center"><Skeleton class="h-3 w-4 mx-auto" /></td>
-							<td class="border-r p-1 text-center"><Skeleton class="h-3 w-4 mx-auto" /></td>
-							<td class="border-r p-1 text-center"><Skeleton class="h-3 w-4 mx-auto" /></td>
+							<td class="border-r p-1 text-center"><Skeleton class="mx-auto h-3 w-8" /></td>
+							<td class="border-r p-1 px-2 text-center"><Skeleton class="mx-auto h-3 w-24" /></td>
+							<td class="border-r p-1 text-center"><Skeleton class="mx-auto h-3 w-4" /></td>
+							<td class="border-r p-1 text-center"><Skeleton class="mx-auto h-3 w-4" /></td>
+							<td class="border-r p-1 text-center"><Skeleton class="mx-auto h-3 w-4" /></td>
 							<td class="p-1 px-2"><Skeleton class="h-3 w-20" /></td>
 						</tr>
 					{/each}
@@ -164,8 +166,8 @@
 					{#each btkQuery.current.reports as row, i (row.itemId + row.serialNumber + i)}
 						<tr class="border-b uppercase transition-colors hover:bg-muted/50">
 							<td class="border-r p-1 text-center">{i + 1 + (currentPage - 1) * limit}</td>
-							<td class="border-r p-1 px-2 font-mono text-center">{row.itemId.slice(0, 8)}</td>
-							<td class="border-r p-1 px-2 font-semibold text-left">{row.itemName}</td>
+							<td class="border-r p-1 px-2 text-center font-mono">{row.itemId.slice(0, 8)}</td>
+							<td class="border-r p-1 px-2 text-left font-semibold">{row.itemName}</td>
 							<td class="border-r p-1 px-2 text-center">{row.brand || '-'}</td>
 							<td class="border-r p-1 text-center">{row.unit}</td>
 							<td class="border-r p-1 px-2 text-center font-mono">{row.serialNumber || '-'}</td>
@@ -180,7 +182,7 @@
 								{row.condition === 'RUSAK_BERAT' ? '✓' : ''}
 							</td>
 
-							<td class="p-1 px-2 text-[10px] normal-case italic text-muted-foreground">
+							<td class="p-1 px-2 text-[10px] text-muted-foreground normal-case italic">
 								{row.itemDescription || '-'}
 							</td>
 						</tr>
@@ -197,7 +199,7 @@
 	</div>
 
 	{#if btkQuery.current && btkQuery.current.pagination.totalPages > 1}
-		<div class="flex items-center justify-between border-t py-4">
+		<div class="flex flex-col-reverse items-center justify-between gap-4 py-4 md:flex-row md:gap-0">
 			<div class="text-xs text-muted-foreground">
 				Menampilkan <span class="font-semibold text-foreground"
 					>{(currentPage - 1) * limit + 1}</span
@@ -206,9 +208,8 @@
 				<span class="font-semibold text-foreground"
 					>{Math.min(currentPage * limit, btkQuery.current.pagination.totalItems)}</span
 				>
-				dari <span class="font-semibold text-foreground"
-					>{btkQuery.current.pagination.totalItems}</span
-				> data
+				dari
+				<span class="font-semibold text-foreground">{btkQuery.current.pagination.totalItems}</span> data
 			</div>
 			<div class="flex items-center gap-2">
 				<Button
