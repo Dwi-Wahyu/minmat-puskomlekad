@@ -310,9 +310,6 @@
 		border-spacing: 0;
 	}
 	@media print {
-		.p-8 {
-			padding: 0;
-		}
 		button {
 			display: none !important;
 		}
