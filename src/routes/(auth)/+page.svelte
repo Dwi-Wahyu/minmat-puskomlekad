@@ -28,7 +28,7 @@
 <div class="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-6">
 	<div class="absolute inset-0 z-0 opacity-20">
 		<div
-			class="absolute inset-0 bg-[url('/backgrounds/-background.webp')] bg-cover bg-center"
+			class="absolute inset-0 bg-[url('/backgrounds/login-background.webp')] bg-cover bg-center"
 		></div>
 		<div class="absolute inset-0 bg-linear-to-b from-primary/10 to-background"></div>
 	</div>
@@ -100,12 +100,6 @@
 						>Lupa kata sandi?</a
 					>
 				</div>
-
-				<!-- {#if form?.message}
-					<div class="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
-						<p class="text-center text-xs font-medium text-destructive">{form.message}</p>
-					</div>
-				{/if} -->
 
 				<button
 					type="submit"
