@@ -35,7 +35,7 @@
 
 	<div class="relative z-10 w-full max-w-112.5">
 		<div
-			class="overflow-hidden rounded-2xl border border-border bg-card/80 p-8 shadow-2xl backdrop-blur-xl md:p-10"
+			class="overflow-hidden rounded-2xl border border-border bg-card/80 p-8 shadow-2xl backdrop-blur-xl md:p-6"
 		>
 			<div class="mb-8 flex flex-col items-center text-center">
 				<div class="mb-4 h-24 w-auto">
@@ -119,13 +119,11 @@
 				<Download />
 				Unduh Aplikasi
 			</Button>
-
-			<p
-				class="mt-4 text-center text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
-			>
-				PT Skytel Indo &copy; 2026 PUSKOMLEKAD.
-			</p>
 		</div>
+
+		<p class="mt-4 text-center text-xs text-muted-foreground uppercase">
+			PT Skytel Indo &copy; 2026 PUSKOMLEKAD.
+		</p>
 	</div>
 </div>
 

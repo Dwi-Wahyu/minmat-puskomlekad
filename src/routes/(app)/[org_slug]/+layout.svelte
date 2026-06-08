@@ -9,11 +9,21 @@
 	import * as Button from '$lib/components/ui/button/index.js';
 	import { setSidebarState } from '@/components/ui/sidebar/context.svelte.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { BookText } from '@lucide/svelte';
 
 	let { data, children } = $props();
 	const sidebar = setSidebarState();
 
 	let isLogoutDialogOpen = $state(false);
+	let onboardingOpen = $state(false);
+
+	$effect(() => {
+		const seen = localStorage.getItem(`guide_book_popup_seen_${data.user.id}`);
+		if (!seen) {
+			onboardingOpen = true;
+		}
+	});
 
 	const toTitleCase = (str: string) => {
 		return str
@@ -27,6 +37,16 @@
 
 	function handleLogout() {
 		goto('/logout');
+	}
+
+	function handleCloseOnboarding() {
+		localStorage.setItem(`guide_book_popup_seen_${data.user.id}`, 'true');
+		onboardingOpen = false;
+	}
+
+	function handleGoToGuideBook() {
+		handleCloseOnboarding();
+		goto(`/${data.user.organization.slug}/guide-book`);
 	}
 </script>
 
@@ -115,3 +135,25 @@
 	cancelLabel="Batal"
 	onAction={handleLogout}
 />
+
+<Dialog.Root bind:open={onboardingOpen}>
+	<Dialog.Content class="sm:max-w-[425px]">
+		<Dialog.Header>
+			<div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+				<BookText class="h-6 w-6 text-primary" />
+			</div>
+			<Dialog.Title class="text-xl">Selamat Datang!</Dialog.Title>
+			<Dialog.Description class="pt-2 text-base">
+				Halo <strong>{data.user.name}</strong>, selamat datang di sistem MINMAT. Untuk memudahkan
+				Anda memahami fitur-fitur yang ada, kami menyarankan Anda membaca Panduan Penggunaan (Guide
+				Book) terlebih dahulu.
+			</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer class="mt-6 flex flex-col gap-2 sm:flex-row">
+			<Button.Root variant="outline" onclick={handleCloseOnboarding} class="sm:flex-1">
+				Nanti Saja
+			</Button.Root>
+			<Button.Root onclick={handleGoToGuideBook} class="sm:flex-1">Baca Sekarang</Button.Root>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
