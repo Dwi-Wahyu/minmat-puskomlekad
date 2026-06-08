@@ -1,32 +1,22 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { getAlatData } from './alat.remote';
-	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import * as Table from '$lib/components/ui/table';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { Search, Plus, Pencil, Package, ArrowRightLeft, Info, Ellipsis } from '@lucide/svelte';
 	import {
-		Search,
-		Plus,
-		Pencil,
-		Trash2,
-		Package,
-		ArrowRightLeft,
-		Info,
-		Ellipsis,
-		ArrowLeft
-	} from '@lucide/svelte';
-	import { equipmentStatusLabels, equipmentStatusColors } from '$lib/utils';
-
-	let { data }: { data: PageData } = $props();
+		equipmentConditionColor,
+		equipmentConditionLabel,
+		equipmentStatusColor,
+		equipmentStatusLabel
+	} from '@/enums/equipment-enum';
+	import { movementEventTypeLabel } from '@/enums/movement-enum';
 
 	const alatQuery = $derived(
 		getAlatData({
@@ -35,10 +25,6 @@
 			page: Number(page.url.searchParams.get('page')) || 1
 		})
 	);
-
-	let deleteDialogOpen = $state(false);
-	let deleteLoading = $state(false);
-	let selectedId = $state('');
 
 	let notificationOpen = $state(false);
 	let notificationMsg = $state('');
@@ -70,36 +56,9 @@
 
 	const typeLabel = $derived(page.params.type === 'alpernika' ? 'Pernika & Lek' : 'Alkomlek');
 
-	function confirmDelete(id: string) {
-		selectedId = id;
-		deleteDialogOpen = true;
-	}
-
 	function openMutate(id: string) {
 		goto(`/${page.params.org_slug}/alat/${page.params.type}/mutate/${id}`);
 	}
-
-	const conditionColors: Record<string, string> = {
-		BAIK: 'bg-green-100 text-green-700 border-green-200',
-		RUSAK_RINGAN: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-		RUSAK_BERAT: 'bg-red-100 text-red-700 border-red-200'
-	};
-
-	const conditionLabels: Record<string, string> = {
-		BAIK: 'Baik',
-		RUSAK_RINGAN: 'Rusak Ringan',
-		RUSAK_BERAT: 'Rusak Berat'
-	};
-
-	const eventTypeLabels: Record<string, string> = {
-		RECEIVE: 'Masuk',
-		ISSUE: 'Keluar',
-		TRANSFER_IN: 'Transfer Masuk',
-		TRANSFER_OUT: 'Transfer Keluar',
-		MAINTENANCE_IN: 'Masuk Perbaikan',
-		MAINTENANCE_OUT: 'Selesai Perbaikan',
-		ADJUSTMENT: 'Penyesuaian'
-	};
 </script>
 
 <div class="flex flex-col gap-6 p-6">
@@ -144,10 +103,7 @@
 						value={page.url.searchParams.get('q')}
 					/>
 				</div>
-				<Button type="submit" variant="secondary" class="gap-2">
-					<Search class="size-4" />
-					Cari
-				</Button>
+				<Button type="submit" variant="secondary">Cari</Button>
 			</form>
 		</div>
 	</div>
@@ -157,13 +113,6 @@
 			<Table.Root>
 				<Table.Header>
 					<Table.Row class="bg-muted/50">
-						<Table.Head class="w-12.5 text-center">
-							<Checkbox
-								checked={isAllSelected}
-								onCheckedChange={toggleSelectAll}
-								aria-label="Pilih semua"
-							/>
-						</Table.Head>
 						<Table.Head class="w-12.5 text-center">No</Table.Head>
 						<Table.Head class="max-w-[30%]">Alat</Table.Head>
 						<Table.Head>Gudang</Table.Head>
@@ -177,9 +126,6 @@
 					{#if alatQuery.loading}
 						{#each Array(10) as _, i (i)}
 							<Table.Row class="hover:bg-transparent">
-								<Table.Cell class="text-center">
-									<Skeleton class="mx-auto h-4 w-4" />
-								</Table.Cell>
 								<Table.Cell class="text-center">
 									<Skeleton class="mx-auto h-4 w-4" />
 								</Table.Cell>
@@ -215,13 +161,6 @@
 					{:else if alatQuery.current && alatQuery.current.equipment.length > 0}
 						{#each alatQuery.current.equipment as item, i (item.id)}
 							<Table.Row class="transition-colors hover:bg-muted/30">
-								<Table.Cell class="text-center">
-									<Checkbox
-										checked={selectedIds.includes(item.id)}
-										onCheckedChange={() => toggleSelect(item.id)}
-										aria-label="Pilih item"
-									/>
-								</Table.Cell>
 								<Table.Cell class="text-center font-medium text-muted-foreground">
 									{i + 1 + (alatQuery.current.pagination.currentPage - 1) * 10}
 								</Table.Cell>
@@ -248,24 +187,24 @@
 								<Table.Cell>
 									<Badge
 										variant="outline"
-										class="whitespace-nowrap {conditionColors[item.condition]}"
+										class="whitespace-nowrap {equipmentConditionColor[item.condition]}"
 									>
-										{conditionLabels[item.condition] || item.condition}
+										{equipmentConditionLabel[item.condition] || item.condition}
 									</Badge>
 								</Table.Cell>
 								<Table.Cell>
 									<Badge
 										variant="secondary"
-										class="whitespace-nowrap {equipmentStatusColors[item.status!]}"
+										class="whitespace-nowrap {equipmentStatusColor[item.status!]}"
 									>
-										{equipmentStatusLabels[item.status!] || item.status}
+										{equipmentStatusLabel[item.status!] || item.status}
 									</Badge>
 								</Table.Cell>
 								<Table.Cell>
 									{#if item.lastMovement}
 										<div class="flex min-w-25 flex-col gap-0.5">
 											<span class="text-xs font-semibold text-primary">
-												{eventTypeLabels[item.lastMovement.eventType] ||
+												{movementEventTypeLabel[item.lastMovement.eventType] ||
 													item.lastMovement.eventType}
 											</span>
 											<span class="text-[10px] text-muted-foreground">
@@ -290,7 +229,7 @@
 												<Info class="size-4" /> Lihat Detail
 											</DropdownMenu.Item>
 											<DropdownMenu.Item onclick={() => openMutate(item.id)} class="gap-2">
-												<ArrowRightLeft class="size-4" /> Mutasi (Klasifikasi)
+												<ArrowRightLeft class="size-4" /> Mutasi
 											</DropdownMenu.Item>
 											<DropdownMenu.Item
 												onclick={() =>
@@ -298,13 +237,6 @@
 												class="gap-2"
 											>
 												<Pencil class="size-4" /> Edit Data
-											</DropdownMenu.Item>
-											<DropdownMenu.Separator />
-											<DropdownMenu.Item
-												onclick={() => confirmDelete(item.id)}
-												class="gap-2 text-red-600"
-											>
-												<Trash2 class="size-4" /> Hapus Alat
 											</DropdownMenu.Item>
 										</DropdownMenu.Content>
 									</DropdownMenu.Root>
@@ -361,40 +293,6 @@
 		{/if}
 	</div>
 </div>
-
-<!-- HIDDEN FORMS -->
-<form
-	id="delete-form"
-	method="POST"
-	action="?/delete"
-	use:enhance={() => {
-		deleteLoading = true;
-		return ({ result }) => {
-			deleteLoading = false;
-			deleteDialogOpen = false;
-			if (result?.type === 'success') {
-				notificationMsg = 'Sukses menghapus alat';
-				notificationType = 'success';
-				notificationOpen = true;
-				invalidateAll();
-			}
-		};
-	}}
-	hidden
->
-	<input type="hidden" name="id" value={selectedId} />
-</form>
-
-<!-- DIALOGS -->
-<ConfirmationDialog
-	bind:open={deleteDialogOpen}
-	loading={deleteLoading}
-	type="error"
-	title="Hapus Alat"
-	description="Konfirmasi penghapusan alat. Tindakan ini permanen."
-	actionLabel="Hapus Alat"
-	onAction={() => (document.getElementById('delete-form') as HTMLFormElement)?.requestSubmit()}
-/>
 
 <NotificationDialog
 	bind:open={notificationOpen}

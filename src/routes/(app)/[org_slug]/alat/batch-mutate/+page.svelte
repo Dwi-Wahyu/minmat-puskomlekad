@@ -84,7 +84,7 @@
 	const eventDescriptions = {
 		RECEIVE: 'Barang masuk dari luar sistem. Gudang asal kosong, status menjadi READY.',
 		ISSUE:
-			'Barang keluar sistem secara permanen. Gudang tujuan kosong, data alat dihapus dari stok aktif.',
+			'Barang keluar sistem secara permanen. Gudang tujuan kosong, alat siap untuk penghapusan.',
 		TRANSFER_OUT: 'Kirim barang antar gudang internal. Status menjadi TRANSIT (dalam perjalanan).',
 		TRANSFER_IN: 'Konfirmasi barang sampai di gudang tujuan. Status kembali menjadi READY.'
 	};

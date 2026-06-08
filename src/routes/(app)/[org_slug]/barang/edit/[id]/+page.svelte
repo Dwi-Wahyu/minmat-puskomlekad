@@ -52,16 +52,26 @@
 	}
 </script>
 
-<div class="mx-auto max-w-4xl space-y-8 p-8">
+<div class="mx-auto max-w-4xl space-y-6 p-6">
+	<div class="flex items-center justify-between">
+		<div class="flex items-center gap-4">
+			<Button
+				variant="outline"
+				size="icon"
+				href="/{data.org_slug}/barang"
+				class="rounded-full shadow-sm"
+			>
+				<ArrowLeft size={18} />
+			</Button>
+			<div>
+				<h1 class="flex items-center gap-2 text-2xl font-bold">Edit Barang Habis Pakai</h1>
+				<p class="text-sm text-slate-500">Perbarui informasi definisi barang.</p>
+			</div>
+		</div>
+	</div>
+
 	<Card.Root>
 		<Card.Content class="space-y-6">
-			<div>
-				<Card.Title>Edit Barang Habis Pakai</Card.Title>
-				<Card.Description>
-					Perbarui informasi untuk <strong>{data.consumable.name}</strong>
-				</Card.Description>
-			</div>
-
 			<form
 				method="POST"
 				enctype="multipart/form-data"
@@ -81,7 +91,7 @@
 					<Label for="image">Foto Barang</Label>
 					<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
 						<div
-							class="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-slate-50"
+							class="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg border-2 border-dashed"
 						>
 							{#if imagePreview}
 								<img src={imagePreview} alt="Preview" class="h-full w-full object-cover" />
@@ -149,7 +159,7 @@
 					/>
 				</div>
 
-				<div class="mt-4 flex gap-4 md:col-span-2">
+				<div class="flex justify-end gap-4 md:col-span-2">
 					<Button variant="outline" onclick={handleBack} disabled={isLoading}>Batal</Button>
 					<Button type="submit" disabled={isLoading}>
 						{isLoading ? 'Menyimpan...' : 'Update Data Barang'}

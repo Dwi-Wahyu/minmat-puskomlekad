@@ -184,13 +184,6 @@
 			<Table.Root>
 				<Table.Header>
 					<Table.Row class="bg-muted/50">
-						<Table.Head class="w-12.5 text-center">
-							<Checkbox
-								checked={isAllSelected}
-								onCheckedChange={toggleSelectAll}
-								aria-label="Pilih semua"
-							/>
-						</Table.Head>
 						<Table.Head class="w-12.5 text-center">No</Table.Head>
 						<Table.Head class="min-w-50">Nama Barang</Table.Head>
 						<Table.Head class="text-center">Total Stok</Table.Head>
@@ -202,9 +195,6 @@
 					{#if barangQuery.loading}
 						{#each Array(10) as _, i (i)}
 							<Table.Row class="hover:bg-transparent">
-								<Table.Cell class="text-center">
-									<Skeleton class="mx-auto h-4 w-4" />
-								</Table.Cell>
 								<Table.Cell class="text-center">
 									<Skeleton class="mx-auto h-4 w-4" />
 								</Table.Cell>
@@ -231,13 +221,6 @@
 					{:else if barangQuery.current && barangQuery.current.consumables.length > 0}
 						{#each barangQuery.current.consumables as item, i (item.id)}
 							<Table.Row class="transition-colors hover:bg-muted/30">
-								<Table.Cell class="text-center">
-									<Checkbox
-										checked={selectedIds.includes(item.id)}
-										onCheckedChange={() => toggleSelect(item.id)}
-										aria-label="Pilih item"
-									/>
-								</Table.Cell>
 								<Table.Cell class="text-center font-medium text-muted-foreground">
 									{i + 1 + (barangQuery.current.pagination.currentPage - 1) * 10}
 								</Table.Cell>
@@ -245,7 +228,7 @@
 									<div class="flex flex-col gap-1">
 										<span class="font-semibold text-foreground">{item.name}</span>
 										<span class="font-mono text-[10px] text-muted-foreground"
-											>ID: {item.id.slice(0, 8)}</span
+											>{item.id.slice(0, 8)}</span
 										>
 									</div>
 								</Table.Cell>
@@ -268,29 +251,18 @@
 									</Badge>
 								</Table.Cell>
 								<Table.Cell class="text-right">
-									<DropdownMenu.Root>
-										<DropdownMenu.Trigger>
-											<Ellipsis class="size-4" />
-										</DropdownMenu.Trigger>
-										<DropdownMenu.Content align="end" class="w-48">
-											<DropdownMenu.Item onclick={() => openMutate(item.id)} class="gap-2">
-												<ArrowRightLeft class="size-4" /> Mutasi Manual
-											</DropdownMenu.Item>
-											<DropdownMenu.Item
-												onclick={() => goto(`/${page.params.org_slug}/barang/edit/${item.id}`)}
-												class="gap-2"
-											>
-												<Pencil class="size-4" /> Edit Data
-											</DropdownMenu.Item>
-											<DropdownMenu.Separator />
-											<DropdownMenu.Item
-												onclick={() => confirmDelete(item.id)}
-												class="gap-2 text-red-600"
-											>
-												<Trash2 class="size-4" /> Hapus Barang
-											</DropdownMenu.Item>
-										</DropdownMenu.Content>
-									</DropdownMenu.Root>
+									<Button onclick={() => openMutate(item.id)} variant="outline">
+										<ArrowRightLeft class="size-4" /> Mutasi
+									</Button>
+									<Button
+										variant="outline"
+										onclick={() => goto(`/${page.params.org_slug}/barang/edit/${item.id}`)}
+									>
+										<Pencil class="size-4" /> Edit
+									</Button>
+									<Button onclick={() => confirmDelete(item.id)} variant="destructive">
+										<Trash2 class="size-4" /> Hapus
+									</Button>
 								</Table.Cell>
 							</Table.Row>
 						{/each}

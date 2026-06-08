@@ -1,14 +1,9 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import Button from '@/components/ui/button/button.svelte';
-	import { equipmentStatusColors, equipmentStatusLabels } from '@/utils.js';
 	import {
 		Package,
-		Warehouse,
 		AlertTriangle,
 		ArrowLeftRight,
-		Truck,
-		Home,
 		ClipboardList,
 		FileText,
 		BarChart2,

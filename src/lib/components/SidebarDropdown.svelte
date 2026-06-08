@@ -6,7 +6,14 @@
 	import { ChevronDown } from '@lucide/svelte';
 	import { getSidebarState } from '$lib/components/ui/sidebar/context.svelte';
 
-	let { name, icon: Icon, children, activePrefix, isOpen, onToggle } = $props<{
+	let {
+		name,
+		icon: Icon,
+		children,
+		activePrefix,
+		isOpen,
+		onToggle
+	} = $props<{
 		name: string;
 		icon: Component;
 		activePrefix: string;
@@ -19,7 +26,7 @@
 
 	let isGroupActive = $derived(
 		page.url.pathname.startsWith(activePrefix) ||
-		children.some((child: any) => page.url.pathname.startsWith(child.path))
+			children.some((child: any) => page.url.pathname.startsWith(child.path))
 	);
 
 	function handleToggle() {
@@ -36,16 +43,16 @@
 	<button
 		type="button"
 		onclick={handleToggle}
-		class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
+		class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 font-medium transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
         {isGroupActive ? 'text-sidebar-primary' : 'opacity-80'}"
 	>
-		<div class="flex items-center gap-3 shrink-0">
+		<div class="flex shrink-0 items-center gap-3">
 			<Icon size={18} strokeWidth={2} class="opacity-70" />
 			{#if sidebar.open}
 				<span class="whitespace-nowrap transition-opacity duration-300">{name}</span>
 			{/if}
 		</div>
-		
+
 		{#if sidebar.open}
 			<ChevronDown
 				size={14}

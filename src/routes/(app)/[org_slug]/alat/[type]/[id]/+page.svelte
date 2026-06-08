@@ -1,27 +1,19 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { page } from '$app/state';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { equipmentStatusLabels, equipmentStatusColors } from '$lib/utils';
+	import { ChevronLeft, Package, MapPin, History, Calendar } from '@lucide/svelte';
 	import {
-		ChevronLeft,
-		Package,
-		MapPin,
-		History,
-		Handshake,
-		Building2,
-		Calendar
-	} from '@lucide/svelte';
+		equipmentConditionColor,
+		equipmentConditionLabel,
+		equipmentStatusColor,
+		equipmentStatusLabel
+	} from '@/enums/equipment-enum';
+	import { movementEventTypeLabel } from '@/enums/movement-enum';
+	import Label from '@/components/ui/label/label.svelte';
 
 	let { data }: { data: PageData } = $props();
-
-	const conditionColors: Record<string, string> = {
-		BAIK: 'bg-green-100 text-green-700 border-green-200',
-		RUSAK_RINGAN: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-		RUSAK_BERAT: 'bg-red-100 text-red-700 border-red-200'
-	};
 </script>
 
 <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
@@ -36,44 +28,13 @@
 				<p class="text-sm text-muted-foreground">Informasi spesifik dan lokasi aset.</p>
 			</div>
 		</div>
-		<!-- <Button 
-			class="gap-2" 
-			href="/{page.params.org_slug}/peminjaman/create?equipmentId={data.equipment.id}&targetOrgId={data.equipment.organizationId}"
-			disabled={data.equipment!.status! !== 'READY'}
-		>
-			<Handshake class="size-4" />
-			Pinjam Alat
-		</Button> -->
 	</div>
 
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-		<!-- {#if data.equipment.item.imagePath}
-			<Card.Root class="overflow-hidden md:col-span-3">
-				<div class="flex flex-col gap-6 p-6 md:flex-row">
-					<div class="flex flex-col justify-center gap-2">
-						<h2 class="text-2xl font-bold">{data.equipment.item.name}</h2>
-						<p class="text-muted-foreground">
-							{data.equipment.brand || 'Tanpa Brand'} • {data.equipment.serialNumber || 'Tanpa SN'}
-						</p>
-						<div class="mt-2 flex gap-2">
-							<Badge variant="outline" class={conditionColors[data.equipment!.condition]}>
-								{data.equipment!.condition.replace('_', ' ')}
-							</Badge>
-							<Badge variant="secondary" class={equipmentStatusColors[data.equipment!.status!]}>
-								{equipmentStatusLabels[data.equipment!.status!] ||
-									data.equipment!.status!.replace('_', ' ')}
-							</Badge>
-						</div>
-					</div>
-				</div>
-			</Card.Root>
-		{/if} -->
-
 		<!-- Main Info -->
 		<Card.Root class={data.equipment.item.imagePath ? 'md:col-span-2' : 'md:col-span-2'}>
 			<Card.Header>
 				<Card.Title class="flex items-center gap-2">
-					<Package class="size-5 text-blue-600" />
 					{data.equipment.item.name}
 				</Card.Title>
 				<Card.Description>{data.equipment.id}</Card.Description>
@@ -90,35 +51,32 @@
 				{/if}
 				<div class="grid grid-cols-2 gap-x-4 gap-y-6">
 					<div class="space-y-1">
-						<span class="text-xs font-semibold text-muted-foreground uppercase">Serial Number</span>
+						<Label>Serial Number</Label>
 						<p class="font-mono text-lg">{data.equipment.serialNumber || '-'}</p>
 					</div>
 					<div class="space-y-1">
-						<span class="text-xs font-semibold text-muted-foreground uppercase">Brand / Merek</span>
+						<Label>Brand / Merek</Label>
 						<p class="text-lg">{data.equipment.brand || '-'}</p>
 					</div>
 					<div class="space-y-1">
-						<span class="text-xs font-semibold text-muted-foreground uppercase">Kondisi</span>
+						<Label>Kondisi</Label>
 						<div>
-							<Badge variant="outline" class={conditionColors[data.equipment!.condition]}>
-								{data.equipment!.condition.replace('_', ' ')}
+							<Badge variant="outline" class={equipmentConditionColor[data.equipment!.condition]}>
+								{equipmentConditionLabel[data.equipment!.condition]}
 							</Badge>
 						</div>
 					</div>
 					<div class="space-y-1">
-						<span class="text-xs font-semibold text-muted-foreground uppercase"
-							>Status Operasional</span
-						>
+						<Label>Status Operasional</Label>
 						<div>
-							<Badge variant="secondary" class={equipmentStatusColors[data.equipment!.status!]}>
-								{equipmentStatusLabels[data.equipment!.status!] ||
+							<Badge variant="secondary" class={equipmentStatusColor[data.equipment!.status!]}>
+								{equipmentStatusLabel[data.equipment!.status!] ||
 									data.equipment!.status!.replace('_', ' ')}
 							</Badge>
 						</div>
 					</div>
 					<div class="col-span-2 space-y-1">
-						<span class="text-xs font-semibold text-muted-foreground uppercase">Deskripsi Item</span
-						>
+						<Label>Deskripsi Item</Label>
 						<p class="text-sm text-muted-foreground">
 							{data.equipment.item.description || 'Tidak ada deskripsi.'}
 						</p>
@@ -137,13 +95,13 @@
 			</Card.Header>
 			<Card.Content class="space-y-6">
 				<div class="space-y-1">
-					<span class="text-xs font-semibold text-muted-foreground uppercase">Satuan Pemilik</span>
+					<Label>Satuan Pemilik</Label>
 					<p class="text-sm font-medium">
 						{data.equipment.warehouse?.organization?.name || 'Tidak diketahui'}
 					</p>
 				</div>
 				<div class="space-y-1">
-					<span class="text-xs font-semibold text-muted-foreground uppercase">Gudang</span>
+					<Label>Gudang</Label>
 					<p class="text-sm font-medium">{data.equipment.warehouse?.name || 'Tanpa Gudang'}</p>
 					<p class="text-xs text-muted-foreground">{data.equipment.warehouse?.location || '-'}</p>
 				</div>
@@ -184,7 +142,9 @@
 								class="w-[calc(100%-4rem)] rounded-lg border border-border bg-muted/30 p-4 shadow-sm md:w-[calc(50%-2.5rem)]"
 							>
 								<div class="mb-1 flex items-center justify-between space-x-2">
-									<div class="font-bold text-foreground">{log.eventType.replace('_', ' ')}</div>
+									<div class="font-bold text-foreground">
+										{movementEventTypeLabel[log.eventType]}
+									</div>
 									<time class="font-mono text-xs text-primary"
 										>{new Date(log.createdAt).toLocaleDateString()}</time
 									>

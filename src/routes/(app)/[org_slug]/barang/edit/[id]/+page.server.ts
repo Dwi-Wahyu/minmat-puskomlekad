@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (dataResults.length === 0) throw error(404, 'Barang tidak ditemukan');
 
-	return { consumable: dataResults[0] };
+	return { consumable: dataResults[0], org_slug: params.org_slug };
 };
 
 export const actions: Actions = {

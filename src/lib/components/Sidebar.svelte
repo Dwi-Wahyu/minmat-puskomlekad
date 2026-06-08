@@ -8,7 +8,8 @@
 		Settings,
 		Map,
 		Package,
-		X
+		X,
+		BookText
 	} from '@lucide/svelte';
 	import { page } from '$app/state';
 	import SidebarDropdown from './SidebarDropdown.svelte';
@@ -203,6 +204,13 @@
 				{ name: 'Audit Log', path: getPath('/audit-log'), role: ['superadmin', 'kakomlek'] }
 				// { name: 'Konversi Unit', path: getPath('/konversi-unit') }
 			]
+		},
+		{
+			name: 'Guide Book',
+			path: getPath('/guide-book'),
+			icon: BookText,
+			isDropdown: false,
+			children: []
 		}
 	];
 
@@ -233,7 +241,7 @@
 {/if}
 
 <aside
-	class="fixed inset-y-0 left-0 z-50 flex h-screen flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-xl transition-all duration-300 ease-in-out w-64 md:relative md:translate-x-0"
+	class="fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-xl transition-all duration-300 ease-in-out md:relative md:translate-x-0"
 	class:md:w-[70px]={!sidebar.open}
 	class:translate-x-0={sidebar.open}
 	class:-translate-x-full={!sidebar.open}
@@ -241,19 +249,17 @@
 	<div class="p-6">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-3">
-				<img src="/logo.svg" width="35" height="35" alt="" class="shrink-0" />
+				<img src="/logo.svg" width="40" height="40" alt="" class="shrink-0" />
 
 				<div
 					class="transition-opacity duration-300"
 					class:opacity-0={!sidebar.open}
 					class:pointer-events-none={!sidebar.open}
 				>
-					<h1
-						class="text-sm leading-tight font-bold tracking-wider whitespace-nowrap text-sidebar-primary"
-					>
+					<h1 class="leading-tight font-bold tracking-wider whitespace-nowrap text-sidebar-primary">
 						MINMAT
 					</h1>
-					<p class="text-[10px] font-medium tracking-tighter whitespace-nowrap uppercase opacity-80">
+					<p class="font-medium tracking-tighter whitespace-nowrap uppercase opacity-80">
 						MATKOMLEK
 					</p>
 				</div>
@@ -264,7 +270,7 @@
 				<button
 					type="button"
 					onclick={() => sidebar.setOpen(false)}
-					class="rounded-lg p-2 text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors md:hidden"
+					class="rounded-lg p-2 text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:hidden"
 					aria-label="Close Sidebar"
 				>
 					<X size={20} />

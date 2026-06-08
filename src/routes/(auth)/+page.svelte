@@ -123,7 +123,7 @@
 			<p
 				class="mt-4 text-center text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
 			>
-				&copy; 2026 PUSKOMLEKAD.
+				PT Skytel Indo &copy; 2026 PUSKOMLEKAD.
 			</p>
 		</div>
 	</div>

@@ -80,13 +80,8 @@
 									<span class="hidden lg:inline">Edit</span>
 								</Button>
 
-								<Button
-									variant="outline"
-									size="sm"
-									class="h-8 border-red-200 px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
-									onclick={() => confirmDelete(wh.id)}
-								>
-									<Trash2 class="size-3.5" />
+								<Button variant="destructive" size="icon" onclick={() => confirmDelete(wh.id)}>
+									<Trash2 />
 								</Button>
 							</div>
 						</Table.Cell>

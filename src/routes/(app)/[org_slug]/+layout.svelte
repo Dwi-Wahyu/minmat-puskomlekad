@@ -30,12 +30,12 @@
 	}
 </script>
 
-<div class="flex h-screen bg-background">
+<div class="flex h-screen overflow-hidden bg-background">
 	<Sidebar user={data.user} />
 
-	<main class="flex-1 overflow-y-auto">
+	<main class="flex flex-1 flex-col overflow-y-auto">
 		<header
-			class="flex h-16 items-center justify-between border-b border-border bg-card/50 px-8 shadow transition-all duration-300"
+			class="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/50 px-8 shadow transition-all duration-300"
 		>
 			<div class="flex items-center gap-4">
 				<button
@@ -49,21 +49,6 @@
 			</div>
 
 			<div class="flex items-center gap-3">
-				<!-- <Button.Root
-					onclick={toggleMode}
-					variant="outline"
-					size="icon"
-					class="border-none bg-transparent hover:bg-muted"
-				>
-					<Sun
-						class="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90"
-					/>
-					<Moon
-						class="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0"
-					/>
-					<span class="sr-only">Toggle theme</span>
-				</Button.Root> -->
-
 				<DropdownMenu.Root>
 					<DropdownMenu.Trigger class="flex items-center gap-3 outline-none">
 						<div class="hidden flex-col items-end md:flex">
@@ -115,7 +100,7 @@
 			</div>
 		</header>
 
-		<div>
+		<div class="">
 			{@render children()}
 		</div>
 	</main>

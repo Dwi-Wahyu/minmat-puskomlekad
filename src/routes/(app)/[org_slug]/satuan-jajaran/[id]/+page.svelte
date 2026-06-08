@@ -6,33 +6,14 @@
 	import { Input } from '$lib/components/ui/input';
 	import * as Table from '$lib/components/ui/table';
 	import * as Card from '$lib/components/ui/card';
+	import { Search, ChevronLeft, Building2, Package, Radio, Zap, Box } from '@lucide/svelte';
 	import {
-		Search,
-		ChevronLeft,
-		Building2,
-		Package,
-		Info,
-		Handshake,
-		Radio,
-		Zap,
-		Box
-	} from '@lucide/svelte';
-	import { equipmentStatusLabels, equipmentStatusColors } from '$lib/utils';
+		equipmentStatusLabel,
+		equipmentStatusColor,
+		equipmentConditionColor
+	} from '@/enums/equipment-enum.js';
 
 	let { data }: { data: PageData } = $props();
-
-	const conditionColors: Record<string, string> = {
-		BAIK: 'bg-green-100 text-green-700 border-green-200',
-		RUSAK_RINGAN: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-		RUSAK_BERAT: 'bg-red-100 text-red-700 border-red-200'
-	};
-
-	const statusColors: Record<string, string> = {
-		READY: 'bg-blue-100 text-blue-700 border-blue-200',
-		IN_USE: 'bg-purple-100 text-purple-700 border-purple-200',
-		TRANSIT: 'bg-orange-100 text-orange-700 border-orange-200',
-		MAINTENANCE: 'bg-red-100 text-red-700 border-red-200'
-	};
 </script>
 
 <div class="mx-auto flex w-full flex-col gap-6 p-6">
@@ -147,7 +128,6 @@
 						<Table.Head>Gudang</Table.Head>
 						<Table.Head>Kondisi</Table.Head>
 						<Table.Head>Status</Table.Head>
-						<!-- <Table.Head class="text-right">Aksi</Table.Head> -->
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
@@ -186,42 +166,14 @@
 								<span class="text-xs">{item.warehouseName || '-'}</span>
 							</Table.Cell>
 							<Table.Cell>
-								<Badge variant="outline" class={conditionColors[item.condition]}>
+								<Badge variant="outline" class={equipmentConditionColor[item.condition]}>
 									{item.condition}
 								</Badge>
 							</Table.Cell>
 							<Table.Cell>
-								<Badge variant="secondary" class={equipmentStatusColors[item.status!]}>
-									{equipmentStatusLabels[item.status!] || item.status!.replace('_', ' ')}
+								<Badge variant="secondary" class={equipmentStatusColor[item.status!]}>
+									{equipmentStatusLabel[item.status!] || item.status!.replace('_', ' ')}
 								</Badge>
-							</Table.Cell>
-							<Table.Cell class="text-right">
-								<div class="flex justify-end gap-2">
-									<!-- {#if item.type === 'ASSET'}
-										<Button
-											size="sm"
-											variant="outline"
-											class="h-8 gap-1"
-											href="/{page.params
-												.org_slug}/peminjaman/create?equipmentId={item.id}&targetOrgId={data
-												.targetOrg.id}"
-											disabled={item.status !== 'READY'}
-										>
-											<Handshake class="size-3.5" />
-											Pinjam
-										</Button>
-									{/if}
-									<Button
-										size="sm"
-										variant="ghost"
-										class="h-8 gap-1"
-										href="/{page.params.org_slug}/alat/{item.equipmentType?.toLowerCase() ||
-											'barang'}/{item.id}"
-									>
-										<Info class="size-3.5" />
-										Detail
-									</Button> -->
-								</div>
 							</Table.Cell>
 						</Table.Row>
 					{:else}

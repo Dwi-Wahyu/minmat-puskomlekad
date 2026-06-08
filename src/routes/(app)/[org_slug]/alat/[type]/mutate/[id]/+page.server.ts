@@ -32,9 +32,21 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		where: eq(warehouse.organizationId, org.id)
 	});
 
+	// Fetch last mutation/movement for this equipment
+	const lastMovement = await db.query.movement.findFirst({
+		where: eq(movement.equipmentId, id),
+		orderBy: (movement, { desc }) => [desc(movement.createdAt)],
+		with: {
+			fromWarehouse: true,
+			toWarehouse: true,
+			pic: true
+		}
+	});
+
 	return {
 		equipment: data,
 		warehouses,
+		lastMovement,
 		type: params.type
 	};
 };
@@ -47,6 +59,7 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const eventType = formData.get('eventType') as any;
 		const classification = formData.get('classification') as any;
+		const status = formData.get('status') as string;
 		const toWarehouseId = formData.get('toWarehouseId') as string;
 		const specificLocationName = formData.get('specificLocationName') as string;
 		const notes = formData.get('notes') as string;
@@ -60,14 +73,30 @@ export const actions: Actions = {
 
 			if (!org) return fail(404, { message: 'Organisasi tidak ditemukan' });
 
+			const currentEquipment = await db.query.equipment.findFirst({
+				where: eq(equipment.id, id)
+			});
+
+			if (!currentEquipment) return fail(404, { message: 'Alat tidak ditemukan' });
+
+			// Validasi state machine
+			const validTransitions: Record<string, string[]> = {
+				TRANSIT: ['TRANSFER_IN', 'ISSUE'],
+				READY: ['TRANSFER_OUT', 'ISSUE', 'RECEIVE'],
+				IN_USE: ['TRANSFER_OUT', 'ISSUE', 'RECEIVE'],
+				MAINTENANCE: [] // tidak ada mutasi manual saat maintenance
+			};
+			const currentStatus = currentEquipment.status ?? 'READY';
+			const allowed = validTransitions[currentStatus] ?? [];
+
+			if (!allowed.includes(eventType)) {
+				return fail(400, {
+					message: `Mutasi "${eventType}" tidak valid untuk alat dengan status "${currentStatus}".`
+				});
+			}
+
 			// Start a transaction to update equipment and record movement
 			await db.transaction(async (tx) => {
-				const currentEquipment = await tx.query.equipment.findFirst({
-					where: eq(equipment.id, id)
-				});
-
-				if (!currentEquipment) throw new Error('Alat tidak ditemukan');
-
 				let fromWhId: string | null = null;
 				let toWhId: string | null = null;
 				let equipmentUpdate: any = {};
@@ -78,33 +107,34 @@ export const actions: Actions = {
 						// External -> System
 						fromWhId = null;
 						toWhId = toWarehouseId;
-						equipmentUpdate = { warehouseId: toWhId, status: 'READY' };
+						equipmentUpdate = { warehouseId: toWhId, status: status || 'READY' };
 						break;
 
 					case 'ISSUE':
 						// System -> External (Permanent)
 						fromWhId = currentEquipment.warehouseId;
 						toWhId = null;
-						equipmentUpdate = { warehouseId: null, status: 'READY' };
+						equipmentUpdate = { warehouseId: null, status: status || 'READY' };
 						break;
 
 					case 'TRANSFER_OUT':
 						// Internal Movement (Kirim)
 						fromWhId = currentEquipment.warehouseId;
 						toWhId = toWarehouseId;
-						equipmentUpdate = { warehouseId: toWhId, status: 'TRANSIT' };
+						equipmentUpdate = { warehouseId: fromWhId, status: status || 'TRANSIT' };
 						break;
 
 					case 'TRANSFER_IN':
 						// Internal Movement (Terima)
 						fromWhId = currentEquipment.warehouseId;
 						toWhId = toWarehouseId;
-						equipmentUpdate = { warehouseId: toWhId, status: 'READY' };
+						equipmentUpdate = { warehouseId: toWhId, status: status || 'READY' };
 						break;
 
 					default:
 						fromWhId = currentEquipment.warehouseId;
 						toWhId = toWarehouseId;
+						if (status) equipmentUpdate.status = status;
 				}
 
 				// Update Equipment State

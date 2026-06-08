@@ -24,16 +24,6 @@
 		selectedId = id;
 		deleteDialogOpen = true;
 	}
-
-	const conditionColors: Record<string, string> = {
-		BAIK: 'bg-green-100 text-green-700',
-		RUSAK: 'bg-red-100 text-red-700'
-	};
-
-	const statusColors: Record<string, string> = {
-		MILIK_TNI: 'bg-green-100 text-green-700',
-		SEWA: 'bg-yellow-100 text-yellow-700'
-	};
 </script>
 
 <div class="flex flex-col gap-6 p-6">
@@ -92,12 +82,12 @@
 						<Table.Cell>{item.location}</Table.Cell>
 						<Table.Cell>{item.area} m²</Table.Cell>
 						<Table.Cell>
-							<Badge variant="outline" class={conditionColors[item.condition]}>
+							<Badge variant="outline" class={buildingConditionColors[item.condition]}>
 								{item.condition}
 							</Badge>
 						</Table.Cell>
 						<Table.Cell>
-							<Badge variant="outline" class={statusColors[item.status!]}>
+							<Badge variant="outline" class={buildingStatusColors[item.status!]}>
 								{item.status!.replace('_', ' ')}
 							</Badge>
 						</Table.Cell>
