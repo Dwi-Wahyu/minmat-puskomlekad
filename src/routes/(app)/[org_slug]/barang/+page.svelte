@@ -1,8 +1,7 @@
 <script lang="ts">
-	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { getBarangData } from './barang.remote';
 	import { Badge } from '$lib/components/ui/badge';
@@ -10,22 +9,11 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { Checkbox } from '$lib/components/ui/checkbox';
 	import * as Select from '$lib/components/ui/select';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
-	import {
-		Search,
-		Plus,
-		Pencil,
-		Trash2,
-		ArrowRightLeft,
-		Ellipsis,
-		Package,
-		Info,
-		Box
-	} from '@lucide/svelte';
+	import { Search, Plus, Pencil, Trash2, ArrowRightLeft, Info } from '@lucide/svelte';
+	import { resolve } from '$app/paths';
 
 	let { data }: { data: PageData } = $props();
 
@@ -36,30 +24,6 @@
 		})
 	);
 
-	// Selection state
-	let selectedIds = $state<string[]>([]);
-	const isAllSelected = $derived(
-		barangQuery.current?.consumables &&
-			barangQuery.current.consumables.length > 0 &&
-			selectedIds.length === barangQuery.current.consumables.length
-	);
-
-	function toggleSelectAll() {
-		if (isAllSelected) {
-			selectedIds = [];
-		} else if (barangQuery.current?.consumables) {
-			selectedIds = barangQuery.current.consumables.map((item: any) => item.id);
-		}
-	}
-
-	function toggleSelect(id: string) {
-		if (selectedIds.includes(id)) {
-			selectedIds = selectedIds.filter((i) => i !== id);
-		} else {
-			selectedIds = [...selectedIds, id];
-		}
-	}
-
 	// State Dialogs
 	let notificationOpen = $state(false);
 	let notificationMsg = $state('');
@@ -69,37 +33,18 @@
 	let deleteLoading = $state(false);
 	let selectedId = $state('');
 
-	let mutateDialogOpen = $state(false);
-	let mutateLoading = $state(false);
-	let mutateQty = $state(1);
-	let mutateType = $state('ADJUSTMENT');
-	let mutateNotes = $state('');
-	let mutateWarehouseId = $state('');
-
-	const mutateTypeOptions = [
-		{ value: 'ADJUSTMENT', label: 'Penyesuaian (Adjustment)' },
-		{ value: 'ISSUE', label: 'Keluar (Issue)' },
-		{ value: 'RECEIVE', label: 'Masuk (Receive)' }
-	];
-
-	const mutateTrigger = $derived(
-		mutateTypeOptions.find((o: any) => o.value === mutateType)?.label ?? 'Pilih Jenis'
-	);
-
-	const warehouseTrigger = $derived(
-		barangQuery.current?.warehouses.find((w: any) => w.id === mutateWarehouseId)?.name ??
-			'Pilih Gudang'
-	);
-
 	function confirmDelete(id: string) {
 		selectedId = id;
 		deleteDialogOpen = true;
 	}
 
 	function openMutate(id: string) {
-		selectedId = id;
-		mutateWarehouseId = '';
-		mutateDialogOpen = true;
+		goto(
+			resolve('/(app)/[org_slug]/barang/mutate/[id]', {
+				id,
+				org_slug: data.org_slug
+			})
+		);
 	}
 
 	function formatStock(qty: string | number, baseUnit: string, conversions: any[]) {
@@ -172,10 +117,7 @@
 					value={page.url.searchParams.get('name')}
 				/>
 			</div>
-			<Button type="submit" variant="secondary" class="gap-2">
-				<Search class="size-4" />
-				Cari
-			</Button>
+			<Button type="submit" variant="secondary">Cari</Button>
 		</form>
 	</div>
 
@@ -226,7 +168,15 @@
 								</Table.Cell>
 								<Table.Cell>
 									<div class="flex flex-col gap-1">
-										<span class="font-semibold text-foreground">{item.name}</span>
+										<a
+											href={resolve('/(app)/[org_slug]/barang/[id]', {
+												id: item.id,
+												org_slug: data.org_slug
+											})}
+											class="font-semibold text-foreground hover:text-primary transition-colors"
+										>
+											{item.name}
+										</a>
 										<span class="font-mono text-[10px] text-muted-foreground"
 											>{item.id.slice(0, 8)}</span
 										>
@@ -251,12 +201,30 @@
 									</Badge>
 								</Table.Cell>
 								<Table.Cell class="text-right">
+									<Button
+										variant="outline"
+										onclick={() =>
+											goto(
+												resolve('/(app)/[org_slug]/barang/[id]', {
+													id: item.id,
+													org_slug: data.org_slug
+												})
+											)}
+									>
+										<Info class="size-4" /> Detail
+									</Button>
 									<Button onclick={() => openMutate(item.id)} variant="outline">
 										<ArrowRightLeft class="size-4" /> Mutasi
 									</Button>
 									<Button
 										variant="outline"
-										onclick={() => goto(`/${page.params.org_slug}/barang/edit/${item.id}`)}
+										onclick={() =>
+											goto(
+												resolve('/(app)/[org_slug]/barang/edit/[id]', {
+													id: item.id,
+													org_slug: data.org_slug
+												})
+											)}
 									>
 										<Pencil class="size-4" /> Edit
 									</Button>
@@ -342,40 +310,6 @@
 	<input type="hidden" name="id" value={selectedId} />
 </form>
 
-<form
-	id="mutate-form"
-	method="POST"
-	action="?/mutate"
-	use:enhance={() => {
-		mutateLoading = true;
-		return async ({ result, update }) => {
-			mutateLoading = false;
-			if (result?.type === 'success') {
-				mutateDialogOpen = false;
-				await update();
-				notificationMsg = ((result?.data as any)?.message as string) || '';
-				notificationType = 'success';
-				notificationOpen = true;
-				// Reset fields
-				mutateQty = 1;
-				mutateNotes = '';
-				mutateWarehouseId = '';
-			} else {
-				notificationMsg = ((result as any).data as any)?.message || 'Gagal mencatat mutasi';
-				notificationType = 'error';
-				notificationOpen = true;
-			}
-		};
-	}}
-	hidden
->
-	<input type="hidden" name="itemId" value={selectedId} />
-	<input type="hidden" name="qty" value={mutateQty} />
-	<input type="hidden" name="type" value={mutateType} />
-	<input type="hidden" name="notes" value={mutateNotes} />
-	<input type="hidden" name="warehouseId" value={mutateWarehouseId} />
-</form>
-
 <!-- DIALOGS -->
 <ConfirmationDialog
 	bind:open={deleteDialogOpen}
@@ -389,64 +323,6 @@
 		deleteform.requestSubmit();
 	}}
 />
-
-<ConfirmationDialog
-	bind:open={mutateDialogOpen}
-	loading={mutateLoading}
-	type="info"
-	title="Mutasi / Penyesuaian Stok"
-	description="Catat pergerakan stok manual untuk barang ini."
-	actionLabel="Simpan Mutasi"
-	onAction={() => {
-		if (!mutateWarehouseId) {
-			notificationMsg = 'Pilih gudang terlebih dahulu';
-			notificationType = 'error';
-			notificationOpen = true;
-			return;
-		}
-		const mutateform = document.getElementById('mutate-form') as HTMLFormElement;
-		mutateform.requestSubmit();
-	}}
->
-	<div class="mt-4 grid gap-4 text-left">
-		<div class="space-y-2">
-			<Label>Pilih Gudang</Label>
-			<Select.Root type="single" bind:value={mutateWarehouseId}>
-				<Select.Trigger class="w-full">
-					{warehouseTrigger}
-				</Select.Trigger>
-				<Select.Content>
-					{#if barangQuery.current?.warehouses}
-						{#each barangQuery.current.warehouses as wh (wh.id)}
-							<Select.Item value={wh.id} label={wh.name}>{wh.name}</Select.Item>
-						{/each}
-					{/if}
-				</Select.Content>
-			</Select.Root>
-		</div>
-		<div class="space-y-2">
-			<Label>Jenis Pergerakan</Label>
-			<Select.Root type="single" bind:value={mutateType}>
-				<Select.Trigger class="w-full">
-					{mutateTrigger}
-				</Select.Trigger>
-				<Select.Content>
-					{#each mutateTypeOptions as opt (opt.value)}
-						<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
-		</div>
-		<div class="space-y-2">
-			<Label>Jumlah (Qty)</Label>
-			<Input type="number" bind:value={mutateQty} min="1" />
-		</div>
-		<div class="space-y-2">
-			<Label>Catatan / Keterangan</Label>
-			<Input bind:value={mutateNotes} placeholder="Contoh: Barang rusak saat pengiriman..." />
-		</div>
-	</div>
-</ConfirmationDialog>
 
 <NotificationDialog
 	bind:open={notificationOpen}

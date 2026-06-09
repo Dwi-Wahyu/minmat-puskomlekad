@@ -17,14 +17,13 @@
 		Clock,
 		CheckCircle2,
 		AlertCircle,
-		Box,
 		Filter
 	} from '@lucide/svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	// State untuk filter
-	let selectedEquipmentIds = $state<string[]>([]);
+	let selectedEquipmentIds = $derived<string[]>([]);
 
 	$effect(() => {
 		selectedEquipmentIds = data.filters.equipmentIds;
@@ -48,12 +47,10 @@
 
 	// State untuk dialog konfirmasi hapus
 	let showDeleteDialog = $state(false);
-	let deleteId = $state<string | null>(null);
 	let deleteForm: HTMLFormElement | null = $state(null);
 
 	// Handler untuk membuka dialog hapus
 	function confirmDelete(id: string, formElement: HTMLFormElement) {
-		deleteId = id;
 		deleteForm = formElement;
 		showDeleteDialog = true;
 	}
@@ -68,7 +65,6 @@
 
 	// Handler untuk batal hapus
 	function handleCancelDelete() {
-		deleteId = null;
 		deleteForm = null;
 		showDeleteDialog = false;
 	}

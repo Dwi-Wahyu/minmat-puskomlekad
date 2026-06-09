@@ -1,6 +1,6 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { item, stock, warehouse, itemUnitConversion, organization } from '$lib/server/db/schema';
+import { item, stock, warehouse, itemUnitConversion } from '$lib/server/db/schema';
 import { eq, and, like, desc, sql, inArray } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
@@ -75,7 +75,7 @@ export const getBarangData = query(barangSchema, async (args): Promise<BarangDat
 				})
 			: [];
 
-	const consumables = itemsData.map((item: any) => ({
+	const consumables = itemsData.map((item) => ({
 		...item,
 		conversions: conversions.filter((c) => c.itemId === item.id)
 	}));

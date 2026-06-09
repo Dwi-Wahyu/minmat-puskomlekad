@@ -6,6 +6,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { uploadFile } from '$lib/server/storage';
 import { invalidateOrgInventoryCache } from '$lib/server/redis';
+import { message, superValidate } from 'sveltekit-superforms';
+import { yup } from 'sveltekit-superforms/adapters';
+import { itemSchema } from '$lib/schemas/item-schema';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const orgResults = await db
@@ -25,33 +28,41 @@ export const load: PageServerLoad = async ({ params }) => {
 		.from(warehouse)
 		.where(eq(warehouse.organizationId, orgId));
 
+	const form = await superValidate(yup(itemSchema));
+
 	return {
 		warehouses,
-		org_slug: params.org_slug
+		org_slug: params.org_slug,
+		form
 	};
 };
 
 export const actions: Actions = {
 	default: async ({ request, params }: any) => {
+		const { org_slug } = params;
+		const formData = await request.formData();
+		const form = await superValidate(formData, yup(itemSchema));
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
+
+		const { name, baseUnit, description, warehouseId, qty } = form.data as {
+			name: string;
+			baseUnit: 'PCS' | 'BOX' | 'METER' | 'ROLL' | 'UNIT';
+			description: string | null;
+			warehouseId: string | null;
+			qty: number | null;
+		};
+
+		const image = formData.get('image') as File;
+
 		try {
-			const { org_slug } = params;
-			const formData = await request.formData();
-			const name = formData.get('name') as string;
-			const baseUnit = formData.get('baseUnit') as 'PCS' | 'BOX' | 'METER' | 'ROLL' | 'UNIT';
-			const description = formData.get('description') as string;
-			const warehouseId = formData.get('warehouseId') as string;
-			const qty = formData.get('qty') as string;
-			const image = formData.get('image') as File;
-
-			if (!name || !baseUnit) {
-				return fail(400, { message: 'Nama dan Satuan dasar wajib diisi' });
-			}
-
 			let imagePath = null;
 			if (image && image.size > 0) {
 				const uploadResult = await uploadFile(image, 'item');
 				if (uploadResult.error) {
-					return fail(400, { message: uploadResult.error });
+					return message(form, uploadResult.error, { status: 400 });
 				}
 				imagePath = uploadResult.fileName;
 			}
@@ -69,12 +80,12 @@ export const actions: Actions = {
 					createdAt: new Date()
 				});
 
-				if (warehouseId && qty && parseFloat(qty) > 0) {
+				if (warehouseId && qty && qty > 0) {
 					await tx.insert(stock).values({
 						id: uuidv4(),
 						itemId,
 						warehouseId,
-						qty: parseFloat(qty).toString(),
+						qty: qty.toString(),
 						updatedAt: new Date()
 					});
 				}
@@ -89,10 +100,10 @@ export const actions: Actions = {
 				await invalidateOrgInventoryCache(org.id);
 			}
 
-			return { success: true, message: 'Barang berhasil disimpan' };
+			return message(form, 'Barang berhasil disimpan');
 		} catch (err) {
 			console.error('Error creating item:', err);
-			return fail(500, { message: 'Gagal menyimpan data barang' });
+			return message(form, 'Gagal menyimpan data barang', { status: 500 });
 		}
 	}
 };

@@ -6,9 +6,6 @@ import * as schema from './schema';
 import * as authSchema from './auth.schema';
 import { drizzle } from 'drizzle-orm/mysql2';
 import { v4 as uuidv4 } from 'uuid';
-import { Faker, id_ID } from '@faker-js/faker';
-
-const faker = new Faker({ locale: [id_ID] });
 
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';

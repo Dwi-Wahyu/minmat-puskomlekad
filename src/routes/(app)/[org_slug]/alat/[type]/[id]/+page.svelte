@@ -1,26 +1,58 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { page } from '$app/state';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { ChevronLeft, Package, MapPin, History, Calendar } from '@lucide/svelte';
+	import {
+		ChevronLeft,
+		Package,
+		MapPin,
+		History,
+		PackagePlus,
+		PackageMinus,
+		Settings2,
+		ArrowUpRight,
+		ArrowDownLeft,
+		HandHelping,
+		RotateCcw,
+		Truck,
+		PackageCheck,
+		Wrench,
+		ShieldCheck
+	} from '@lucide/svelte';
 	import {
 		equipmentConditionColor,
 		equipmentConditionLabel,
 		equipmentStatusColor,
 		equipmentStatusLabel
 	} from '@/enums/equipment-enum';
-	import { movementEventTypeLabel } from '@/enums/movement-enum';
+	import { movementEventTypeLabel, movementEventTypeIcon } from '@/enums/movement-enum';
 	import Label from '@/components/ui/label/label.svelte';
+	import { resolve } from '$app/paths';
 
 	let { data }: { data: PageData } = $props();
+
+	const iconMap: Record<string, any> = {
+		PackagePlus,
+		PackageMinus,
+		Settings2,
+		ArrowUpRight,
+		ArrowDownLeft,
+		HandHelping,
+		RotateCcw,
+		Truck,
+		PackageCheck,
+		Wrench,
+		ShieldCheck
+	};
 </script>
 
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
+<div class="flex w-full flex-col gap-6 p-6">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
-			<Button variant="outline" size="icon" onclick={() => history.back()}>
+			<Button variant="outline" size="icon" href="/{page.params.org_slug}/alat/{page.params.type}">
 				<ChevronLeft class="size-4" />
 			</Button>
 			<div>
@@ -105,11 +137,12 @@
 					<p class="text-sm font-medium">{data.equipment.warehouse?.name || 'Tanpa Gudang'}</p>
 					<p class="text-xs text-muted-foreground">{data.equipment.warehouse?.location || '-'}</p>
 				</div>
-				<div class="border-t pt-4">
-					<div class="flex items-center gap-2 text-xs text-muted-foreground">
-						<Calendar class="size-3.5" />
-						Terdaftar pada {new Date(data.equipment.createdAt).toLocaleDateString('id-ID')}
-					</div>
+
+				<div class="space-y-1">
+					<Label>Terdaftar pada</Label>
+					<p class="text-sm font-medium">
+						{new Date(data.equipment.createdAt).toLocaleDateString('id-ID')}
+					</p>
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -127,6 +160,7 @@
 					class="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:h-full before:w-0.5 before:bg-border md:before:left-1/2 md:before:ml-0"
 				>
 					{#each data.history as log (log.id)}
+						{@const Icon = iconMap[movementEventTypeIcon[log.eventType]] || Package}
 						<div
 							class="group relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse"
 						>
@@ -134,15 +168,21 @@
 							<div
 								class="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow md:absolute md:left-1/2 md:-translate-x-1/2"
 							>
-								<Package class="size-5" />
+								<Icon class="size-5" />
 							</div>
 
 							<!-- Content Card -->
-							<div
-								class="w-[calc(100%-4rem)] rounded-lg border border-border bg-muted/30 p-4 shadow-sm md:w-[calc(50%-2.5rem)]"
+							<a
+								href={resolve('/(app)/[org_slug]/mutasi/[id]', {
+									org_slug: data.org_slug,
+									id: log.id
+								})}
+								class="group/card block w-[calc(100%-4rem)] rounded-lg border border-border bg-muted/30 p-4 shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted/60 md:w-[calc(50%-2.5rem)]"
 							>
 								<div class="mb-1 flex items-center justify-between space-x-2">
-									<div class="font-bold text-foreground">
+									<div
+										class="font-bold text-foreground transition-colors group-hover/card:text-primary"
+									>
 										{movementEventTypeLabel[log.eventType]}
 									</div>
 									<time class="font-mono text-xs text-primary"
@@ -153,7 +193,7 @@
 									{log.notes ||
 										`Pergerakan material dari ${log.fromWarehouse?.name || 'Sumber'} ke ${log.toWarehouse?.name || 'Tujuan'}`}
 								</div>
-							</div>
+							</a>
 						</div>
 					{:else}
 						<p class="py-8 text-center text-muted-foreground">

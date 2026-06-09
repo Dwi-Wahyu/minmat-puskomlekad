@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { invalidateAll } from '$app/navigation';
 	import { cn } from '$lib/utils';
+	import { notificationPriorityColor, notificationPriorityLabel } from '@/enums/notification-enum';
 
 	type NotificationAction = {
 		type?: string;
@@ -22,7 +23,12 @@
 		action?: NotificationAction | null;
 	};
 
-	let { notifications = [] as Notification[], unreadCount = 0, organizationId = '', orgSlug = '' } = $props();
+	let {
+		notifications = [] as Notification[],
+		unreadCount = 0,
+		organizationId = '',
+		orgSlug = ''
+	} = $props();
 
 	function formatRelativeTime(date: Date | string | number) {
 		const now = new Date().getTime();
@@ -71,12 +77,6 @@
 			invalidateAll();
 		}
 	}
-
-	const priorityColors = {
-		LOW: 'bg-primary/10 text-primary',
-		MEDIUM: 'bg-warning/10 text-warning',
-		HIGH: 'bg-destructive/10 text-destructive'
-	};
 </script>
 
 <DropdownMenu.Root>
@@ -134,10 +134,10 @@
 									<span
 										class={cn(
 											'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium',
-											priorityColors[notif.priority]
+											notificationPriorityColor[notif.priority]
 										)}
 									>
-										{notif.priority}
+										{notificationPriorityLabel[notif.priority]}
 									</span>
 									<span class="truncate text-xs text-muted-foreground">
 										{formatRelativeTime(notif.createdAt)}

@@ -1,7 +1,7 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { movement, organization, equipment, item } from '$lib/server/db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { movement } from '$lib/server/db/schema';
+import { eq, desc, and, isNull, isNotNull } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
 
@@ -9,7 +9,9 @@ const balkirSchema = v.object({
 	orgId: v.optional(v.string(), ''),
 	search: v.optional(v.string(), ''),
 	type: v.optional(v.string(), ''),
-	category: v.optional(v.string(), '')
+	category: v.optional(v.string(), ''),
+	page: v.optional(v.number(), 1),
+	limit: v.optional(v.number(), 25)
 });
 
 export type BalkirData = {
@@ -17,6 +19,11 @@ export type BalkirData = {
 	organizations: any[];
 	isMabes: boolean;
 	selectedOrgId: string;
+	pagination: {
+		currentPage: number;
+		totalPages: number;
+		totalItems: number;
+	};
 };
 
 export const getBalkirData = query(balkirSchema, async (args): Promise<BalkirData> => {
@@ -28,13 +35,14 @@ export const getBalkirData = query(balkirSchema, async (args): Promise<BalkirDat
 
 	const { search: searchQuery, type: typeFilter, category: categoryFilter } = args;
 
-	// Fetch all organizations if user is Mabes
 	const orgs = isMabes ? await db.query.organization.findMany() : [];
 
-	const movements = await db.query.movement.findMany({
+	// ─── 1. Asset movements ───────────────────────────────────────────────────────
+	const assetMovements = await db.query.movement.findMany({
 		where: and(
 			eq(movement.classification, 'BALKIR'),
-			eq(movement.organizationId, selectedOrgId)
+			eq(movement.organizationId, selectedOrgId),
+			isNotNull(movement.equipmentId)
 		),
 		with: {
 			equipment: {
@@ -43,78 +51,96 @@ export const getBalkirData = query(balkirSchema, async (args): Promise<BalkirDat
 					warehouse: true
 				}
 			},
-			organization: {
-				columns: { name: true }
-			},
-			fromWarehouse: {
-				columns: { name: true }
-			},
-			item: true
+			organization: { columns: { name: true } },
+			fromWarehouse: { columns: { name: true } }
 		},
 		orderBy: [desc(movement.createdAt)]
 	});
 
-	// Filter and Grouping logic
-	const filtered = movements.filter((m) => {
-		const itemData = m.equipment?.item || m.item;
+	// ─── 2. Consumable movements ──────────────────────────────────────────────────
+	const consumableMovements = await db.query.movement.findMany({
+		where: and(
+			eq(movement.classification, 'BALKIR'),
+			eq(movement.organizationId, selectedOrgId),
+			isNull(movement.equipmentId),
+			isNotNull(movement.itemId)
+		),
+		with: {
+			item: true,
+			organization: { columns: { name: true } },
+			fromWarehouse: { columns: { name: true } }
+		},
+		orderBy: [desc(movement.createdAt)]
+	});
+
+	// ─── 3. Filter assets ─────────────────────────────────────────────────────────
+	const filteredAssets = assetMovements.filter((m) => {
+		const itemData = m.equipment?.item;
 		if (!itemData) return false;
 
-		// Data Terbaru check: Jika Asset, pastikan masih di sistem (warehouseId null = ISSUE)
-		if (m.equipment && m.equipment.warehouseId === null && m.eventType === 'ISSUE') {
-			return false;
-		}
-
-		// Search Filter
 		if (searchQuery) {
 			const nameMatch = itemData.name.toLowerCase().includes(searchQuery.toLowerCase());
 			const snMatch = m.equipment?.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase());
 			if (!nameMatch && !snMatch) return false;
 		}
 
-		// Type Filter
-		if (typeFilter && itemData.type !== typeFilter) return false;
-
-		// Category Filter
+		if (typeFilter && typeFilter !== 'ASSET') return false;
 		if (categoryFilter && itemData.equipmentType !== categoryFilter) return false;
 
 		return true;
 	});
 
-	// Mapping & Grouping
-	const mappedMovements = filtered.map((m) => {
-		const displayOrgName =
-			m.organizationId === userOrg.id ? 'Internal' : (m.organization?.name ?? 'Unknown');
+	// ─── 4. Filter consumables ────────────────────────────────────────────────────
+	const filteredConsumables = consumableMovements.filter((m) => {
+		if (!m.item || m.item.type !== 'CONSUMABLE') return false;
 
-		if (m.equipment) {
-			return {
-				id: m.id,
-				equipmentId: m.equipment.id,
-				type: 'asset' as const,
-				nama: m.equipment.item.name,
-				tipe: m.equipment.item.type,
-				kategori: m.equipment.item.equipmentType,
-				sn: m.equipment.serialNumber,
-				qty: 1,
-				satuan: m.equipment.item.baseUnit,
-				kondisi: m.equipment.condition,
-				lokasi: m.specificLocationName,
-				tglMasuk: m.createdAt,
-				organizationName: displayOrgName,
-				fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar',
-				classification: m.classification
-			};
+		if (searchQuery) {
+			const nameMatch = m.item.name.toLowerCase().includes(searchQuery.toLowerCase());
+			if (!nameMatch) return false;
 		}
 
+		if (typeFilter && typeFilter !== 'CONSUMABLE') return false;
+		if (categoryFilter) return false; // consumable tidak punya equipmentType
+
+		return true;
+	});
+
+	// ─── 5. Map ke shape yang sama ────────────────────────────────────────────────
+	const mappedAssets = filteredAssets.map((m) => {
+		const displayOrgName =
+			m.organizationId === userOrg.id ? 'Internal' : (m.organization?.name ?? 'Unknown');
 		return {
 			id: m.id,
-			itemId: m.item?.id,
+			equipmentId: m.equipment!.id,
+			type: 'asset' as const,
+			nama: m.equipment!.item.name,
+			tipe: m.equipment!.item.type,
+			kategori: m.equipment!.item.equipmentType,
+			sn: m.equipment!.serialNumber,
+			qty: 1,
+			satuan: m.equipment!.item.baseUnit,
+			kondisi: m.equipment!.condition,
+			lokasi: m.specificLocationName,
+			tglMasuk: m.createdAt,
+			organizationName: displayOrgName,
+			fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar',
+			classification: m.classification
+		};
+	});
+
+	const mappedConsumables = filteredConsumables.map((m) => {
+		const displayOrgName =
+			m.organizationId === userOrg.id ? 'Internal' : (m.organization?.name ?? 'Unknown');
+		return {
+			id: m.id,
+			itemId: m.item!.id,
 			type: 'consumable' as const,
-			nama: m.item?.name || 'Unknown',
-			tipe: m.item?.type || 'CONSUMABLE',
+			nama: m.item!.name,
+			tipe: m.item!.type,
 			kategori: null,
 			sn: null,
 			qty: Number(m.qty),
-			satuan: m.item?.baseUnit,
+			satuan: m.item!.baseUnit,
 			kondisi: null,
 			lokasi: m.specificLocationName,
 			tglMasuk: m.createdAt,
@@ -124,36 +150,43 @@ export const getBalkirData = query(balkirSchema, async (args): Promise<BalkirDat
 		};
 	});
 
-	// Terapkan Grouping untuk Consumables
-	const finalMovements: any[] = [];
+	// ─── 6. Group consumables ─────────────────────────────────────────────────────
+	const finalMovements: any[] = [...mappedAssets];
 	const consumableGroups = new Map<string, any>();
 
-	for (const m of mappedMovements) {
-		if (m.type === 'consumable' && m.itemId) {
-			const key = `${m.itemId}-${m.lokasi}-${m.organizationName}-${m.fromWarehouse}`;
-			const existing = consumableGroups.get(key);
-			if (existing) {
-				existing.qty += m.qty;
-				if (new Date(m.tglMasuk) > new Date(existing.tglMasuk)) {
-					existing.tglMasuk = m.tglMasuk;
-				}
-			} else {
-				consumableGroups.set(key, { ...m });
+	for (const m of mappedConsumables) {
+		const key = `${m.itemId}-${m.lokasi}-${m.organizationName}-${m.fromWarehouse}`;
+		const existing = consumableGroups.get(key);
+		if (existing) {
+			existing.qty += m.qty;
+			if (new Date(m.tglMasuk) > new Date(existing.tglMasuk)) {
+				existing.tglMasuk = m.tglMasuk;
 			}
 		} else {
-			finalMovements.push(m);
+			consumableGroups.set(key, { ...m });
 		}
 	}
 
 	finalMovements.push(...Array.from(consumableGroups.values()));
 
-	// Sort by latest date again
 	finalMovements.sort((a, b) => new Date(b.tglMasuk).getTime() - new Date(a.tglMasuk).getTime());
 
+	// ─── 7. Pagination ────────────────────────────────────────────────────────────
+	const { page = 1, limit = 25 } = args;
+	const totalItems = finalMovements.length;
+	const totalPages = Math.ceil(totalItems / limit);
+	const offset = (page - 1) * limit;
+	const paginatedMovements = finalMovements.slice(offset, offset + limit);
+
 	return {
-		movements: finalMovements,
+		movements: paginatedMovements,
 		organizations: orgs,
-		isMabes: isMabes,
-		selectedOrgId: selectedOrgId
+		isMabes,
+		selectedOrgId,
+		pagination: {
+			currentPage: page,
+			totalPages,
+			totalItems
+		}
 	};
 });

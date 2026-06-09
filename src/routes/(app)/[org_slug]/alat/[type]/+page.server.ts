@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
-import { equipment, item, warehouse, movement } from '$lib/server/db/schema';
-import { eq, and, like, sql, desc, inArray } from 'drizzle-orm';
+import { equipment } from '$lib/server/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
 import { invalidateOrgInventoryCache } from '$lib/server/redis';

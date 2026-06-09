@@ -15,6 +15,13 @@
       "when": 1777456776368,
       "tag": "0001_majestic_dakota_north",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1781008782365,
+      "tag": "0002_loud_squadron_supreme",
+      "breakpoints": true
     }
   ]
 }

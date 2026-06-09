@@ -8,7 +8,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { getTransitoData } from './transito.remote';
-	import { Search, Building2, Filter } from '@lucide/svelte';
+	import { Search, Building2, Filter, ChevronLeft, ChevronRight } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 
@@ -19,12 +19,17 @@
 	let typeFilter = $state(page.url.searchParams.get('type') || '');
 	let categoryFilter = $state(page.url.searchParams.get('category') || '');
 
+	const limit = $derived(Number(page.url.searchParams.get('limit')) || 25);
+	const currentPage = $derived(Number(page.url.searchParams.get('page')) || 1);
+
 	const transitoQuery = $derived(
 		getTransitoData({
 			orgId: page.url.searchParams.get('orgId') || '',
 			search: page.url.searchParams.get('search') || '',
 			type: page.url.searchParams.get('type') || '',
-			category: page.url.searchParams.get('category') || ''
+			category: page.url.searchParams.get('category') || '',
+			page: currentPage,
+			limit: limit
 		})
 	);
 
@@ -39,6 +44,8 @@
 		if (categoryFilter) newUrl.searchParams.set('category', categoryFilter);
 		else newUrl.searchParams.delete('category');
 
+		newUrl.searchParams.set('page', '1');
+
 		goto(newUrl.toString(), { keepFocus: true, noScroll: true });
 	}
 
@@ -46,7 +53,22 @@
 		if (!val) return;
 		const newUrl = new URL(page.url);
 		newUrl.searchParams.set('orgId', val);
+		newUrl.searchParams.set('page', '1');
 		goto(newUrl.toString());
+	}
+
+	function updateLimit(val: string | undefined) {
+		if (!val) return;
+		const newUrl = new URL(page.url);
+		newUrl.searchParams.set('limit', val);
+		newUrl.searchParams.set('page', '1');
+		goto(newUrl.toString(), { noScroll: true });
+	}
+
+	function goToPage(p: number) {
+		const newUrl = new URL(page.url);
+		newUrl.searchParams.set('page', p.toString());
+		goto(newUrl.toString(), { noScroll: true });
 	}
 
 	let selectedOrgName = $derived(
@@ -64,6 +86,20 @@
 		{ value: 'ALKOMLEK', label: 'ALKOMLEK' },
 		{ value: 'PERNIKA_LEK', label: 'PERNIKA_LEK' }
 	];
+
+	const visiblePages = $derived.by(() => {
+		const total = transitoQuery.current?.pagination.totalPages || 0;
+		const maxButtons = 4;
+		if (total <= maxButtons) {
+			return Array.from({ length: total }, (_, i) => i + 1);
+		}
+		let start = currentPage - 1;
+		if (start < 1) start = 1;
+		if (start + maxButtons - 1 > total) {
+			start = total - maxButtons + 1;
+		}
+		return Array.from({ length: maxButtons }, (_, i) => start + i);
+	});
 </script>
 
 <div class="flex flex-col gap-6 p-6">
@@ -121,6 +157,21 @@
 						{#each categoryOptions as opt}
 							<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
 						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+
+			<div class="flex flex-col gap-1.5">
+				<Label for="limit-filter">Tampilkan</Label>
+				<Select.Root type="single" value={limit.toString()} onValueChange={updateLimit}>
+					<Select.Trigger class="w-[120px] border-2">
+						{limit} baris
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="10" label="10 baris">10 baris</Select.Item>
+						<Select.Item value="25" label="25 baris">25 baris</Select.Item>
+						<Select.Item value="50" label="50 baris">50 baris</Select.Item>
+						<Select.Item value="100" label="100 baris">100 baris</Select.Item>
 					</Select.Content>
 				</Select.Root>
 			</div>
@@ -232,4 +283,54 @@
 			</Table.Body>
 		</Table.Root>
 	</div>
+
+	{#if transitoQuery.current && transitoQuery.current.pagination.totalPages > 1}
+		<div class="flex flex-col-reverse items-center justify-between gap-4 py-4 md:flex-row md:gap-0">
+			<div class="text-xs text-muted-foreground">
+				Menampilkan <span class="font-semibold text-foreground"
+					>{(currentPage - 1) * limit + 1}</span
+				>
+				-
+				<span class="font-semibold text-foreground"
+					>{Math.min(currentPage * limit, transitoQuery.current.pagination.totalItems)}</span
+				>
+				dari
+				<span class="font-semibold text-foreground">{transitoQuery.current.pagination.totalItems}</span> data
+			</div>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => goToPage(currentPage - 1)}
+					disabled={currentPage <= 1}
+					class="h-8 gap-1 px-2 text-xs border-2"
+				>
+					<ChevronLeft class="h-3 w-3" />
+					Sebelumnya
+				</Button>
+				<div class="flex items-center gap-1">
+					{#each visiblePages as p}
+						<Button
+							variant={currentPage === p ? 'default' : 'ghost'}
+							size="sm"
+							onclick={() => goToPage(p)}
+							class="h-8 w-8 p-0 text-xs"
+						>
+							{p}
+						</Button>
+					{/each}
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => goToPage(currentPage + 1)}
+					disabled={currentPage >= transitoQuery.current.pagination.totalPages}
+					class="h-8 gap-1 px-2 text-xs border-2"
+				>
+					Selanjutnya
+					<ChevronRight class="h-3 w-3" />
+				</Button>
+			</div>
+		</div>
+	{/if}
 </div>

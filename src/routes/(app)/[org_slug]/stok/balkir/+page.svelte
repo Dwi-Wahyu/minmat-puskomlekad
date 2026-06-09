@@ -7,12 +7,13 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { getBalkirData } from './balkir.remote';
-	import { Search, Building2, Trash2, Filter } from '@lucide/svelte';
+	import { Search, Building2, Trash2, Filter, ChevronLeft, ChevronRight } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
+	import { equipmentTypeLabel } from '@/enums/equipment-enum.js';
 
 	let { data, form } = $props();
 
@@ -24,12 +25,17 @@
 	let typeFilter = $state(page.url.searchParams.get('type') || '');
 	let categoryFilter = $state(page.url.searchParams.get('category') || '');
 
+	const limit = $derived(Number(page.url.searchParams.get('limit')) || 25);
+	const currentPage = $derived(Number(page.url.searchParams.get('page')) || 1);
+
 	const balkirQuery = $derived(
 		getBalkirData({
 			orgId: page.url.searchParams.get('orgId') || '',
 			search: page.url.searchParams.get('search') || '',
 			type: page.url.searchParams.get('type') || '',
-			category: page.url.searchParams.get('category') || ''
+			category: page.url.searchParams.get('category') || '',
+			page: currentPage,
+			limit: limit
 		})
 	);
 
@@ -54,6 +60,8 @@
 		if (categoryFilter) newUrl.searchParams.set('category', categoryFilter);
 		else newUrl.searchParams.delete('category');
 
+		newUrl.searchParams.set('page', '1');
+
 		goto(newUrl.toString(), { keepFocus: true, noScroll: true });
 	}
 
@@ -61,7 +69,22 @@
 		if (!val) return;
 		const newUrl = new URL(page.url);
 		newUrl.searchParams.set('orgId', val);
+		newUrl.searchParams.set('page', '1');
 		goto(newUrl.toString());
+	}
+
+	function updateLimit(val: string | undefined) {
+		if (!val) return;
+		const newUrl = new URL(page.url);
+		newUrl.searchParams.set('limit', val);
+		newUrl.searchParams.set('page', '1');
+		goto(newUrl.toString(), { noScroll: true });
+	}
+
+	function goToPage(p: number) {
+		const newUrl = new URL(page.url);
+		newUrl.searchParams.set('page', p.toString());
+		goto(newUrl.toString(), { noScroll: true });
 	}
 
 	function openConfirm(id: string, name: string, sn: string | null) {
@@ -78,7 +101,7 @@
 
 	$effect(() => {
 		if (form?.success) {
-			notificationMsg = form.message || 'Barang berhasil dihapus permanen';
+			notificationMsg = form.message || 'Barang berhasil dihapus';
 			notificationType = 'success';
 			notificationOpen = true;
 		} else if (form?.message) {
@@ -89,7 +112,8 @@
 	});
 
 	let selectedOrgName = $derived(
-		balkirQuery.current?.organizations.find((o: any) => o.id === balkirQuery.current?.selectedOrgId)?.name || 'Pilih Kesatuan'
+		balkirQuery.current?.organizations.find((o: any) => o.id === balkirQuery.current?.selectedOrgId)
+			?.name || 'Pilih Kesatuan'
 	);
 
 	const typeOptions = [
@@ -103,6 +127,20 @@
 		{ value: 'ALKOMLEK', label: 'ALKOMLEK' },
 		{ value: 'PERNIKA_LEK', label: 'PERNIKA_LEK' }
 	];
+
+	const visiblePages = $derived.by(() => {
+		const total = balkirQuery.current?.pagination.totalPages || 0;
+		const maxButtons = 4;
+		if (total <= maxButtons) {
+			return Array.from({ length: total }, (_, i) => i + 1);
+		}
+		let start = currentPage - 1;
+		if (start < 1) start = 1;
+		if (start + maxButtons - 1 > total) {
+			start = total - maxButtons + 1;
+		}
+		return Array.from({ length: maxButtons }, (_, i) => start + i);
+	});
 </script>
 
 <div class="flex flex-col gap-6 p-6">
@@ -159,12 +197,28 @@
 				<Label for="category-filter">Kategori Alat</Label>
 				<Select.Root type="single" bind:value={categoryFilter} onValueChange={updateFilters}>
 					<Select.Trigger class="w-[180px] border-2">
-						{categoryOptions.find((o: any) => o.value === categoryFilter)?.label || 'Semua Kategori'}
+						{categoryOptions.find((o: any) => o.value === categoryFilter)?.label ||
+							'Semua Kategori'}
 					</Select.Trigger>
 					<Select.Content>
 						{#each categoryOptions as opt}
 							<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
 						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+
+			<div class="flex flex-col gap-1.5">
+				<Label for="limit-filter">Tampilkan</Label>
+				<Select.Root type="single" value={limit.toString()} onValueChange={updateLimit}>
+					<Select.Trigger class="w-[120px] border-2">
+						{limit} baris
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="10" label="10 baris">10 baris</Select.Item>
+						<Select.Item value="25" label="25 baris">25 baris</Select.Item>
+						<Select.Item value="50" label="50 baris">50 baris</Select.Item>
+						<Select.Item value="100" label="100 baris">100 baris</Select.Item>
 					</Select.Content>
 				</Select.Root>
 			</div>
@@ -228,7 +282,7 @@
 								<Skeleton class="h-4 w-20" />
 							</Table.Cell>
 							<Table.Cell class="text-right">
-								<Skeleton class="h-8 w-32 ml-auto" />
+								<Skeleton class="ml-auto h-8 w-32" />
 							</Table.Cell>
 						</Table.Row>
 					{/each}
@@ -267,7 +321,7 @@
 									onclick={() => openConfirm(item.id, item.nama, item.sn)}
 								>
 									<Trash2 class="size-4" />
-									Hapus Permanen
+									Hapus
 								</Button>
 							</Table.Cell>
 						</Table.Row>
@@ -284,13 +338,63 @@
 			</Table.Body>
 		</Table.Root>
 	</div>
+
+	{#if balkirQuery.current && balkirQuery.current.pagination.totalPages > 1}
+		<div class="flex flex-col-reverse items-center justify-between gap-4 py-4 md:flex-row md:gap-0">
+			<div class="text-xs text-muted-foreground">
+				Menampilkan <span class="font-semibold text-foreground"
+					>{(currentPage - 1) * limit + 1}</span
+				>
+				-
+				<span class="font-semibold text-foreground"
+					>{Math.min(currentPage * limit, balkirQuery.current.pagination.totalItems)}</span
+				>
+				dari
+				<span class="font-semibold text-foreground">{balkirQuery.current.pagination.totalItems}</span> data
+			</div>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => goToPage(currentPage - 1)}
+					disabled={currentPage <= 1}
+					class="h-8 gap-1 px-2 text-xs border-2"
+				>
+					<ChevronLeft class="h-3 w-3" />
+					Sebelumnya
+				</Button>
+				<div class="flex items-center gap-1">
+					{#each visiblePages as p}
+						<Button
+							variant={currentPage === p ? 'default' : 'ghost'}
+							size="sm"
+							onclick={() => goToPage(p)}
+							class="h-8 w-8 p-0 text-xs"
+						>
+							{p}
+						</Button>
+					{/each}
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => goToPage(currentPage + 1)}
+					disabled={currentPage >= balkirQuery.current.pagination.totalPages}
+					class="h-8 gap-1 px-2 text-xs border-2"
+				>
+					Selanjutnya
+					<ChevronRight class="h-3 w-3" />
+				</Button>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <ConfirmationDialog
 	bind:open={confirmOpen}
 	type="error"
-	title="Hapus Permanen Barang?"
-	description="Tindakan ini akan mencatat status ISSUE (Keluar Permanen) untuk {selectedItemName}. Barang akan dihapus dari stok aktif dan tidak dapat dikembalikan."
+	title="Hapus Barang?"
+	description="Tindakan ini akan mencatat status ISSUE (Keluar Permanen) untuk {selectedItemName}. Barang akan dihapus dari stok aktif."
 	{loading}
 	onAction={handleConfirm}
 />

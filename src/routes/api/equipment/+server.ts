@@ -90,7 +90,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		warehouseId: body.warehouseId,
 		organizationId: orgId, // Ikat ke organisasi yang sesuai
 		condition: body.condition ?? 'BAIK',
-		status: 'READY'
+		status: 'READY',
+		createdAt: new Date()
 	});
 
 	return json({ success: true, id: newEquipment[0].insertId }, { status: 201 });

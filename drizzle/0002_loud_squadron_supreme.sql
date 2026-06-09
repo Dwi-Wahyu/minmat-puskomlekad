@@ -1,0 +1,1 @@
+ALTER TABLE `movement` ADD `condition_at_arrival` enum('BAIK','RUSAK_RINGAN','RUSAK_BERAT');

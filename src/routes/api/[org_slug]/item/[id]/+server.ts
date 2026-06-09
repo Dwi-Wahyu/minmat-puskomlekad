@@ -89,7 +89,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 			.leftJoin(toWh, eq(movement.toWarehouseId, toWh.id))
 			.leftJoin(user, eq(movement.picId, user.id))
 			.where(and(eq(movement.itemId, params.id), eq(movement.organizationId, orgId)))
-			.orderBy(desc(movement.createdAt))
+			.orderBy(desc(movement.createdAt), desc(movement.id))
 			.limit(5),
 
 		// Konversi satuan

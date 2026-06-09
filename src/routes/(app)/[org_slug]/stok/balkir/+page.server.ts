@@ -49,7 +49,7 @@ export const actions: Actions = {
 						classification: null,
 						qty: '1.0000',
 						fromWarehouseId: currentMovement.toWarehouseId || currentMovement.fromWarehouseId,
-						notes: 'Penghapusan permanen dari Gudang Balkir',
+						notes: 'Penghapusan dari Gudang Balkir',
 						picId: user.id,
 						createdAt: new Date()
 					});
@@ -58,10 +58,10 @@ export const actions: Actions = {
 				await tx.update(movement).set({ classification: null }).where(eq(movement.id, movementId));
 			});
 
-			return { success: true, message: 'Barang berhasil dihapus permanen dari sistem' };
+			return { success: true, message: 'Barang berhasil dihapus' };
 		} catch (error) {
 			console.error('Error deleting from balkir:', error);
-			return fail(500, { message: 'Gagal memproses penghapusan barang' });
+			return fail(500, { message: 'Gagal memproses penghapusan' });
 		}
 	}
 };

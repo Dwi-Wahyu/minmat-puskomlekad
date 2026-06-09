@@ -2,15 +2,15 @@
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import NotificationBell from '$lib/components/NotificationBell.svelte';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
-	import { LogOut, Menu, Sun, Moon, User, Settings } from '@lucide/svelte';
+	import { LogOut, Menu, User } from '@lucide/svelte';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { goto } from '$app/navigation';
-	import { toggleMode } from 'mode-watcher';
 	import * as Button from '$lib/components/ui/button/index.js';
 	import { setSidebarState } from '@/components/ui/sidebar/context.svelte.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { BookText } from '@lucide/svelte';
+	import { resolve } from '$app/paths';
 
 	let { data, children } = $props();
 	const sidebar = setSidebarState();
@@ -36,7 +36,7 @@
 	const orgName = $derived(data.user.organization.name ?? '');
 
 	function handleLogout() {
-		goto('/logout');
+		goto(resolve('/logout'));
 	}
 
 	function handleCloseOnboarding() {
@@ -46,14 +46,14 @@
 
 	function handleGoToGuideBook() {
 		handleCloseOnboarding();
-		goto(`/${data.user.organization.slug}/guide-book`);
+		goto(resolve('/(app)/[org_slug]/guide-book', { org_slug: data.user.organization.slug }));
 	}
 </script>
 
 <div class="flex h-screen overflow-hidden bg-background">
 	<Sidebar user={data.user} />
 
-	<main class="flex flex-1 flex-col overflow-y-auto">
+	<main class="flex flex-1 flex-col overflow-hidden">
 		<header
 			class="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/50 px-8 shadow transition-all duration-300"
 		>
@@ -86,20 +86,13 @@
 						<DropdownMenu.Group>
 							<DropdownMenu.Item>
 								<a
-									href="/{data.user.organization.slug}/profil"
+									href={resolve(`/(app)/[org_slug]/profil`, {
+										org_slug: data.user.organization.slug
+									})}
 									class="flex w-full items-center gap-2"
 								>
 									<User class="h-4 w-4" />
 									<span>Profil</span>
-								</a>
-							</DropdownMenu.Item>
-							<DropdownMenu.Item>
-								<a
-									href="/{data.user.organization.slug}/pengaturan"
-									class="flex w-full items-center gap-2"
-								>
-									<Settings class="h-4 w-4" />
-									<span>Pengaturan</span>
 								</a>
 							</DropdownMenu.Item>
 						</DropdownMenu.Group>
@@ -112,15 +105,15 @@
 				</DropdownMenu.Root>
 
 				<NotificationBell
-					notifications={(data as any).notifications}
-					unreadCount={(data as any).unreadCount}
+					notifications={data.notifications}
+					unreadCount={data.unreadCount}
 					organizationId={data.user.organization.id}
 					orgSlug={data.user.organization.slug}
 				/>
 			</div>
 		</header>
 
-		<div class="">
+		<div class="flex-1 overflow-y-auto">
 			{@render children()}
 		</div>
 	</main>
@@ -137,7 +130,7 @@
 />
 
 <Dialog.Root bind:open={onboardingOpen}>
-	<Dialog.Content class="sm:max-w-[425px]">
+	<Dialog.Content class="sm:max-w-106.25">
 		<Dialog.Header>
 			<div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
 				<BookText class="h-6 w-6 text-primary" />

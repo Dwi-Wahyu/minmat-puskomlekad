@@ -5,6 +5,9 @@ import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { uploadFile, deleteFile } from '$lib/server/storage';
 import { invalidateOrgInventoryCache } from '$lib/server/redis';
+import { message, superValidate } from 'sveltekit-superforms';
+import { yup } from 'sveltekit-superforms/adapters';
+import { itemSchema } from '$lib/schemas/item-schema';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const dataResults = await db
@@ -15,21 +18,44 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (dataResults.length === 0) throw error(404, 'Barang tidak ditemukan');
 
-	return { consumable: dataResults[0], org_slug: params.org_slug };
+	const consumable = dataResults[0];
+
+	const form = await superValidate(
+		{
+			name: consumable.name,
+			baseUnit: consumable.baseUnit as any,
+			description: consumable.description
+		},
+		yup(itemSchema)
+	);
+
+	return { consumable, org_slug: params.org_slug, form };
 };
 
 export const actions: Actions = {
-	default: async ({ request, params, locals }) => {
+	default: async ({ request, params }: any) => {
+		const { org_slug, id } = params;
 		const formData = await request.formData();
-		const name = formData.get('name') as string;
-		const baseUnit = formData.get('baseUnit') as any;
-		const description = formData.get('description') as string;
+		const form = await superValidate(formData, yup(itemSchema));
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
+
+		const { name, baseUnit, description } = form.data as {
+			name: string;
+			baseUnit: 'PCS' | 'BOX' | 'METER' | 'ROLL' | 'UNIT';
+			description: string | null;
+		};
+
 		const image = formData.get('image') as File;
 
 		try {
-			const currentResults = await db.select().from(item).where(eq(item.id, params.id)).limit(1);
+			const currentResults = await db.select().from(item).where(eq(item.id, id)).limit(1);
 
-			if (currentResults.length === 0) return fail(404, { message: 'Barang tidak ditemukan' });
+			if (currentResults.length === 0) {
+				return message(form, 'Barang tidak ditemukan', { status: 404 });
+			}
 			const current = currentResults[0];
 
 			let imagePath = current.imagePath;
@@ -37,7 +63,7 @@ export const actions: Actions = {
 			if (image && image.size > 0) {
 				const uploadResult = await uploadFile(image, 'item');
 				if (uploadResult.error) {
-					return fail(400, { message: uploadResult.error });
+					return message(form, uploadResult.error, { status: 400 });
 				}
 
 				// Delete old image if exists
@@ -56,24 +82,21 @@ export const actions: Actions = {
 					description,
 					imagePath
 				})
-				.where(eq(item.id, params.id));
+				.where(eq(item.id, id));
 
 			// Invalidate cache
 			const org = await db.query.organization.findFirst({
-				where: eq(organization.slug, params.org_slug)
+				where: eq(organization.slug, org_slug)
 			});
 
 			if (org) {
 				await invalidateOrgInventoryCache(org.id);
 			}
 
-			return { success: true, message: 'Data barang berhasil diperbarui' };
-		} catch (error) {
-			console.error(error);
-			return fail(400, {
-				success: false,
-				message: 'Gagal memperbarui data barang'
-			});
+			return message(form, 'Data barang berhasil diperbarui');
+		} catch (err) {
+			console.error('Error updating item:', err);
+			return message(form, 'Gagal memperbarui data barang', { status: 500 });
 		}
 	}
 };

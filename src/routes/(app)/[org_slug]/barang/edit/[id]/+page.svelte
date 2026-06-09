@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import type { PageProps } from './$types';
-	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
+	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -9,31 +7,57 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import * as Card from '$lib/components/ui/card';
 	import * as Select from '$lib/components/ui/select';
-	import { ArrowLeft } from '@lucide/svelte';
+	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
+	import { ArrowLeft, Loader2 } from '@lucide/svelte';
+	import { superForm } from 'sveltekit-superforms';
+	import { yupClient } from 'sveltekit-superforms/adapters';
+	import { itemSchema } from '$lib/schemas/item-schema';
+	import { untrack } from 'svelte';
 
-	let { data, form }: PageProps = $props();
+	let { data }: { data: PageData } = $props();
 
-	let isLoading = $state(false);
+	const { form, errors, enhance, delayed, message } = superForm(
+		untrack(() => data.form),
+		{
+			validators: yupClient(itemSchema),
+			onUpdated: ({ form }) => {
+				if (form.valid) {
+					notificationMsg = $message || 'Data barang berhasil diperbarui.';
+					notificationType = 'success';
+					notificationOpen = true;
+				} else {
+					const hasFieldErrors = Object.values($errors).some((error) => error !== undefined);
+					if ($message && !hasFieldErrors) {
+						notificationMsg = $message;
+						notificationType = 'error';
+						notificationOpen = true;
+					}
+				}
+			},
+			onError: ({ result }) => {
+				notificationMsg = result.error.message || 'Terjadi kesalahan sistem.';
+				notificationType = 'error';
+				notificationOpen = true;
+			}
+		}
+	);
+
 	let notificationOpen = $state(false);
-
-	// State untuk form internal (hanya untuk Select)
-	let selectedBaseUnit = $state('');
+	let notificationType = $state<'success' | 'error' | 'info'>('success');
+	let notificationMsg = $state('');
 
 	let imagePreview = $state<string | null>(null);
 
 	$effect(() => {
-		selectedBaseUnit = data.consumable.baseUnit || '';
-		imagePreview = data.consumable.imagePath ? `/uploads/item/${data.consumable.imagePath}` : null;
-	});
-
-	$effect(() => {
-		if (form?.success) {
-			notificationOpen = true;
-		}
+		untrack(() => {
+			imagePreview = data.consumable.imagePath
+				? `/uploads/item/${data.consumable.imagePath}`
+				: null;
+		});
 	});
 
 	function handleBack() {
-		goto(`/${data.user.organization.slug}/barang`);
+		goto(`/${data.org_slug}/barang`);
 	}
 
 	function handleImageChange(e: Event) {
@@ -53,20 +77,18 @@
 </script>
 
 <div class="mx-auto max-w-4xl space-y-6 p-6">
-	<div class="flex items-center justify-between">
-		<div class="flex items-center gap-4">
-			<Button
-				variant="outline"
-				size="icon"
-				href="/{data.org_slug}/barang"
-				class="rounded-full shadow-sm"
-			>
-				<ArrowLeft size={18} />
-			</Button>
-			<div>
-				<h1 class="flex items-center gap-2 text-2xl font-bold">Edit Barang Habis Pakai</h1>
-				<p class="text-sm text-slate-500">Perbarui informasi definisi barang.</p>
-			</div>
+	<div class="flex items-center gap-4">
+		<Button
+			variant="outline"
+			size="icon"
+			href="/{data.org_slug}/barang"
+			class="rounded-full shadow-sm"
+		>
+			<ArrowLeft size={18} />
+		</Button>
+		<div>
+			<h1 class="flex items-center gap-2 text-2xl font-bold">Edit Barang Habis Pakai</h1>
+			<p class="text-sm text-slate-500">Perbarui informasi definisi barang.</p>
 		</div>
 	</div>
 
@@ -75,18 +97,9 @@
 			<form
 				method="POST"
 				enctype="multipart/form-data"
-				use:enhance={() => {
-					isLoading = true;
-					return async ({ update }) => {
-						isLoading = false;
-						await update();
-					};
-				}}
+				use:enhance
 				class="grid grid-cols-1 gap-6 md:grid-cols-2"
 			>
-				<!-- Hidden Input for Select Value -->
-				<input type="hidden" name="baseUnit" value={selectedBaseUnit} />
-
 				<div class="flex flex-col gap-2 md:col-span-2">
 					<Label for="image">Foto Barang</Label>
 					<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -99,44 +112,48 @@
 								<div class="text-center text-xs text-slate-400">Belum ada foto</div>
 							{/if}
 						</div>
-						<div class="flex-1">
-							<Input
-								type="file"
-								name="image"
-								id="image"
-								accept="image/*"
-								onchange={handleImageChange}
-								class="cursor-pointer"
-							/>
-							<p class="mt-1.5 text-[10px] text-slate-500">
-								Format: JPG, PNG, atau WEBP. Maks: 5MB. Biarkan kosong jika tidak ingin mengubah
-								foto.
-							</p>
-						</div>
+					</div>
+					<div class="flex-1">
+						<Input
+							type="file"
+							name="image"
+							id="image"
+							accept="image/*"
+							onchange={handleImageChange}
+							class="cursor-pointer"
+						/>
+						<p class="mt-1.5 text-xs text-muted-foreground">
+							Format: JPG, PNG, atau WEBP. Maks: 5MB. Biarkan kosong jika tidak ingin mengubah foto.
+						</p>
 					</div>
 				</div>
 
 				<div class="flex flex-col gap-2">
-					<Label for="name">Nama Barang</Label>
+					<Label for="name" class={$errors.name ? 'text-destructive' : ''}>Nama Barang</Label>
 					<Input
 						type="text"
 						name="name"
 						id="name"
-						required
-						value={data.consumable.name}
 						placeholder="Contoh: Baterai AA"
+						bind:value={$form.name}
+						aria-invalid={$errors.name ? 'true' : undefined}
 					/>
+					{#if $errors.name}
+						<p class="text-xs font-medium text-destructive">{$errors.name}</p>
+					{/if}
 				</div>
 
 				<div class="flex flex-col gap-2">
-					<Label for="baseUnit">Satuan Dasar</Label>
+					<Label for="baseUnit" class={$errors.baseUnit ? 'text-destructive' : ''}
+						>Satuan Dasar</Label
+					>
 					<Select.Root
 						type="single"
-						bind:value={selectedBaseUnit}
-						onValueChange={(v) => (selectedBaseUnit = v || '')}
+						value={$form.baseUnit}
+						onValueChange={(v) => ($form.baseUnit = v as any)}
 					>
 						<Select.Trigger class="w-full">
-							{selectedBaseUnit || 'Pilih Satuan'}
+							{$form.baseUnit || 'Pilih Satuan'}
 						</Select.Trigger>
 						<Select.Content>
 							<Select.Item value="PCS">PCS</Select.Item>
@@ -146,23 +163,38 @@
 							<Select.Item value="UNIT">UNIT</Select.Item>
 						</Select.Content>
 					</Select.Root>
+					{#if $errors.baseUnit}
+						<p class="text-xs font-medium text-destructive">{$errors.baseUnit}</p>
+					{/if}
+					<input type="hidden" name="baseUnit" value={$form.baseUnit} />
 				</div>
 
 				<div class="flex flex-col gap-2 md:col-span-2">
-					<Label for="description">Deskripsi / Keterangan</Label>
+					<Label for="description" class={$errors.description ? 'text-destructive' : ''}
+						>Deskripsi / Keterangan</Label
+					>
 					<Textarea
 						name="description"
 						id="description"
 						placeholder="Tambahkan catatan singkat tentang barang ini..."
 						class="min-h-24"
-						value={data.consumable.description || ''}
+						bind:value={$form.description}
+						aria-invalid={$errors.description ? 'true' : undefined}
 					/>
+					{#if $errors.description}
+						<p class="text-xs font-medium text-destructive">{$errors.description}</p>
+					{/if}
 				</div>
 
 				<div class="flex justify-end gap-4 md:col-span-2">
-					<Button variant="outline" onclick={handleBack} disabled={isLoading}>Batal</Button>
-					<Button type="submit" disabled={isLoading}>
-						{isLoading ? 'Menyimpan...' : 'Update Data Barang'}
+					<Button variant="outline" onclick={handleBack} disabled={$delayed}>Batal</Button>
+					<Button type="submit" class="min-w-40" disabled={$delayed}>
+						{#if $delayed}
+							<Loader2 class="mr-2 size-4 animate-spin" />
+							Menyimpan...
+						{:else}
+							Update Data Barang
+						{/if}
 					</Button>
 				</div>
 			</form>
@@ -172,11 +204,11 @@
 
 <NotificationDialog
 	bind:open={notificationOpen}
-	type="success"
-	title="Berhasil"
-	description="Data barang berhasil diperbarui"
+	type={notificationType}
+	title={notificationType === 'success' ? 'Berhasil!' : 'Gagal!'}
+	description={notificationMsg}
 	onAction={() => {
 		notificationOpen = false;
-		handleBack();
+		if (notificationType === 'success') handleBack();
 	}}
 />

@@ -1,6 +1,6 @@
 import { createAccessControl } from 'better-auth/plugins/access';
 
-// Menentukan apa saja yang bisa dilakukan (Permissions)
+// Menentukan apa saja yang bisa dilakukan
 const statement = {
 	member: ['create', 'update', 'delete', 'view'],
 	inventory: ['create', 'update', 'delete', 'view'],
@@ -90,4 +90,3 @@ export const roles = {
 	operatorPusatDanDaerah,
 	operatorBinmatDanBekharrah
 };
-

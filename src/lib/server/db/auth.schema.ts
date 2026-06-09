@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 import { mysqlTable, varchar, text, timestamp, boolean, index } from 'drizzle-orm/mysql-core';
 import { warehouse } from './schema';
 
@@ -168,3 +168,25 @@ export const apiKeyRelations = relations(apiKey, ({ one }) => ({
 		references: [user.id]
 	})
 }));
+
+// Types
+export type User = InferSelectModel<typeof user>;
+export type NewUser = InferInsertModel<typeof user>;
+
+export type Session = InferSelectModel<typeof session>;
+export type NewSession = InferInsertModel<typeof session>;
+
+export type ApiKey = InferSelectModel<typeof apiKey>;
+export type NewApiKey = InferInsertModel<typeof apiKey>;
+
+export type Account = InferSelectModel<typeof account>;
+export type NewAccount = InferInsertModel<typeof account>;
+
+export type Verification = InferSelectModel<typeof verification>;
+export type NewVerification = InferInsertModel<typeof verification>;
+
+export type Organization = InferSelectModel<typeof organization>;
+export type NewOrganization = InferInsertModel<typeof organization>;
+
+export type Member = InferSelectModel<typeof member>;
+export type NewMember = InferInsertModel<typeof member>;

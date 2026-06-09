@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
-import { item, stock, warehouse, movement, itemUnitConversion, organization } from '$lib/server/db/schema';
-import { eq, and, like, desc, sql, inArray } from 'drizzle-orm';
+import { item, stock, movement, organization } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
 import { deleteFile } from '$lib/server/storage';
@@ -14,7 +14,8 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (!org) throw fail(404, { message: 'Organisasi tidak ditemukan' });
 
 	return {
-		orgId: org.id
+		orgId: org.id,
+		org_slug: params.org_slug
 	};
 };
 
@@ -74,7 +75,7 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const itemId = formData.get('itemId') as string;
 		const qtyInput = formData.get('qty') as string;
-		const type = formData.get('type') as any;
+		const type = formData.get('type');
 		const notes = formData.get('notes') as string;
 		const warehouseId = formData.get('warehouseId') as string;
 
@@ -103,7 +104,7 @@ export const actions: Actions = {
 					qty: qtyNum.toString(),
 					fromWarehouseId: type === 'ISSUE' || type === 'ADJUSTMENT' ? warehouseId : null,
 					toWarehouseId: type === 'RECEIVE' || type === 'ADJUSTMENT' ? warehouseId : null,
-					notes: notes || 'Mutasi stok manual',
+					notes: notes || 'Mutasi manual',
 					picId: user?.id,
 					createdAt: new Date()
 				});
@@ -138,9 +139,9 @@ export const actions: Actions = {
 			}
 
 			return { success: true, message: 'Mutasi stok berhasil diperbarui' };
-		} catch (error: any) {
+		} catch (error) {
 			console.error('Error in mutate action:', error);
-			return fail(500, { message: error.message || 'Gagal mencatat mutasi ke database' });
+			return fail(500, { message: error || 'Gagal mencatat mutasi ke database' });
 		}
 	}
 };

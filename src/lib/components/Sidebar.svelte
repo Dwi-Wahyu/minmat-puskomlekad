@@ -6,19 +6,19 @@
 		Wrench,
 		Building2,
 		Settings,
-		Map,
 		Package,
 		X,
-		BookText
+		BookText,
+		type IconProps
 	} from '@lucide/svelte';
 	import { page } from '$app/state';
 	import SidebarDropdown from './SidebarDropdown.svelte';
 	import SidebarLink from './SidebarLink.svelte';
-	import { untrack } from 'svelte';
+	import { untrack, type Component } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { getSidebarState } from './ui/sidebar/context.svelte';
 
-	// 1. Definisikan Interface agar tidak ada error "Property 'role' does not exist"
+	// Definisikan Interface agar tidak ada error "Property 'role' does not exist"
 	interface MenuItem {
 		name: string;
 		path: string;
@@ -28,7 +28,7 @@
 	interface Menu {
 		name: string;
 		path: string;
-		icon: any;
+		icon: Component<IconProps>;
 		isDropdown: boolean;
 		role?: string | string[];
 		children: MenuItem[];
@@ -80,7 +80,7 @@
 
 	// Close sidebar automatically on mobile when route changes or component mounts
 	$effect(() => {
-		const _ = page.url.pathname;
+		// const _ = page.url.pathname;
 		untrack(() => {
 			if (typeof window !== 'undefined' && window.innerWidth < 768) {
 				sidebar.setOpen(false);
@@ -249,19 +249,21 @@
 	<div class="p-6">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-3">
-				<img src="/logo.svg" width="40" height="40" alt="" class="shrink-0" />
+				<img
+					src="/logo.svg"
+					width={sidebar.open ? 40 : 20}
+					height={sidebar.open ? 40 : 20}
+					alt=""
+					class="shrink-0"
+				/>
 
 				<div
 					class="transition-opacity duration-300"
 					class:opacity-0={!sidebar.open}
 					class:pointer-events-none={!sidebar.open}
 				>
-					<h1 class="leading-tight font-bold tracking-wider whitespace-nowrap text-sidebar-primary">
-						MINMAT
-					</h1>
-					<p class="font-medium tracking-tighter whitespace-nowrap uppercase opacity-80">
-						MATKOMLEK
-					</p>
+					<h1 class=" font-bold whitespace-nowrap text-sidebar-primary">MINMAT</h1>
+					<p class="font-bold whitespace-nowrap uppercase opacity-80">MATKOMLEK</p>
 				</div>
 			</div>
 

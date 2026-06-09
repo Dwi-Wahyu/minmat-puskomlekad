@@ -9,6 +9,7 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Search, Plus, Pencil, Trash2, Ellipsis } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
+	import { buildingConditionColors, buildingStatusColors } from '@/enums/property-enum';
 
 	let { data } = $props();
 

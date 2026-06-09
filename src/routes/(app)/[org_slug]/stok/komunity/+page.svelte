@@ -20,23 +20,21 @@
 	let typeFilter = $state(page.url.searchParams.get('type') || '');
 	let categoryFilter = $state(page.url.searchParams.get('category') || '');
 
+	const limit = $derived(Number(page.url.searchParams.get('limit')) || 25);
+	const currentPage = $derived(Number(page.url.searchParams.get('page')) || 1);
+
 	const komunityQuery = $derived(
 		getKomunityData({
 			orgId: page.url.searchParams.get('orgId') || '',
 			search: page.url.searchParams.get('search') || '',
 			type: page.url.searchParams.get('type') || '',
-			category: page.url.searchParams.get('category') || ''
+			category: page.url.searchParams.get('category') || '',
+			page: currentPage,
+			limit: limit
 		})
 	);
 
-	let currentPage = $state(1);
-	let itemsPerPage = $state(10);
-
-	let totalItems = $derived(komunityQuery.current?.items.length || 0);
-	let totalPages = $derived(Math.ceil(totalItems / itemsPerPage));
-	let paginatedItems = $derived(
-		komunityQuery.current?.items.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) || []
-	);
+	const paginatedItems = $derived(komunityQuery.current?.items || []);
 
 	function updateFilters() {
 		const newUrl = new URL(page.url);
@@ -49,7 +47,8 @@
 		if (categoryFilter) newUrl.searchParams.set('category', categoryFilter);
 		else newUrl.searchParams.delete('category');
 
-		currentPage = 1; // Reset to first page on filter change
+		newUrl.searchParams.set('page', '1');
+
 		goto(newUrl.toString(), { keepFocus: true, noScroll: true });
 	}
 
@@ -57,7 +56,22 @@
 		if (!val) return;
 		const newUrl = new URL(page.url);
 		newUrl.searchParams.set('orgId', val);
+		newUrl.searchParams.set('page', '1');
 		goto(newUrl.toString());
+	}
+
+	function updateLimit(val: string | undefined) {
+		if (!val) return;
+		const newUrl = new URL(page.url);
+		newUrl.searchParams.set('limit', val);
+		newUrl.searchParams.set('page', '1');
+		goto(newUrl.toString(), { noScroll: true });
+	}
+
+	function goToPage(p: number) {
+		const newUrl = new URL(page.url);
+		newUrl.searchParams.set('page', p.toString());
+		goto(newUrl.toString(), { noScroll: true });
 	}
 
 	let selectedOrgName = $derived(
@@ -75,6 +89,20 @@
 		{ value: 'ALKOMLEK', label: 'ALKOMLEK' },
 		{ value: 'PERNIKA_LEK', label: 'PERNIKA_LEK' }
 	];
+
+	const visiblePages = $derived.by(() => {
+		const total = komunityQuery.current?.pagination.totalPages || 0;
+		const maxButtons = 4;
+		if (total <= maxButtons) {
+			return Array.from({ length: total }, (_, i) => i + 1);
+		}
+		let start = currentPage - 1;
+		if (start < 1) start = 1;
+		if (start + maxButtons - 1 > total) {
+			start = total - maxButtons + 1;
+		}
+		return Array.from({ length: maxButtons }, (_, i) => start + i);
+	});
 </script>
 
 <div class="flex flex-col gap-6 p-6">
@@ -131,6 +159,21 @@
 						{#each categoryOptions as opt}
 							<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
 						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+
+			<div class="flex flex-col gap-1.5">
+				<Label for="limit-filter">Tampilkan</Label>
+				<Select.Root type="single" value={limit.toString()} onValueChange={updateLimit}>
+					<Select.Trigger class="w-[120px] border-2">
+						{limit} baris
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="10" label="10 baris">10 baris</Select.Item>
+						<Select.Item value="25" label="25 baris">25 baris</Select.Item>
+						<Select.Item value="50" label="50 baris">50 baris</Select.Item>
+						<Select.Item value="100" label="100 baris">100 baris</Select.Item>
 					</Select.Content>
 				</Select.Root>
 			</div>
@@ -277,36 +320,51 @@
 			</Table.Table>
 		</div>
 
-		{#if totalPages > 1}
-			<div class="flex items-center justify-between rounded-b-lg border-t border-border px-6 py-4">
-				<div class="text-sm text-muted-foreground">
+		{#if komunityQuery.current && komunityQuery.current.pagination.totalPages > 1}
+			<div class="flex flex-col-reverse items-center justify-between gap-4 border-t border-border px-6 py-4 md:flex-row md:gap-0">
+				<div class="text-xs text-muted-foreground">
 					Menampilkan <span class="font-semibold text-foreground"
-						>{(currentPage - 1) * itemsPerPage + 1}</span
+						>{(currentPage - 1) * limit + 1}</span
 					>
 					-
 					<span class="font-semibold text-foreground"
-						>{Math.min(currentPage * itemsPerPage, totalItems)}</span
+						>{Math.min(currentPage * limit, komunityQuery.current.pagination.totalItems)}</span
 					>
-					dari <span class="font-semibold text-foreground">{totalItems}</span> data
+					dari
+					<span class="font-semibold text-foreground">{komunityQuery.current.pagination.totalItems}</span> data
 				</div>
-				<div class="flex gap-2">
+				<div class="flex items-center gap-2">
 					<Button
 						variant="outline"
 						size="sm"
-						onclick={() => (currentPage = Math.max(1, currentPage - 1))}
-						disabled={currentPage === 1}
+						onclick={() => goToPage(currentPage - 1)}
+						disabled={currentPage <= 1}
+						class="h-8 gap-1 px-2 text-xs border-2"
 					>
-						<ChevronLeft class="mr-1 h-4 w-4" />
+						<ChevronLeft class="h-3 w-3" />
 						Sebelumnya
 					</Button>
+					<div class="flex items-center gap-1">
+						{#each visiblePages as p}
+							<Button
+								variant={currentPage === p ? 'default' : 'ghost'}
+								size="sm"
+								onclick={() => goToPage(p)}
+								class="h-8 w-8 p-0 text-xs"
+							>
+								{p}
+							</Button>
+						{/each}
+					</div>
 					<Button
 						variant="outline"
 						size="sm"
-						onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))}
-						disabled={currentPage === totalPages}
+						onclick={() => goToPage(currentPage + 1)}
+						disabled={currentPage >= komunityQuery.current.pagination.totalPages}
+						class="h-8 gap-1 px-2 text-xs border-2"
 					>
 						Selanjutnya
-						<ChevronRight class="ml-1 h-4 w-4" />
+						<ChevronRight class="h-3 w-3" />
 					</Button>
 				</div>
 			</div>

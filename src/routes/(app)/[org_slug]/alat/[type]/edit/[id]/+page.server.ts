@@ -5,6 +5,9 @@ import type { PageServerLoad, Actions } from './$types';
 import { fail, error } from '@sveltejs/kit';
 import { uploadFile, deleteFile } from '$lib/server/storage';
 import { invalidateOrgInventoryCache } from '$lib/server/redis';
+import { message, setError, superValidate } from 'sveltekit-superforms';
+import { yup } from 'sveltekit-superforms/adapters';
+import { equipmentSchema } from '$lib/schemas/equipment-schema';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { org_slug, id } = params;
@@ -35,10 +38,23 @@ export const load: PageServerLoad = async ({ params }) => {
 		item: currentEquipmentResults[0].item
 	};
 
+	const form = await superValidate(
+		{
+			itemName: currentEquipment.item.name,
+			serialNumber: currentEquipment.serialNumber ?? undefined,
+			brand: currentEquipment.brand ?? undefined,
+			warehouseId: currentEquipment.warehouseId ?? undefined,
+			condition: currentEquipment.condition,
+			status: currentEquipment.status ?? undefined
+		},
+		yup(equipmentSchema)
+	);
+
 	return {
 		warehouses: warehousesResults.map((w) => w.warehouse),
 		equipment: currentEquipment,
-		type: params.type
+		type: params.type,
+		form
 	};
 };
 
@@ -46,16 +62,20 @@ export const actions: Actions = {
 	default: async ({ request, params }: any) => {
 		const { id, type } = params;
 		const formData = await request.formData();
+		const form = await superValidate(formData, yup(equipmentSchema));
 
-		const itemName = formData.get('itemName') as string;
-		const serialNumber = formData.get('serialNumber') as string;
-		const brand = formData.get('brand') as string;
-		const warehouseId = formData.get('warehouseId') as string;
-		const condition = formData.get('condition') as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT';
-		const status = formData.get('status') as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE';
-		const imageFile = formData.get('image') as File;
+		if (!form.valid) {
+			return fail(400, { form });
+		}
 
-		if (!itemName) return fail(400, { message: 'Nama Alat harus diisi' });
+		const { itemName, serialNumber, brand, warehouseId, condition, status } = form.data as {
+			itemName: string;
+			serialNumber: string | null;
+			brand: string | null;
+			warehouseId: string | null;
+			condition: string;
+			status: string;
+		};
 
 		// Map URL type to database equipmentType
 		const equipmentType = type.toUpperCase() === 'ALPERNIKA' ? 'PERNIKA_LEK' : 'ALKOMLEK';
@@ -72,15 +92,22 @@ export const actions: Actions = {
 				.where(eq(equipment.id, id))
 				.limit(1);
 
-			if (currentResults.length === 0) return fail(404, { message: 'Alat tidak ditemukan' });
+			if (currentResults.length === 0) {
+				return message(form, 'Alat tidak ditemukan', { status: 404 });
+			}
 			const current = currentResults[0];
+
+			// Get the raw form data for the image file
+			const imageFile = formData.get('image') as File;
 
 			let imagePath = current.item.imagePath;
 
 			// Upload new image if exists
 			if (imageFile && imageFile.size > 0) {
 				const { fileName: newFileName, error: uploadError } = await uploadFile(imageFile, 'item');
-				if (uploadError) return fail(400, { message: uploadError });
+				if (uploadError) {
+					return message(form, uploadError, { status: 400 });
+				}
 
 				// Delete old image if new one is uploaded
 				if (current.item.imagePath) {
@@ -111,7 +138,8 @@ export const actions: Actions = {
 					type: 'ASSET',
 					equipmentType: equipmentType,
 					baseUnit: 'UNIT',
-					imagePath: imagePath
+					imagePath: imagePath,
+					createdAt: new Date()
 				});
 			}
 
@@ -122,8 +150,8 @@ export const actions: Actions = {
 					serialNumber: serialNumber || null,
 					brand: brand || null,
 					warehouseId: warehouseId || null,
-					condition: condition || 'BAIK',
-					status: status || 'READY',
+					condition: (condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT') || 'BAIK',
+					status: (status as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE') || 'READY',
 					updatedAt: new Date()
 				})
 				.where(eq(equipment.id, id));
@@ -131,13 +159,13 @@ export const actions: Actions = {
 			// Invalidate cache
 			await invalidateOrgInventoryCache(current.equipment.organizationId!);
 
-			return { success: true, message: 'Data alat berhasil diperbarui' };
+			return message(form, 'Data alat berhasil diperbarui');
 		} catch (error: any) {
 			console.error(error);
 			if (error.code === 'ER_DUP_ENTRY') {
-				return fail(400, { message: 'Serial Number sudah terdaftar' });
+				return setError(form, 'serialNumber', 'Serial Number sudah terdaftar');
 			}
-			return fail(500, { message: 'Gagal memperbarui data alat' });
+			return message(form, 'Gagal memperbarui data alat', { status: 500 });
 		}
 	}
 };

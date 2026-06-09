@@ -1,26 +1,51 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
+	import { tick } from 'svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import { ChevronLeft, Save, Loader2 } from '@lucide/svelte';
+	import { equipmentConditionLabel, equipmentStatusLabel } from '@/enums/equipment-enum';
+	import { superForm } from 'sveltekit-superforms';
+	import { yupClient } from 'sveltekit-superforms/adapters';
+	import { equipmentSchema } from '$lib/schemas/equipment-schema';
+	import { untrack } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	let loading = $state(false);
+	const { form, errors, enhance, delayed, message } = superForm(
+		untrack(() => data.form),
+		{
+			validators: yupClient(equipmentSchema),
+			onUpdated: ({ form }) => {
+				if (form.valid) {
+					notificationMsg = $message || 'Alat berhasil ditambahkan';
+					notificationType = 'success';
+					notificationOpen = true;
+				} else {
+					const hasFieldErrors = Object.values($errors).some((error) => error !== undefined);
+					if ($message && !hasFieldErrors) {
+						// Only show dialog for general messages if there are no specific field errors
+						notificationMsg = $message;
+						notificationType = 'error';
+						notificationOpen = true;
+					}
+				}
+			},
+			onError: ({ result }) => {
+				notificationMsg = result.error.message || 'Terjadi kesalahan';
+				notificationType = 'error';
+				notificationOpen = true;
+			}
+		}
+	);
+
 	let notificationOpen = $state(false);
 	let notificationMsg = $state('');
 	let notificationType = $state<'success' | 'error' | 'info'>('success');
-
-	// Form states for Select bindings
-	let warehouseId = $state('');
-	let condition = $state('BAIK');
-	let status = $state('READY');
-	let classification = $state('');
 
 	const typeLabel = $derived(data.type === 'alpernika' ? 'Pernika & Lek' : 'Alkomlek');
 
@@ -29,6 +54,23 @@
 			window.location.href = `/${page.params.org_slug}/alat/${data.type}`;
 		}
 	}
+
+	async function scrollToError() {
+		await tick();
+		const errorElement = document.querySelector('[aria-invalid="true"], .text-destructive');
+		if (errorElement) {
+			errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			if (errorElement instanceof HTMLInputElement || errorElement instanceof HTMLSelectElement) {
+				errorElement.focus();
+			}
+		}
+	}
+
+	$effect(() => {
+		if (Object.keys($errors).length > 0) {
+			scrollToError();
+		}
+	});
 </script>
 
 <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
@@ -45,46 +87,63 @@
 	<form
 		method="POST"
 		enctype="multipart/form-data"
-		use:enhance={() => {
-			loading = true;
-			return ({ result }) => {
-				loading = false;
-				if (result?.type === 'success') {
-					notificationMsg = (result.data as any)?.message || 'Alat berhasil ditambahkan';
-					notificationType = 'success';
-					notificationOpen = true;
-				} else if (result?.type === 'failure') {
-					notificationMsg = (result.data as any)?.message || 'Terjadi kesalahan';
-					notificationType = 'error';
-					notificationOpen = true;
-				}
-			};
-		}}
+		use:enhance
 		class="grid gap-8 rounded-lg border bg-card p-8 shadow-sm"
 	>
 		<div class="grid gap-6 md:grid-cols-2">
 			<div class="space-y-2">
-				<Label for="itemName">Nama Alat</Label>
-				<Input name="itemName" id="itemName" required placeholder="Contoh: Radio HT, Jammer..." />
-				<p class="text-xs text-muted-foreground">Nama spesifik atau model peralatan.</p>
+				<Label for="itemName" class={$errors.itemName ? 'text-destructive' : ''}>Nama Alat</Label>
+				<Input
+					name="itemName"
+					id="itemName"
+					placeholder="Contoh: Radio HT, Jammer..."
+					aria-invalid={$errors.itemName ? 'true' : undefined}
+					bind:value={$form.itemName}
+				/>
+				{#if $errors.itemName}
+					<p class="text-xs font-medium text-destructive">{$errors.itemName}</p>
+				{:else}
+					<p class="text-xs text-muted-foreground">Nama spesifik atau model peralatan.</p>
+				{/if}
 			</div>
 
 			<div class="space-y-2">
-				<Label for="serialNumber">Serial Number (SN)</Label>
-				<Input name="serialNumber" id="serialNumber" placeholder="Contoh: SN-12345678" />
-				<p class="text-xs text-muted-foreground">Nomor seri unik</p>
+				<Label for="serialNumber" class={$errors.serialNumber ? 'text-destructive' : ''}
+					>Serial Number (SN)</Label
+				>
+				<Input
+					name="serialNumber"
+					id="serialNumber"
+					placeholder="Contoh: SN-12345678"
+					aria-invalid={$errors.serialNumber ? 'true' : undefined}
+					bind:value={$form.serialNumber}
+				/>
+				{#if $errors.serialNumber}
+					<p class="text-xs font-medium text-destructive">{$errors.serialNumber}</p>
+				{:else}
+					<p class="text-xs text-muted-foreground">Nomor seri unik</p>
+				{/if}
 			</div>
 
 			<div class="space-y-2">
 				<Label for="brand">Brand / Merek</Label>
-				<Input name="brand" id="brand" placeholder="Contoh: Motorola, Kenwood..." />
+				<Input
+					name="brand"
+					id="brand"
+					placeholder="Contoh: Motorola, Kenwood..."
+					bind:value={$form.brand}
+				/>
 			</div>
 
 			<div class="space-y-2">
 				<Label for="warehouseId">Gudang Penyimpanan</Label>
-				<Select.Root type="single" bind:value={warehouseId}>
+				<Select.Root
+					type="single"
+					value={$form.warehouseId || ''}
+					onValueChange={(v) => ($form.warehouseId = v)}
+				>
 					<Select.Trigger class="w-full">
-						{data.warehouses.find((w) => w.id === warehouseId)?.name || 'Tanpa Gudang'}
+						{data.warehouses.find((w) => w.id === $form.warehouseId)?.name || 'Tanpa Gudang'}
 					</Select.Trigger>
 					<Select.Content>
 						<Select.Item value="">Tanpa Gudang</Select.Item>
@@ -93,18 +152,18 @@
 						{/each}
 					</Select.Content>
 				</Select.Root>
-				<input type="hidden" name="warehouseId" value={warehouseId} />
+				<input type="hidden" name="warehouseId" value={$form.warehouseId} />
 			</div>
 
 			<div class="space-y-2">
 				<Label for="condition">Kondisi Alat</Label>
-				<Select.Root type="single" bind:value={condition}>
+				<Select.Root
+					type="single"
+					value={$form.condition || ''}
+					onValueChange={(v) => ($form.condition = v as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT')}
+				>
 					<Select.Trigger class="w-full">
-						{condition === 'BAIK'
-							? 'Baik'
-							: condition === 'RUSAK_RINGAN'
-								? 'Rusak Ringan'
-								: 'Rusak Berat'}
+						{equipmentConditionLabel[$form.condition]}
 					</Select.Trigger>
 					<Select.Content>
 						<Select.Item value="BAIK">Baik</Select.Item>
@@ -112,40 +171,43 @@
 						<Select.Item value="RUSAK_BERAT">Rusak Berat</Select.Item>
 					</Select.Content>
 				</Select.Root>
-				<input type="hidden" name="condition" value={condition} />
+				<input type="hidden" name="condition" value={$form.condition} />
 			</div>
 
 			<div class="space-y-2">
 				<Label for="status">Status Aset</Label>
-				<Select.Root type="single" bind:value={status}>
+				<Select.Root
+					type="single"
+					value={$form.status || ''}
+					onValueChange={(v) =>
+						($form.status = v as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE')}
+				>
 					<Select.Trigger class="w-full">
-						{status === 'READY'
-							? 'Ready (Tersedia)'
-							: status === 'IN_USE'
-								? 'In Use (Digunakan)'
-								: status === 'TRANSIT'
-									? 'Transit (Dalam Pengiriman)'
-									: 'Maintenance (Perbaikan)'}
+						{equipmentStatusLabel[$form.status as keyof typeof equipmentStatusLabel] || ''}
 					</Select.Trigger>
 					<Select.Content>
-						<Select.Item value="READY">Ready (Tersedia)</Select.Item>
-						<Select.Item value="IN_USE">In Use (Digunakan)</Select.Item>
-						<Select.Item value="TRANSIT">Transit (Dalam Pengiriman)</Select.Item>
-						<Select.Item value="MAINTENANCE">Maintenance (Perbaikan)</Select.Item>
+						<Select.Item value="READY">{equipmentStatusLabel['READY']}</Select.Item>
+						<Select.Item value="IN_USE">{equipmentStatusLabel['IN_USE']}</Select.Item>
+						<Select.Item value="TRANSIT">{equipmentStatusLabel['TRANSIT']}</Select.Item>
+						<Select.Item value="MAINTENANCE">{equipmentStatusLabel['MAINTENANCE']}</Select.Item>
 					</Select.Content>
 				</Select.Root>
-				<input type="hidden" name="status" value={status} />
+				<input type="hidden" name="status" value={$form.status} />
 			</div>
 
 			<div class="space-y-2">
 				<Label for="classification">Klasifikasi Mutasi</Label>
-				<Select.Root type="single" bind:value={classification}>
+				<Select.Root
+					type="single"
+					value={$form.classification || ''}
+					onValueChange={(v) => ($form.classification = v as 'TRANSITO' | 'BALKIR' | 'KOMUNITY')}
+				>
 					<Select.Trigger class="w-full">
-						{classification === 'TRANSITO'
+						{$form.classification === 'TRANSITO'
 							? 'Transito'
-							: classification === 'BALKIR'
+							: $form.classification === 'BALKIR'
 								? 'Balkir'
-								: classification === 'KOMUNITY'
+								: $form.classification === 'KOMUNITY'
 									? 'Komunity'
 									: '-- Pilih Klasifikasi --'}
 					</Select.Trigger>
@@ -156,7 +218,7 @@
 						<Select.Item value="KOMUNITY">Komunity</Select.Item>
 					</Select.Content>
 				</Select.Root>
-				<input type="hidden" name="classification" value={classification} />
+				<input type="hidden" name="classification" value={$form.classification} />
 				<p class="text-xs text-muted-foreground">Catat mutasi awal saat penambahan alat.</p>
 			</div>
 
@@ -174,11 +236,11 @@
 		</div>
 
 		<div class="flex justify-end gap-3">
-			<Button variant="outline" href="/{page.params.org_slug}/alat/{data.type}" disabled={loading}>
+			<Button variant="outline" href="/{page.params.org_slug}/alat/{data.type}" disabled={$delayed}>
 				Batal
 			</Button>
-			<Button type="submit" class="min-w-30 gap-2" disabled={loading}>
-				{#if loading}
+			<Button type="submit" class="min-w-30 gap-2" disabled={$delayed}>
+				{#if $delayed}
 					<Loader2 class="size-4 animate-spin" />
 					Menyimpan...
 				{:else}

@@ -1,16 +1,47 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import * as Select from '$lib/components/ui/select';
 	import { ChevronLeft, Save, Loader2 } from '@lucide/svelte';
+	import { superForm } from 'sveltekit-superforms';
+	import { yupClient } from 'sveltekit-superforms/adapters';
+	import { equipmentSchema } from '$lib/schemas/equipment-schema';
+	import { equipmentConditionLabel, equipmentStatusLabel } from '@/enums/equipment-enum';
+	import { untrack } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	let loading = $state(false);
+	const { form, errors, enhance, delayed, message } = superForm(
+		untrack(() => data.form),
+		{
+			validators: yupClient(equipmentSchema),
+			onUpdated: ({ form }) => {
+				if (form.valid) {
+					notificationMsg = $message || 'Data alat berhasil diperbarui';
+					notificationType = 'success';
+					notificationOpen = true;
+				} else {
+					const hasFieldErrors = Object.values($errors).some((error) => error !== undefined);
+					if ($message && !hasFieldErrors) {
+						// Only show dialog for general messages if there are no specific field errors
+						notificationMsg = $message;
+						notificationType = 'error';
+						notificationOpen = true;
+					}
+				}
+			},
+			onError: ({ result }) => {
+				notificationMsg = result.error.message || 'Terjadi kesalahan';
+				notificationType = 'error';
+				notificationOpen = true;
+			}
+		}
+	);
+
 	let notificationOpen = $state(false);
 	let notificationMsg = $state('');
 	let notificationType = $state<'success' | 'error' | 'info'>('success');
@@ -18,7 +49,11 @@
 	let imagePreview = $state<string | null>(null);
 
 	$effect(() => {
-		imagePreview = data.equipment.item.imagePath ? `/uploads/item/${data.equipment.item.imagePath}` : null;
+		untrack(() => {
+			imagePreview = data.equipment.item.imagePath
+				? `/uploads/item/${data.equipment.item.imagePath}`
+				: null;
+		});
 	});
 
 	function handleImageChange(event: Event) {
@@ -48,6 +83,9 @@
 
 <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
 	<div class="flex items-center gap-4">
+		<Button variant="outline" size="icon" href="/{page.params.org_slug}/alat/{data.type}">
+			<ChevronLeft class="size-4" />
+		</Button>
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight text-foreground">Edit {typeLabel}</h1>
 			<p class="text-muted-foreground">Perbarui informasi peralatan yang sudah ada.</p>
@@ -57,44 +95,40 @@
 	<form
 		method="POST"
 		enctype="multipart/form-data"
-		use:enhance={() => {
-			loading = true;
-			return ({ result }) => {
-				loading = false;
-				if (result?.type === 'success') {
-					notificationMsg = 'Berhasil';
-					notificationType = 'success';
-					notificationOpen = true;
-				} else if (result?.type === 'failure') {
-					notificationMsg = 'Terjadi kesalahan';
-					notificationType = 'error';
-					notificationOpen = true;
-				}
-			};
-		}}
+		use:enhance
 		class="grid gap-8 rounded-lg border bg-card p-8 shadow-sm"
 	>
 		<div class="grid gap-6 md:grid-cols-2">
 			<div class="space-y-2">
-				<Label for="itemName">Nama Alat</Label>
+				<Label for="itemName" class={$errors.itemName ? 'text-destructive' : ''}>Nama Alat</Label>
 				<Input
 					name="itemName"
 					id="itemName"
-					required
 					placeholder="Contoh: Radio HT, Jammer..."
-					value={data.equipment.item.name}
+					aria-invalid={$errors.itemName ? 'true' : undefined}
+					bind:value={$form.itemName}
 				/>
-				<p class="text-xs text-muted-foreground">Nama spesifik atau model peralatan.</p>
+				{#if $errors.itemName}
+					<p class="text-xs font-medium text-destructive">{$errors.itemName}</p>
+				{:else}
+					<p class="text-xs text-muted-foreground">Nama spesifik atau model peralatan.</p>
+				{/if}
 			</div>
 
 			<div class="space-y-2">
-				<Label for="serialNumber">Serial Number (SN)</Label>
+				<Label for="serialNumber" class={$errors.serialNumber ? 'text-destructive' : ''}
+					>Serial Number (SN)</Label
+				>
 				<Input
 					name="serialNumber"
 					id="serialNumber"
 					placeholder="Contoh: SN-12345678"
-					value={data.equipment.serialNumber}
+					aria-invalid={$errors.serialNumber ? 'true' : undefined}
+					bind:value={$form.serialNumber}
 				/>
+				{#if $errors.serialNumber}
+					<p class="text-xs font-medium text-destructive">{$errors.serialNumber}</p>
+				{/if}
 			</div>
 
 			<div class="space-y-2">
@@ -103,52 +137,68 @@
 					name="brand"
 					id="brand"
 					placeholder="Contoh: Motorola, Kenwood..."
-					value={data.equipment.brand}
+					bind:value={$form.brand}
 				/>
 			</div>
 
 			<div class="space-y-2">
 				<Label for="warehouseId">Gudang Penyimpanan</Label>
-				<select
-					name="warehouseId"
-					id="warehouseId"
-					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-					value={data.equipment.warehouseId}
+				<Select.Root
+					type="single"
+					value={$form.warehouseId || ''}
+					onValueChange={(v) => ($form.warehouseId = v)}
 				>
-					<option value="">Tanpa Gudang</option>
-					{#each data.warehouses as warehouse (warehouse.id)}
-						<option value={warehouse.id}>{warehouse.name}</option>
-					{/each}
-				</select>
+					<Select.Trigger class="w-full">
+						{data.warehouses.find((w) => w.id === $form.warehouseId)?.name || 'Tanpa Gudang'}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="">Tanpa Gudang</Select.Item>
+						{#each data.warehouses as warehouse (warehouse.id)}
+							<Select.Item value={warehouse.id}>{warehouse.name}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+				<input type="hidden" name="warehouseId" value={$form.warehouseId} />
 			</div>
 
 			<div class="space-y-2">
 				<Label for="condition">Kondisi Alat</Label>
-				<select
-					name="condition"
-					id="condition"
-					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-					value={data.equipment!.condition}
+				<Select.Root
+					type="single"
+					value={$form.condition || ''}
+					onValueChange={(v) => ($form.condition = v as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT')}
 				>
-					<option value="BAIK">Baik</option>
-					<option value="RUSAK_RINGAN">Rusak Ringan</option>
-					<option value="RUSAK_BERAT">Rusak Berat</option>
-				</select>
+					<Select.Trigger class="w-full">
+						{equipmentConditionLabel[$form.condition]}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="BAIK">Baik</Select.Item>
+						<Select.Item value="RUSAK_RINGAN">Rusak Ringan</Select.Item>
+						<Select.Item value="RUSAK_BERAT">Rusak Berat</Select.Item>
+					</Select.Content>
+				</Select.Root>
+				<input type="hidden" name="condition" value={$form.condition} />
 			</div>
 
 			<div class="space-y-2">
 				<Label for="status">Status Aset</Label>
-				<select
-					name="status"
-					id="status"
-					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-					value={data.equipment!.status!}
+				<Select.Root
+					type="single"
+					value={$form.status || ''}
+					onValueChange={(v) =>
+						($form.status = v as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE')}
 				>
-					<option value="READY">Ready (Tersedia)</option>
-					<option value="IN_USE">In Use (Digunakan)</option>
-					<option value="TRANSIT">Transit (Dalam Pengiriman)</option>
-					<option value="MAINTENANCE">Maintenance (Perbaikan)</option>
-				</select>
+					<Select.Trigger class="w-full">
+						{equipmentStatusLabel[$form.status as keyof typeof equipmentStatusLabel]}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="READY">{equipmentStatusLabel['READY']}</Select.Item>
+						<Select.Item value="IN_USE">{equipmentStatusLabel['IN_USE']}</Select.Item>
+						<Select.Item value="TRANSIT">{equipmentStatusLabel['TRANSIT']}</Select.Item>
+						<Select.Item value="MAINTENANCE">{equipmentStatusLabel['MAINTENANCE']}</Select.Item>
+					</Select.Content>
+				</Select.Root>
+				<input type="hidden" name="status" value={$form.status} />
 			</div>
 
 			<div class="space-y-2 md:col-span-2">
@@ -180,11 +230,11 @@
 		</div>
 
 		<div class="flex justify-end gap-3 border-t pt-6">
-			<Button variant="outline" href="/{page.params.org_slug}/alat/{data.type}" disabled={loading}>
+			<Button variant="outline" href="/{page.params.org_slug}/alat/{data.type}" disabled={$delayed}>
 				Batal
 			</Button>
-			<Button type="submit" class="min-w-[120px] gap-2" disabled={loading}>
-				{#if loading}
+			<Button type="submit" class="min-w-30 gap-2" disabled={$delayed}>
+				{#if $delayed}
 					<Loader2 class="size-4 animate-spin" />
 					Memperbarui...
 				{:else}

@@ -59,11 +59,11 @@
 </script>
 
 <AlertDialog.Root bind:open>
-	<AlertDialog.Content
-		class={cn('overflow-visible border-t-4 p-0 sm:max-w-[400px]', config.border)}
-	>
+	<AlertDialog.Content class={cn('overflow-visible border-t-4 p-0 sm:max-w-100', config.border)}>
 		<div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
-			<div class={cn('rounded-full border-4 border-background p-3 shadow-xl', config.bg, config.fg)}>
+			<div
+				class={cn('rounded-full border-4 border-background p-3 shadow-xl', config.bg, config.fg)}
+			>
 				{#if config.icon}
 					{@const Icon = config.icon}
 					<Icon size={32} strokeWidth={3} />
@@ -95,7 +95,7 @@
 				</AlertDialog.Cancel>
 
 				<Button
-					class={cn('min-w-[120px]', config.bg, config.fg, 'hover:opacity-90')}
+					class={cn(config.bg, config.fg, 'hover:opacity-90')}
 					onclick={() => {
 						onAction();
 						if (!loading) open = false;
@@ -103,7 +103,7 @@
 					disabled={loading}
 				>
 					{#if loading}
-						<Loader2 class="mr-2 size-4 animate-spin" />
+						<Loader2 class="animate-spin" />
 						Memproses...
 					{:else}
 						{actionLabel}

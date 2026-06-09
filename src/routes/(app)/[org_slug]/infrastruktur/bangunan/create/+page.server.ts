@@ -56,7 +56,8 @@ export const actions: Actions = {
 				description,
 				latitude: latitude ? latitude : null,
 				longitude: longitude ? longitude : null,
-				photoPath: fileName
+				photoPath: fileName,
+				createdAt: new Date()
 			});
 
 			return { success: true, message: 'Data bangunan berhasil ditambahkan' };

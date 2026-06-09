@@ -1,9 +1,16 @@
 import { db } from '$lib/server/db';
-import { equipment, item, warehouse, movement, organization } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import {
+	equipment,
+	warehouse,
+	movement,
+	organization,
+	notification,
+	member
+} from '$lib/server/db/schema';
+import { eq, and, ne, inArray } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
-import { invalidateOrgInventoryCache } from '$lib/server/redis';
+import { invalidateOrgInventoryCache, invalidateNotifCache } from '$lib/server/redis';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const { id, org_slug } = params;
@@ -47,9 +54,109 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		equipment: data,
 		warehouses,
 		lastMovement,
-		type: params.type
+		type: params.type,
+		org_slug: params.org_slug
 	};
 };
+
+// ─── Helper: kirim notifikasi mutasi ke operator lain ───────────────────────
+
+const OPERATOR_ROLES = ['operatorPusatDanDaerah', 'operatorBinmatDanBekharrah'];
+
+async function sendMutationNotifications({
+	orgId,
+	picId,
+	equipmentName,
+	eventType,
+	fromWarehouseName,
+	toWarehouseName,
+	movementId,
+	orgSlug,
+	equipmentId,
+	equipmentType,
+	conditionAtArrival
+}: {
+	orgId: string;
+	picId: string;
+	equipmentName: string;
+	eventType: string;
+	fromWarehouseName: string | null;
+	toWarehouseName: string | null;
+	movementId: string;
+	orgSlug: string;
+	equipmentId: string;
+	equipmentType: string;
+	conditionAtArrival?: string | null;
+}) {
+	// 1. Ambil semua member dengan role operator, kecuali yang mencatat
+	const targets = await db.query.member.findMany({
+		where: and(
+			eq(member.organizationId, orgId),
+			inArray(member.role, OPERATOR_ROLES),
+			ne(member.userId, picId)
+		),
+		columns: { userId: true }
+	});
+
+	const validTargets = targets.filter((t) => t.userId);
+	const uniqueUserIds = [...new Set(validTargets.map((t) => t.userId!))];
+	if (uniqueUserIds.length === 0) return;
+
+	// 2. Susun teks notifikasi berdasarkan eventType
+	const eventLabels: Record<string, string> = {
+		RECEIVE: 'Penerimaan (Masuk)',
+		ISSUE: 'Pengeluaran Permanen',
+		TRANSFER_OUT: 'Transfer Keluar',
+		TRANSFER_IN: 'Transfer Masuk (Konfirmasi)'
+	};
+
+	const routeLabel = eventLabels[eventType] ?? eventType;
+
+	const fromLabel = fromWarehouseName ?? 'Luar Sistem';
+	const toLabel = toWarehouseName ?? 'Keluar Sistem';
+
+	const conditionSuffix =
+		conditionAtArrival && conditionAtArrival !== 'BAIK'
+			? ` ⚠️ Kondisi tiba: ${conditionAtArrival === 'RUSAK_RINGAN' ? 'Rusak Ringan' : 'Rusak Berat'}.`
+			: '';
+
+	const title = `Mutasi ${routeLabel}: ${equipmentName}`;
+	const body = `Telah dicatat mutasi ${routeLabel} untuk alat "${equipmentName}". Asal: ${fromLabel} → Tujuan: ${toLabel}.${conditionSuffix} Silakan verifikasi jika diperlukan.`;
+
+	// 3. Tentukan priority berdasarkan event
+	const priority = eventType === 'TRANSFER_OUT' || eventType === 'TRANSFER_IN' ? 'HIGH' : 'MEDIUM';
+
+	// 4. Deep link ke halaman detail alat (bukan halaman mutasi)
+	const action = JSON.stringify({
+		type: 'MUTASI_DETAIL',
+		resourceId: movementId,
+		webPath: `/${orgSlug}/alat/${equipmentType}/${equipmentId}`
+	});
+
+	// 5. Insert notifikasi untuk setiap target (organizationId = null agar tidak dianggap broadcast untuk seluruh org)
+	const now = new Date();
+	const notifValues = uniqueUserIds.map((userId) => ({
+		id: crypto.randomUUID(),
+		userId: userId,
+		organizationId: null,
+		title,
+		body,
+		priority: priority as 'HIGH' | 'MEDIUM' | 'LOW',
+		read: false,
+		action,
+		createdAt: now
+	}));
+
+	// Batch insert semua notifikasi sekaligus
+	await db.insert(notification).values(notifValues);
+
+	// Invalidasi cache layout notifikasi untuk masing-masing operator agar UI terupdate
+	for (const userId of uniqueUserIds) {
+		invalidateNotifCache(userId).catch((err) => {
+			console.error(`[Notifikasi Mutasi] Gagal invalidasi cache untuk user ${userId}:`, err);
+		});
+	}
+}
 
 export const actions: Actions = {
 	default: async ({ request, params, locals }) => {
@@ -63,6 +170,7 @@ export const actions: Actions = {
 		const toWarehouseId = formData.get('toWarehouseId') as string;
 		const specificLocationName = formData.get('specificLocationName') as string;
 		const notes = formData.get('notes') as string;
+		const conditionAtArrival = formData.get('conditionAtArrival') as string | null;
 
 		const { id, org_slug, type } = params;
 
@@ -95,10 +203,12 @@ export const actions: Actions = {
 				});
 			}
 
+			let newMovementId = '';
+			let fromWhId: string | null = null;
+			let toWhId: string | null = null;
+
 			// Start a transaction to update equipment and record movement
 			await db.transaction(async (tx) => {
-				let fromWhId: string | null = null;
-				let toWhId: string | null = null;
 				let equipmentUpdate: any = {};
 
 				// 1. Logic based on business rules
@@ -128,7 +238,14 @@ export const actions: Actions = {
 						// Internal Movement (Terima)
 						fromWhId = currentEquipment.warehouseId;
 						toWhId = toWarehouseId;
-						equipmentUpdate = { warehouseId: toWhId, status: status || 'READY' };
+						equipmentUpdate = {
+							warehouseId: toWhId,
+							status: status || 'READY',
+							// Update kondisi equipment jika penerima melaporkan kerusakan
+							...(conditionAtArrival
+								? { condition: conditionAtArrival as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' }
+								: {})
+						};
 						break;
 
 					default:
@@ -142,9 +259,18 @@ export const actions: Actions = {
 					await tx.update(equipment).set(equipmentUpdate).where(eq(equipment.id, id));
 				}
 
+				const eventLabels: Record<string, string> = {
+					RECEIVE: 'Masuk (Eksternal)',
+					ISSUE: 'Keluar / Penghapusan (Permanen)',
+					TRANSFER_OUT: 'Transfer Keluar (Internal)',
+					TRANSFER_IN: 'Transfer Masuk (Internal)'
+				};
+
+				newMovementId = crypto.randomUUID();
+
 				// Record the movement
 				await tx.insert(movement).values({
-					id: crypto.randomUUID(),
+					id: newMovementId,
 					equipmentId: id,
 					organizationId: org.id,
 					eventType: eventType,
@@ -153,11 +279,42 @@ export const actions: Actions = {
 					fromWarehouseId: fromWhId,
 					toWarehouseId: toWhId,
 					specificLocationName: specificLocationName || null,
-					notes: notes || `Mutasi manual: ${eventType}`,
+					notes: notes || `Mutasi manual: ${eventLabels[eventType] || eventType}`,
+					conditionAtArrival:
+						eventType === 'TRANSFER_IN' && conditionAtArrival ? (conditionAtArrival as any) : null,
 					picId: user.id,
 					createdAt: new Date()
 				});
 			});
+
+			// Ambil nama warehouse untuk teks notifikasi
+			const fromWhName = fromWhId
+				? ((await db.query.warehouse.findFirst({ where: eq(warehouse.id, fromWhId) }))?.name ??
+					null)
+				: null;
+			const toWhName = toWhId
+				? ((await db.query.warehouse.findFirst({ where: eq(warehouse.id, toWhId) }))?.name ?? null)
+				: null;
+
+			const equipmentForNotif = await db.query.equipment.findFirst({
+				where: eq(equipment.id, id),
+				with: { item: true }
+			});
+
+			// Kirim notifikasi ke operator lain (non-blocking, jangan await jika ingin tidak menunda response)
+			sendMutationNotifications({
+				orgId: org.id,
+				picId: user.id,
+				equipmentName: equipmentForNotif?.item?.name ?? id,
+				eventType,
+				fromWarehouseName: fromWhName,
+				toWarehouseName: toWhName,
+				movementId: newMovementId,
+				orgSlug: org_slug,
+				equipmentId: id,
+				equipmentType: type,
+				conditionAtArrival: eventType === 'TRANSFER_IN' ? conditionAtArrival : null
+			}).catch((err) => console.error('[Notifikasi Mutasi] Gagal mengirim:', err));
 
 			// Invalidate cache
 			await invalidateOrgInventoryCache(org.id);

@@ -4,7 +4,7 @@ import { lending, member } from '$lib/server/db/schema';
 import { eq, or, desc, and, like, inArray } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals, url, params }) => {
 	const { user: currentUser } = locals;
 
 	if (!currentUser || !currentUser.organization) {
@@ -57,6 +57,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	return {
 		lendingList: data,
 		filters: { q: searchQuery, status: statusFilter },
-		isInduk
+		isInduk,
+		org_slug: params.org_slug
 	};
 };

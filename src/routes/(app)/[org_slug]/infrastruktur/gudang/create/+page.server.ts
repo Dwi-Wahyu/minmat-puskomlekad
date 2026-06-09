@@ -21,7 +21,8 @@ export const actions: Actions = {
 				id: crypto.randomUUID(),
 				name,
 				location,
-				organizationId: user.organization.id
+				organizationId: user.organization.id,
+				createdAt: new Date()
 			});
 			return { success: true, message: 'Gudang berhasil ditambahkan' };
 		} catch (error) {

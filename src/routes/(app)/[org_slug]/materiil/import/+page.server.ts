@@ -113,7 +113,8 @@ export const actions = {
 							if (!existingUnit) {
 								await tx.insert(unit).values({
 									id: unitName,
-									name: unitName
+									name: unitName,
+									createdAt: new Date()
 								});
 							}
 						}
@@ -133,7 +134,8 @@ export const actions = {
 								type: row.Tipe as 'ASSET' | 'CONSUMABLE',
 								equipmentType: row.KategoriAlat || null,
 								baseUnit: row.SatuanDasar?.toString().toUpperCase(),
-								description: row.Deskripsi
+								description: row.Deskripsi,
+								createdAt: new Date()
 							});
 						}
 
@@ -157,7 +159,8 @@ export const actions = {
 								warehouseId: defaultWarehouse.id,
 								organizationId: org.id,
 								condition: (row.Kondisi?.toString() || 'BAIK').toUpperCase() as any,
-								status: 'READY'
+								status: 'READY',
+								createdAt: new Date()
 							});
 						} else {
 							// Insert/Update sebagai Stock (Barang Habis Pakai)
@@ -169,14 +172,15 @@ export const actions = {
 							if (existingStock) {
 								await tx
 									.update(stock)
-									.set({ qty: (Number(existingStock.qty) + Number(row.Jumlah || 0)).toString() })
+									.set({ qty: (Number(existingStock.qty) + Number(row.Jumlah || 0)).toString(), updatedAt: new Date() })
 									.where(eq(stock.id, existingStock.id));
 							} else {
 								await tx.insert(stock).values({
 									id: uuidv4(),
 									itemId: itemId!,
 									warehouseId: defaultWarehouse.id,
-									qty: (row.Jumlah || 0).toString()
+									qty: (row.Jumlah || 0).toString(),
+									updatedAt: new Date()
 								});
 							}
 						}
@@ -198,7 +202,8 @@ export const actions = {
 				status: 'SUCCESS',
 				totalRows: rows.length.toString(),
 				successRows: successCount.toString(),
-				errorRows: '0'
+				errorRows: '0',
+				createdAt: new Date()
 			});
 
 			return { success: true };
@@ -214,7 +219,8 @@ export const actions = {
 				totalRows: rows.length.toString(),
 				successRows: '0',
 				errorRows: rows.length.toString(),
-				errorMessage: e.message
+				errorMessage: e.message,
+				createdAt: new Date()
 			});
 			return fail(500, { message: e.message });
 		}

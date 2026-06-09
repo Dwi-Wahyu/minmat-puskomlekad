@@ -14,15 +14,16 @@
 		Package,
 		BookOpen,
 		Info,
-		History,
-		Clock
+		Clock,
+		SquareArrowOutUpRight
 	} from '@lucide/svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
-	import { equipmentConditionLabel, equipmentStatusLabel } from '@/enums/equipment-enum.js';
+	import { equipmentStatusLabel } from '@/enums/equipment-enum.js';
 	import Badge from '@/components/ui/badge/badge.svelte';
 	import { movementEventTypeLabel } from '@/enums/movement-enum.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
+	import { resolve } from '$app/paths';
 
 	let { data, form } = $props();
 
@@ -40,6 +41,18 @@
 	let toWarehouseId = $state('');
 	let specificLocationName = $state('');
 	let notes = $state('');
+	let conditionAtArrival = $state('');
+
+	const conditionOptions = [
+		{ value: 'BAIK', label: 'Baik' },
+		{ value: 'RUSAK_RINGAN', label: 'Rusak Ringan' },
+		{ value: 'RUSAK_BERAT', label: 'Rusak Berat' }
+	];
+
+	const selectedConditionLabel = $derived(
+		conditionOptions.find((c) => c.value === conditionAtArrival)?.label ??
+			'-- Tidak Ada Laporan Kerusakan --'
+	);
 
 	$effect(() => {
 		if (data.equipment) {
@@ -55,7 +68,18 @@
 		} else if (['RECEIVE', 'TRANSFER_IN', 'ISSUE'].includes(eventType)) {
 			status = 'READY';
 		}
+
+		// Auto-fill toWarehouseId for TRANSFER_IN if last movement was TRANSFER_OUT
+		if (eventType === 'TRANSFER_IN' && data.lastMovement?.eventType === 'TRANSFER_OUT') {
+			if (data.lastMovement.toWarehouseId) {
+				toWarehouseId = data.lastMovement.toWarehouseId;
+			}
+		}
 	});
+
+	const isToWhDisabled = $derived(
+		eventType === 'TRANSFER_IN' && data.lastMovement?.eventType === 'TRANSFER_OUT'
+	);
 
 	$effect(() => {
 		if (form?.success) {
@@ -70,7 +94,12 @@
 	});
 
 	function handleBack() {
-		goto(`/${page.params.org_slug}/alat/${data.type}`);
+		goto(
+			resolve('/(app)/[org_slug]/alat/[type]', {
+				org_slug: data.org_slug,
+				type: data.equipment.item.equipmentType as string
+			})
+		);
 	}
 
 	const ALL_EVENT_TYPES = [
@@ -134,7 +163,7 @@
 
 	const eventDescriptions = {
 		RECEIVE: `Barang masuk dari luar sistem (pengadaan/hibah). Gudang asal kosong, status menjadi ${equipmentStatusLabel['READY']}.`,
-		ISSUE: `Barang keluar sistem secara permanen (penghapusan/lelang). Gudang tujuan kosong, alat siap untuk penghapusan.`,
+		ISSUE: `Barang keluar sistem secara permanen. Gudang tujuan kosong, alat siap untuk penghapusan.`,
 		TRANSFER_OUT: `Kirim barang antar gudang internal. Status menjadi ${equipmentStatusLabel['TRANSIT']} (tidak bisa dipinjam/digunakan di jalan).`,
 		TRANSFER_IN: `Konfirmasi barang sampai di gudang tujuan. Status kembali menjadi ${equipmentStatusLabel['READY']} di lokasi baru.`
 	};
@@ -149,7 +178,7 @@
 </script>
 
 <div class="flex flex-col gap-6 p-6">
-	<div class="flex items-center justify-between">
+	<div class="flex flex-col items-center justify-between gap-4 md:flex-row md:gap-0">
 		<div class="flex items-center gap-4">
 			<Button variant="outline" size="icon" onclick={handleBack}>
 				<ArrowLeft class="size-4" />
@@ -161,80 +190,18 @@
 				</p>
 			</div>
 		</div>
-		<Button variant="outline" class="gap-2" onclick={() => (guideOpen = true)}>
-			<BookOpen class="size-4" />
+		<Button variant="outline" class="w-full md:w-fit" onclick={() => (guideOpen = true)}>
+			<BookOpen />
 			Baca Panduan
 		</Button>
 	</div>
 
-	<!-- Last Mutation Card (Separated) -->
-	{#if data.lastMovement}
-		<Card.Root>
-			<Card.Header class="flex flex-col justify-between gap-2 sm:flex-row">
-				<Card.Title class="flex items-center gap-2">
-					<History class="size-4" />
-					Mutasi Terakhir Peralatan
-				</Card.Title>
-
-				<div
-					class="flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground"
-				>
-					<Clock class="size-3.5" />
-					{new Date(data.lastMovement.createdAt).toLocaleDateString('id-ID', {
-						dateStyle: 'long'
-					})}
-				</div>
-			</Card.Header>
-			<Card.Content>
-				<div class="flex flex-wrap items-center justify-between gap-4">
-					<div class="flex flex-wrap items-center gap-6">
-						<div class="space-y-1">
-							<p class="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-								Jenis Kejadian
-							</p>
-							<Badge variant="outline" class="bg-background text-xs">
-								{movementEventTypeLabel[data.lastMovement.eventType]}
-							</Badge>
-						</div>
-						<div class="flex items-center gap-4">
-							<div class="space-y-1">
-								<p class="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-									Asal
-								</p>
-								<p class="text-sm font-medium">
-									{data.lastMovement.fromWarehouse?.name || '(Luar Sistem)'}
-								</p>
-							</div>
-							<ArrowRightLeft class="mt-4 size-4 text-primary/50" />
-							<div class="space-y-1">
-								<p class="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-									Tujuan
-								</p>
-								<p class="text-sm font-medium">
-									{data.lastMovement.toWarehouse?.name || '(Keluar Sistem)'}
-								</p>
-							</div>
-						</div>
-						{#if data.lastMovement.notes}
-							<div class="space-y-1">
-								<p class="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-									Keterangan
-								</p>
-								<p class="max-w-md truncate text-sm text-muted-foreground italic">
-									"{data.lastMovement.notes}"
-								</p>
-							</div>
-						{/if}
-					</div>
-				</div>
-			</Card.Content>
-		</Card.Root>
-	{/if}
-
 	{#if data.equipment.status === 'TRANSIT'}
 		<Alert.Root>
 			<Info />
-			<Alert.Title class="font-semibold">Alat sedang dalam status TRANSIT</Alert.Title>
+			<Alert.Title class="font-semibold"
+				>Alat Sedang Dalam {equipmentStatusLabel['TRANSIT']}</Alert.Title
+			>
 			<Alert.Description>
 				Hanya bisa dicatat sebagai <strong>Transfer Masuk</strong> (konfirmasi tiba di tujuan) atau
 				<strong>Keluar Permanen</strong> jika barang hilang/rusak di jalan (Balkir).
@@ -248,68 +215,75 @@
 		>
 			<Info class="mt-0.5 size-4 shrink-0" />
 			<p>
-				Alat sedang dalam <strong>proses pemeliharaan</strong>. Mutasi manual tidak dapat dilakukan.
-				Selesaikan proses pemeliharaan terlebih dahulu melalui modul Pemeliharaan.
+				Alat sedang dalam <strong>{equipmentStatusLabel['MAIMAINTENANCENTENCANC']}</strong>. Mutasi
+				manual tidak dapat dilakukan. Selesaikan proses pemeliharaan terlebih dahulu melalui modul
+				Pemeliharaan.
 			</p>
 		</div>
 	{/if}
 
-	<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-		<div class="md:col-span-1">
-			<Card.Root>
-				<Card.Content class="space-y-3">
-					<div>
-						<Card.Title>Detail Alat</Card.Title>
+	<div class="grid grid-cols-1 items-start gap-6 md:grid-cols-3">
+		<!-- Last Mutation Card -->
+		{#if data.lastMovement}
+			<Card.Root class="md:col-1">
+				<Card.Header>
+					<div class="flex items-center justify-between">
+						<Card.Title>Mutasi Terakhir Peralatan</Card.Title>
+						<Button
+							variant="link"
+							size="icon"
+							href="/{page.params.org_slug}/mutasi/{data.lastMovement.id}?type={page.params.type}"
+						>
+							<SquareArrowOutUpRight />
+						</Button>
 					</div>
+				</Card.Header>
+				<Card.Content>
+					<div class="flex flex-col gap-4">
+						<div>
+							<Label class="mb-2">Tanggal</Label>
 
-					{#if data.equipment.item.imagePath}
-						<img
-							src="/uploads/item/{data.equipment.item.imagePath}"
-							alt={data.equipment.item.name}
-							class="aspect-square w-full rounded-lg border object-cover shadow-sm"
-						/>
-					{:else}
-						<div
-							class="flex aspect-square w-full items-center justify-center rounded-lg border bg-muted"
-						>
-							<Package class="size-12 text-muted-foreground/30" />
+							<Badge variant="outline">
+								<Clock />
+								{new Date(data.lastMovement.createdAt).toLocaleDateString('id-ID', {
+									dateStyle: 'long'
+								})}
+							</Badge>
 						</div>
-					{/if}
-					<div>
-						<Label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-							>Nama Barang</Label
-						>
-						<p class="font-medium">{data.equipment.item.name}</p>
-					</div>
-					<div>
-						<Label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-							>Serial Number</Label
-						>
-						<p class="font-mono text-sm">{data.equipment.serialNumber || '-'}</p>
-					</div>
-					<div>
-						<Label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-							>Status</Label
-						>
-						<p class="text-sm">
-							<span class="font-medium">{equipmentStatusLabel[data.equipment!.status!]}</span>
-						</p>
-					</div>
-					<div>
-						<Label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-							>Kondisi</Label
-						>
-						<p class="font-medium">{equipmentConditionLabel[data.equipment!.condition]}</p>
-					</div>
-					<div>
-						<Label class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-							>Lokasi Saat Ini</Label
-						>
-						<p class="font-medium">{data.equipment.warehouse?.name || 'Tanpa Gudang'}</p>
+
+						<div>
+							<Label class="mb-2">Jenis Kejadian</Label>
+							<Badge variant="outline">
+								{movementEventTypeLabel[data.lastMovement.eventType]}
+							</Badge>
+						</div>
+
+						<div>
+							<Label class="mb-1">Asal</Label>
+							<p class="text-muted-foreground">
+								{data.lastMovement.fromWarehouse?.name || '(Luar Sistem)'}
+							</p>
+						</div>
+
+						<div>
+							<Label class="mb-1">Tujuan</Label>
+							<p class="text-muted-foreground">
+								{data.lastMovement.toWarehouse?.name || '(Keluar Sistem)'}
+							</p>
+						</div>
+
+						{#if data.lastMovement.notes}
+							<div class="space-y-1">
+								<Label>Keterangan</Label>
+								<p class="max-w-md text-sm text-wrap text-muted-foreground italic">
+									{data.lastMovement.notes}
+								</p>
+							</div>
+						{/if}
 					</div>
 				</Card.Content>
 			</Card.Root>
-		</div>
+		{/if}
 
 		<!-- Form Mutasi -->
 		<div class="md:col-span-2">
@@ -382,7 +356,7 @@
 
 							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 								<div class="space-y-2">
-									<Label>Gudang Asal</Label>
+									<Label>Asal</Label>
 									<div
 										class="flex h-9 w-full items-center rounded-full border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
 									>
@@ -396,8 +370,13 @@
 
 								{#if needsToWarehouse}
 									<div class="space-y-2">
-										<Label for="toWarehouseId">Gudang Tujuan</Label>
-										<Select.Root type="single" name="toWarehouseId" bind:value={toWarehouseId}>
+										<Label for="toWarehouseId">Tujuan</Label>
+										<Select.Root
+											type="single"
+											name="toWarehouseId"
+											bind:value={toWarehouseId}
+											disabled={isToWhDisabled}
+										>
 											<Select.Trigger class="w-full">
 												{data.warehouses.find((w) => w.id === toWarehouseId)?.name ||
 													'-- Pilih Gudang Tujuan --'}
@@ -408,6 +387,12 @@
 												{/each}
 											</Select.Content>
 										</Select.Root>
+										{#if isToWhDisabled}
+											<input type="hidden" name="toWarehouseId" value={toWarehouseId} />
+											<p class="text-[10px] text-muted-foreground italic">
+												Tujuan dikunci sesuai rencana transfer sebelumnya.
+											</p>
+										{/if}
 									</div>
 								{:else}
 									<div class="space-y-2">
@@ -421,25 +406,48 @@
 								{/if}
 							</div>
 
-							<div class="space-y-2">
-								<Label for="status">Status Peralatan (Baru)</Label>
-								<Select.Root type="single" name="status" bind:value={status}>
-									<Select.Trigger class="w-full">
-										{equipmentStatusLabel[status] || 'Pilih Status'}
-									</Select.Trigger>
-									<Select.Content>
-										{#each Object.entries(equipmentStatusLabel) as [value, label] (value)}
-											<Select.Item {value}>{label}</Select.Item>
-										{/each}
-									</Select.Content>
-								</Select.Root>
-								<p class="text-[10px] text-muted-foreground">
-									Status otomatis disesuaikan berdasarkan Jenis Kejadian, namun dapat diubah manual.
-								</p>
-							</div>
+								<div class="space-y-2">
+									<Label for="status">Status Peralatan (Baru)</Label>
+									<Select.Root type="single" name="status" bind:value={status}>
+										<Select.Trigger class="w-full">
+											{equipmentStatusLabel[status] || 'Pilih Status'}
+										</Select.Trigger>
+										<Select.Content>
+											{#each Object.entries(equipmentStatusLabel) as [value, label] (value)}
+												<Select.Item {value}>{label}</Select.Item>
+											{/each}
+										</Select.Content>
+									</Select.Root>
+									<p class="text-xs text-muted-foreground">
+										Status otomatis disesuaikan berdasarkan Jenis Kejadian, namun dapat diubah manual.
+									</p>
+								</div>
+
+							{#if eventType === 'TRANSFER_IN'}
+								<div class="space-y-2">
+									<Label for="conditionAtArrival">Kondisi Saat Tiba</Label>
+									<Select.Root type="single" bind:value={conditionAtArrival}>
+										<Select.Trigger class="w-full">
+											{selectedConditionLabel}
+										</Select.Trigger>
+										<Select.Content>
+											<Select.Item value="" label="-- Tidak Ada Laporan Kerusakan --"
+												>-- Tidak Ada Laporan Kerusakan --</Select.Item
+											>
+											{#each conditionOptions as opt (opt.value)}
+												<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
+											{/each}
+										</Select.Content>
+									</Select.Root>
+									<input type="hidden" name="conditionAtArrival" value={conditionAtArrival} />
+									<p class="text-xs text-muted-foreground">
+										Isi jika kondisi alat saat tiba berbeda dari kondisi saat dikirim.
+									</p>
+								</div>
+							{/if}
 
 							<div class="space-y-2">
-								<Label for="specificLocationName">Lokasi Spesifik / Unit Penanggung Jawab</Label>
+								<Label for="specificLocationName">Lokasi Spesifik</Label>
 								<Input
 									id="specificLocationName"
 									name="specificLocationName"

@@ -10,7 +10,7 @@ import {
 	unique,
 	decimal
 } from 'drizzle-orm/mysql-core';
-import { relations } from 'drizzle-orm';
+import { relations, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 import { organization, user } from './auth.schema';
 
 export const warehouse = mysqlTable('warehouse', {
@@ -181,6 +181,8 @@ export const movement = mysqlTable(
 		organizationId: varchar('organization_id', { length: 36 }).references(() => organization.id),
 
 		notes: text('notes'), // Combines description/keterangan/note
+
+		conditionAtArrival: mysqlEnum('condition_at_arrival', ['BAIK', 'RUSAK_RINGAN', 'RUSAK_BERAT']),
 
 		picId: varchar('pic_id', { length: 36 }).references(() => user.id), // Person in Charge (createdBy, penanggungJawab)
 
@@ -651,5 +653,63 @@ export const importLogRelations = relations(importLog, ({ one }) => ({
 		references: [user.id]
 	})
 }));
+
+// Types
+export type Warehouse = InferSelectModel<typeof warehouse>;
+export type NewWarehouse = InferInsertModel<typeof warehouse>;
+
+export type Equipment = InferSelectModel<typeof equipment>;
+export type NewEquipment = InferInsertModel<typeof equipment>;
+
+export type Item = InferSelectModel<typeof item>;
+export type NewItem = InferInsertModel<typeof item>;
+
+export type Unit = InferSelectModel<typeof unit>;
+export type NewUnit = InferInsertModel<typeof unit>;
+
+export type ItemUnitConversion = InferSelectModel<typeof itemUnitConversion>;
+export type NewItemUnitConversion = InferInsertModel<typeof itemUnitConversion>;
+
+export type Stock = InferSelectModel<typeof stock>;
+export type NewStock = InferInsertModel<typeof stock>;
+
+export type Movement = InferSelectModel<typeof movement>;
+export type NewMovement = InferInsertModel<typeof movement>;
+
+export type Distribution = InferSelectModel<typeof distribution>;
+export type NewDistribution = InferInsertModel<typeof distribution>;
+
+export type DistributionItem = InferSelectModel<typeof distributionItem>;
+export type NewDistributionItem = InferInsertModel<typeof distributionItem>;
+
+export type Maintenance = InferSelectModel<typeof maintenance>;
+export type NewMaintenance = InferInsertModel<typeof maintenance>;
+
+export type Lending = InferSelectModel<typeof lending>;
+export type NewLending = InferInsertModel<typeof lending>;
+
+export type LendingItem = InferSelectModel<typeof lendingItem>;
+export type NewLendingItem = InferInsertModel<typeof lendingItem>;
+
+export type Approval = InferSelectModel<typeof approval>;
+export type NewApproval = InferInsertModel<typeof approval>;
+
+export type AuditLog = InferSelectModel<typeof auditLog>;
+export type NewAuditLog = InferInsertModel<typeof auditLog>;
+
+export type ImportLog = InferSelectModel<typeof importLog>;
+export type NewImportLog = InferInsertModel<typeof importLog>;
+
+export type ReportBtk16 = InferSelectModel<typeof reportBtk16>;
+export type NewReportBtk16 = InferInsertModel<typeof reportBtk16>;
+
+export type Land = InferSelectModel<typeof land>;
+export type NewLand = InferInsertModel<typeof land>;
+
+export type Building = InferSelectModel<typeof building>;
+export type NewBuilding = InferInsertModel<typeof building>;
+
+export type Notification = InferSelectModel<typeof notification>;
+export type NewNotification = InferInsertModel<typeof notification>;
 
 export * from './auth.schema';

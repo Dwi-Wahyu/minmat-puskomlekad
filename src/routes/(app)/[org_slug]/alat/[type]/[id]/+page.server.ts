@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { equipment, item, warehouse, organization, movement } from '$lib/server/db/schema';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -53,7 +53,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		.leftJoin(warehouse, eq(movement.fromWarehouseId, warehouse.id))
 		.leftJoin(toWarehouse, eq(movement.toWarehouseId, toWarehouse.id))
 		.where(eq(movement.equipmentId, id))
-		.orderBy(desc(movement.createdAt))
+		.orderBy(desc(movement.createdAt), desc(movement.id))
 		.limit(5);
 
 	const history = historyResults.map((h) => ({
@@ -65,6 +65,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		equipment: detail,
-		history
+		history,
+		org_slug: params.org_slug
 	};
 };

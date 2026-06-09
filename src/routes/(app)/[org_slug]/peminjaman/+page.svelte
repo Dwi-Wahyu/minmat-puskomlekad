@@ -1,10 +1,12 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Input } from '$lib/components/ui/input';
 	import * as Table from '$lib/components/ui/table';
+	import * as Select from '$lib/components/ui/select';
 	import {
 		Search,
 		Plus,
@@ -17,8 +19,32 @@
 		Filter,
 		AlertCircle
 	} from '@lucide/svelte';
+	import { resolve } from '$app/paths';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 
 	let { data }: { data: PageData } = $props();
+
+	const statusOptions = [
+		{ value: 'ALL', label: 'Semua Status' },
+		{ value: 'DRAFT', label: 'Menunggu' },
+		{ value: 'APPROVED', label: 'Disetujui' },
+		{ value: 'REJECTED', label: 'Ditolak' },
+		{ value: 'PERINTAH_LANGSUNG', label: 'Perintah' },
+		{ value: 'DIPINJAM', label: 'Dipinjam' },
+		{ value: 'KEMBALI', label: 'Kembali' }
+	];
+
+	function handleStatusChange(val: string | undefined) {
+		if (!val) return;
+
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		params.set('status', val);
+
+		goto(
+			resolve(`/(app)/[org_slug]/peminjaman?${params.toString()}`, { org_slug: data.org_slug }),
+			{ noScroll: true, replaceState: true }
+		);
+	}
 
 	const statusConfig = {
 		DRAFT: {
@@ -49,7 +75,7 @@
 		}
 	};
 
-	function formatDate(date: any) {
+	function formatDate(date: Date) {
 		return new Date(date).toLocaleDateString('id-ID', {
 			day: 'numeric',
 			month: 'short',
@@ -65,7 +91,9 @@
 				{data.isInduk ? 'Daftar Pengajuan Masuk' : 'Tracking Peminjaman'}
 			</h1>
 			<p class="text-muted-foreground">
-				{data.isInduk ? 'Kelola pengajuan peminjaman dari satuan jajaran.' : 'Pantau status pengajuan.'}
+				{data.isInduk
+					? 'Kelola pengajuan peminjaman dari satuan jajaran.'
+					: 'Pantau status pengajuan.'}
 			</p>
 		</div>
 		{#if !data.isInduk}
@@ -76,7 +104,7 @@
 		{/if}
 	</div>
 
-	<div class="flex flex-col items-center gap-4 rounded-lg border bg-card p-4 shadow-sm md:flex-row">
+	<div class="flex flex-col items-center gap-4 md:flex-row">
 		<div class="relative w-full flex-1">
 			<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
 			<form method="GET" class="w-full">
@@ -89,19 +117,23 @@
 			</form>
 		</div>
 		<div class="flex items-center gap-2">
-			<Filter class="size-4 text-muted-foreground" />
-			<div class="flex gap-1">
-				{#each ['ALL', 'DRAFT', 'APPROVED', 'PERINTAH_LANGSUNG', 'DIPINJAM', 'KEMBALI', 'REJECTED'] as status}
-					<Button
-						variant={data.filters!.status === status ? 'default' : 'outline'}
-						size="sm"
-						href="?status={status}&q={data.filters.q}"
-						class="h-7 px-2 text-[10px]"
-					>
-						{status}
-					</Button>
-				{/each}
-			</div>
+			<Select.Root
+				type="single"
+				value={data.filters.status || 'ALL'}
+				onValueChange={handleStatusChange}
+			>
+				<Select.Trigger class="w-45">
+					<Filter class="size-4 text-muted-foreground" />
+
+					{statusOptions.find((o) => o.value === (data.filters.status || 'ALL'))?.label ||
+						'Semua Status'}
+				</Select.Trigger>
+				<Select.Content>
+					{#each statusOptions as opt (opt.value)}
+						<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
+					{/each}
+				</Select.Content>
+			</Select.Root>
 		</div>
 	</div>
 
@@ -138,7 +170,7 @@
 						<Table.Cell>
 							<div class="flex flex-col text-xs">
 								<span>{formatDate(item.startDate)}</span>
-								<span class="text-muted-foreground">s/d {formatDate(item.endDate)}</span>
+								<span class="text-muted-foreground">s/d {formatDate(item.endDate as Date)}</span>
 							</div>
 						</Table.Cell>
 						<Table.Cell>
