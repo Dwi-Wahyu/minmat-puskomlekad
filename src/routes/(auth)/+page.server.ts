@@ -29,7 +29,7 @@ export const actions: Actions = {
 		const password = form.data.password;
 
 		try {
-			await auth.api.signInUsername({
+			const response = await auth.api.signInUsername({
 				body: {
 					username,
 					password

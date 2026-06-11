@@ -23,6 +23,8 @@
 		if (!seen) {
 			onboardingOpen = true;
 		}
+
+		console.log(data.user);
 	});
 
 	const toTitleCase = (str: string) => {

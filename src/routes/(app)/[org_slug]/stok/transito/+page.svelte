@@ -79,14 +79,14 @@
 
 	const typeOptions = [
 		{ value: '', label: 'Semua Jenis' },
-		{ value: 'ASSET', label: 'Alat (Asset)' },
-		{ value: 'CONSUMABLE', label: 'Barang (Consumable)' }
+		{ value: 'ASSET', label: 'Alat' },
+		{ value: 'CONSUMABLE', label: 'Barang Habis Pakai' }
 	];
 
 	const categoryOptions = [
 		{ value: '', label: 'Semua Kategori' },
-		{ value: 'ALKOMLEK', label: 'ALKOMLEK' },
-		{ value: 'PERNIKA_LEK', label: 'PERNIKA_LEK' }
+		{ value: 'ALKOMLEK', label: 'Alkomlek' },
+		{ value: 'PERNIKA_LEK', label: 'Alpernika & Lek' }
 	];
 
 	const visiblePages = $derived.by(() => {
@@ -167,7 +167,7 @@
 			<div class="flex flex-col gap-1.5">
 				<Label for="limit-filter">Tampilkan</Label>
 				<Select.Root type="single" value={limit.toString()} onValueChange={updateLimit}>
-					<Select.Trigger class="w-[120px] border-2">
+					<Select.Trigger class="w-30 border-2">
 						{limit} baris
 					</Select.Trigger>
 					<Select.Content>
@@ -218,8 +218,8 @@
 						<Table.Row>
 							<Table.Cell>
 								<div class="flex flex-col gap-2">
-									<Skeleton class="h-5 w-[150px]" />
-									<Skeleton class="h-3 w-[100px]" />
+									<Skeleton class="h-5 w-37.5" />
+									<Skeleton class="h-3 w-25" />
 								</div>
 							</Table.Cell>
 							<Table.Cell>

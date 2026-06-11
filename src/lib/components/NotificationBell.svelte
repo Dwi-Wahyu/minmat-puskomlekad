@@ -5,6 +5,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { cn } from '$lib/utils';
 	import { notificationPriorityColor, notificationPriorityLabel } from '@/enums/notification-enum';
+	import Badge from './ui/badge/badge.svelte';
 
 	type NotificationAction = {
 		type?: string;
@@ -134,14 +135,9 @@
 						<div class="flex items-start justify-between gap-2">
 							<div class="flex flex-col gap-1 overflow-hidden">
 								<div class="flex items-center gap-2">
-									<span
-										class={cn(
-											'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium',
-											notificationPriorityColor[notif.priority]
-										)}
-									>
+									<Badge class={cn(notificationPriorityColor[notif.priority])}>
 										{notificationPriorityLabel[notif.priority]}
-									</span>
+									</Badge>
 									<span class="truncate text-xs text-muted-foreground">
 										{formatRelativeTime(notif.createdAt)}
 									</span>

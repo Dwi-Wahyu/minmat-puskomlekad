@@ -20,6 +20,7 @@
 		"db:studio": "drizzle-kit studio",
 		"db:pull": "drizzle-kit pull",
 		"db:seed": "bun run src/lib/server/db/seed.ts",
+		"db:seed-superadmin": "bun run src/lib/server/db/seed-superadmin.ts",
 		"db:seed-akmil": "bun run src/lib/server/db/seed-akmil.ts",
 		"db:seed-puskomlekad": "bun run src/lib/server/db/seed-puskomlekad.ts",
 		"db:seed-operator": "bun run src/lib/server/db/seed-operators.ts",

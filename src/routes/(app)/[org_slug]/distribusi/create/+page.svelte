@@ -36,7 +36,7 @@
 	import { getAvailableEquipment, getAvailableConsumables } from '../distribusi.remote';
 	import { untrack } from 'svelte';
 
-	let { data, form } = $props();
+	let { data, form }: { data: any; form: any } = $props();
 
 	let toOrganizationId = $state(untrack(() => data.parentOrg?.id || ''));
 	let activeTab = $state('equipment');

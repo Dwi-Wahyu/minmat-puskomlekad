@@ -82,14 +82,14 @@
 
 	const typeOptions = [
 		{ value: '', label: 'Semua Jenis' },
-		{ value: 'ASSET', label: 'Alat (Asset)' },
-		{ value: 'CONSUMABLE', label: 'Barang (Consumable)' }
+		{ value: 'ASSET', label: 'Alat' },
+		{ value: 'CONSUMABLE', label: 'Barang Habis Pakai' }
 	];
 
 	const categoryOptions = [
 		{ value: '', label: 'Semua Kategori' },
-		{ value: 'ALKOMLEK', label: 'ALKOMLEK' },
-		{ value: 'PERNIKA_LEK', label: 'PERNIKA_LEK' }
+		{ value: 'ALKOMLEK', label: 'Alkomlek' },
+		{ value: 'PERNIKA_LEK', label: 'Alpernika & Lek' }
 	];
 
 	const visiblePages = $derived.by(() => {
@@ -122,15 +122,13 @@
 						value={komunityQuery.current.selectedOrgId}
 						onValueChange={handleOrgChange}
 					>
-						<SearchableSelect.Trigger class="w-[200px] border-2">
+						<SearchableSelect.Trigger class="w-50 border-2">
 							<Building2 class="mr-2 h-4 w-4 opacity-50" />
 							{selectedOrgName}
 						</SearchableSelect.Trigger>
 						<SearchableSelect.Content>
 							{#each komunityQuery.current.organizations as org (org.id)}
-								<SearchableSelect.Item value={org.id} label={org.name}
-									>{org.name}</SearchableSelect.Item
-								>
+								<SearchableSelect.Item value={org.id}>{org.name}</SearchableSelect.Item>
 							{/each}
 						</SearchableSelect.Content>
 					</SearchableSelect.Root>
@@ -140,7 +138,7 @@
 			<div class="flex flex-col gap-1.5">
 				<Label for="type-filter">Jenis</Label>
 				<Select.Root type="single" bind:value={typeFilter} onValueChange={updateFilters}>
-					<Select.Trigger class="w-[180px] border-2">
+					<Select.Trigger class="w-45 border-2">
 						{typeOptions.find((o: any) => o.value === typeFilter)?.label || 'Semua Jenis'}
 					</Select.Trigger>
 					<Select.Content>
@@ -154,7 +152,7 @@
 			<div class="flex flex-col gap-1.5">
 				<Label for="category-filter">Kategori Alat</Label>
 				<Select.Root type="single" bind:value={categoryFilter} onValueChange={updateFilters}>
-					<Select.Trigger class="w-[180px] border-2">
+					<Select.Trigger class="w-45 border-2">
 						{categoryOptions.find((o: any) => o.value === categoryFilter)?.label ||
 							'Semua Kategori'}
 					</Select.Trigger>
@@ -169,7 +167,7 @@
 			<div class="flex flex-col gap-1.5">
 				<Label for="limit-filter">Tampilkan</Label>
 				<Select.Root type="single" value={limit.toString()} onValueChange={updateLimit}>
-					<Select.Trigger class="w-[120px] border-2">
+					<Select.Trigger class="w-30 border-2">
 						{limit} baris
 					</Select.Trigger>
 					<Select.Content>
@@ -189,7 +187,7 @@
 						id="search"
 						type="text"
 						placeholder="Cari SN atau nama..."
-						class="w-[250px] border-2 pl-10"
+						class="w-62.5 border-2 pl-10"
 						bind:value={searchQuery}
 						onkeydown={(e) => e.key === 'Enter' && updateFilters()}
 					/>
@@ -247,8 +245,8 @@
 							<Table.Row class="border-b border-border">
 								<Table.Cell class="border-r border-border">
 									<div class="flex flex-col gap-2">
-										<Skeleton class="h-5 w-[150px]" />
-										<Skeleton class="h-3 w-[100px]" />
+										<Skeleton class="h-5 w-37.5" />
+										<Skeleton class="h-3 w-25" />
 									</div>
 								</Table.Cell>
 								<Table.Cell class="border-r border-border">
@@ -270,7 +268,7 @@
 									<Skeleton class="mx-auto h-5 w-8" />
 								</Table.Cell>
 								<Table.Cell class="border-r border-border">
-									<Skeleton class="h-3 w-[100px]" />
+									<Skeleton class="h-3 w-25" />
 								</Table.Cell>
 								<Table.Cell>
 									<Skeleton class="mx-auto h-5 w-12" />

@@ -26,7 +26,14 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const members = await db.query.member.findMany({
 		where: eq(member.organizationId, orgId),
 		with: {
-			user: true
+			user: {
+				with: {
+					sessions: {
+						orderBy: (session, { desc }) => [desc(session.createdAt)],
+						limit: 1
+					}
+				}
+			}
 		}
 	});
 
@@ -36,7 +43,10 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	});
 
 	return {
-		members: filteredMembers,
+		members: filteredMembers.map(m => ({
+			...m,
+			lastLogin: m.user?.sessions?.[0]?.createdAt || null
+		})),
 		orgSlug: params.org_slug
 	};
 };

@@ -8,6 +8,6 @@ export const notificationPriorityLabel: Record<string, string> = {
 
 export const notificationPriorityColor = {
 	LOW: 'bg-primary/10 text-primary',
-	MEDIUM: 'bg-warning/10 text-warning',
+	MEDIUM: 'bg-secondary/10 text-secondary',
 	HIGH: 'bg-destructive/10 text-destructive'
 };

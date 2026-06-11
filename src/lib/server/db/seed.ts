@@ -57,7 +57,8 @@ async function main() {
 	await db.delete(schema.lendingItem);
 	await db.delete(schema.lending);
 	await db.delete(schema.maintenance);
-	await db.delete(schema.distributionItem);
+	await db.delete(schema.distributionConsumable);
+	await db.delete(schema.distributionEquipment);
 	await db.delete(schema.distribution);
 	await db.delete(schema.movement);
 	await db.delete(schema.stock);

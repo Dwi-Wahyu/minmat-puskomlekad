@@ -1,16 +1,29 @@
 <script lang="ts">
-	import { Building2, ChevronRight, Info } from '@lucide/svelte';
+	import { ArrowLeft, ChevronRight, Info } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import type { PageData } from './$types';
+	import { browser } from '$app/environment';
 
-	let { data } = $props<{ data: PageData }>();
+	let { data } = $props();
+
+	function handleBack() {
+		if (browser && history.length > 1) {
+			history.back(); // or history.go(-1)
+		} else {
+			// Fallback if no history exists (e.g., direct bookmark access)
+			window.location.href = '/';
+		}
+	}
 
 	const defaultLogo = '/logo-tni-ad.png';
 </script>
 
 <div class="flex flex-col gap-6 p-6 text-foreground">
-	<header>
+	<header class="flex items-center gap-4">
+		<Button size="icon" onclick={handleBack} variant="outline">
+			<ArrowLeft />
+		</Button>
+
 		<h1 class="text-3xl font-bold tracking-tight uppercase">Satuan Jajaran</h1>
 	</header>
 
@@ -24,14 +37,16 @@
 	{:else}
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 			{#each data.units as unit}
-				<Card.Root class="overflow-hidden border border-border bg-card text-card-foreground shadow-md transition-shadow hover:shadow-lg">
+				<Card.Root
+					class="overflow-hidden border border-border bg-card text-card-foreground shadow-md transition-shadow hover:shadow-lg"
+				>
 					<Card.Content class="p-6">
 						<div class="flex items-start gap-4">
 							<div
 								class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted"
 							>
 								<img
-									src={unit.logoUrl || defaultLogo}
+									src={unit.logo || defaultLogo}
 									alt="Logo {unit.name}"
 									class="h-full w-full object-contain p-2"
 								/>
@@ -42,7 +57,7 @@
 									{unit.name}
 								</h2>
 								<p class="line-clamp-2 text-xs text-muted-foreground">
-									{unit.description || 'Tidak ada deskripsi tambahan untuk satuan ini.'}
+									{unit.metadata || 'Tidak ada deskripsi tambahan untuk satuan ini.'}
 								</p>
 							</div>
 						</div>

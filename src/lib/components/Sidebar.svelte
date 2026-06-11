@@ -193,13 +193,17 @@
 			icon: Settings,
 			isDropdown: true,
 			path: getPath('/pengaturan'),
-			role: ['superadmin', 'kakomlek'],
+			role: ['superadmin', 'kakomlek', 'owner'],
 			children: [
-				{ name: 'Satuan Jajaran', path: getPath('/satuan-jajaran'), role: ['parent'] },
+				{
+					name: 'Satuan Jajaran',
+					path: '/satuan-jajaran',
+					role: ['parent', 'superadmin', 'owner']
+				},
 				{
 					name: 'Manajemen Pengguna',
 					path: getPath('/pengaturan/pengguna'),
-					role: ['superadmin', 'parent']
+					role: ['superadmin', 'parent', 'owner']
 				},
 				{ name: 'Audit Log', path: getPath('/audit-log'), role: ['superadmin', 'kakomlek'] }
 				// { name: 'Konversi Unit', path: getPath('/konversi-unit') }
