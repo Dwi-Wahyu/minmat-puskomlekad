@@ -1,16 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import {
-		History,
-		User,
-		Table as TableIcon,
-		Activity,
-		Search,
-		Calendar,
-		Info,
-		X,
-		Filter
-	} from '@lucide/svelte';
+	import { History, User, Table as TableIcon, Activity, Search, Calendar, X } from '@lucide/svelte';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
 	import Modal from '$lib/components/Modal.svelte';

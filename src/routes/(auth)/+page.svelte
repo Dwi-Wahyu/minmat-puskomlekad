@@ -1,28 +1,22 @@
 <script lang="ts">
-	import { enhance, applyAction } from '$app/forms';
+	import { superForm } from 'sveltekit-superforms';
+	import { yup } from 'sveltekit-superforms/adapters';
+	import { loginSchema } from '$lib/schemas/login-schema';
 	import { toast } from '$lib/components/ui/toast';
 	import Button from '@/components/ui/button/button.svelte';
 	import { Download, Loader2 } from '@lucide/svelte';
+	import Input from '@/components/ui/input/input.svelte';
 
-	let isLoading = $state(false);
+	let { data } = $props();
 
-	function handleSignIn() {
-		isLoading = true;
-		return async ({ result }: { result: any }) => {
-			if (result?.type === 'redirect') {
-				toast.success('Login Berhasil', 'Selamat datang kembali di sistem MINMAT.');
-			} else if (result?.type === 'failure') {
-				toast.error(
-					'Login Gagal',
-					(result?.data as any)?.message || 'Periksa kembali email dan password Anda.'
-				);
+	const { form, errors, enhance, delayed } = superForm(() => data.form, {
+		validators: yup(loginSchema),
+		onUpdated: ({ form }) => {
+			if (form.message) {
+				toast.error('Login Gagal', form.message);
 			}
-
-			isLoading = false;
-			// Menjalankan aksi bawaan SvelteKit (termasuk redirect)
-			await applyAction(result);
-		};
-	}
+		}
+	});
 </script>
 
 <div class="relative flex min-h-svh items-center justify-center overflow-hidden bg-background p-6">
@@ -53,20 +47,22 @@
 				</p>
 			</div>
 
-			<form method="post" action="?/signIn" use:enhance={handleSignIn} class="space-y-5">
+			<form method="post" action="?/signIn" use:enhance class="space-y-5">
 				<div class="space-y-2">
 					<label for="username" class="text-sm font-semibold text-muted-foreground">
 						Username
 					</label>
 					<div class="relative mt-1">
-						<input
+						<Input
 							id="username"
 							name="username"
 							type="text"
+							bind:value={$form.username}
 							placeholder="Masukkan username"
-							class="w-full rounded-lg border border-input bg-muted/50 px-4 py-3 text-sm text-foreground placeholder-muted-foreground transition-all outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-							required
 						/>
+						{#if $errors.username}
+							<p class="mt-1 text-xs text-destructive">{$errors.username}</p>
+						{/if}
 					</div>
 				</div>
 
@@ -77,14 +73,16 @@
 						</label>
 					</div>
 					<div class="relative">
-						<input
+						<Input
 							type="password"
 							id="password"
 							name="password"
+							bind:value={$form.password}
 							placeholder="••••••••"
-							class="w-full rounded-lg border border-input bg-muted/50 px-4 py-3 text-sm text-foreground placeholder-muted-foreground transition-all outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-							required
 						/>
+						{#if $errors.password}
+							<p class="mt-1 text-xs text-destructive">{$errors.password}</p>
+						{/if}
 					</div>
 				</div>
 
@@ -101,18 +99,14 @@
 					>
 				</div>
 
-				<button
-					type="submit"
-					disabled={isLoading}
-					class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3.5 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] active:scale-[0.98] disabled:opacity-70"
-				>
-					{#if isLoading}
+				<Button type="submit" size="lg" class="w-full" disabled={$delayed}>
+					{#if $delayed}
 						<Loader2 class="size-4 animate-spin" />
 						<span>Mohon Tunggu...</span>
 					{:else}
 						Masuk
 					{/if}
-				</button>
+				</Button>
 			</form>
 
 			<Button size="sm" variant="link" href="/builds/mobile-v0.1.apk" class="mt-4 w-full">

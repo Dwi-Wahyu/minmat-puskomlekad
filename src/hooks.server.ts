@@ -11,7 +11,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	if (session) {
 		event.locals.session = session.session;
-		event.locals.user = session.user as any;
+		event.locals.user = session.user;
 	} else {
 		event.locals.session = null;
 		event.locals.user = null;
@@ -67,6 +67,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 				path.includes('/batch-mutate') ||
 				path.includes('/distribusi/') ||
 				path.includes('/profil') ||
+				path.includes('/peminjaman') ||
+				path.includes('/pemeliharaan') ||
 				path.includes('/logout') ||
 				path.startsWith('/api/notifications');
 

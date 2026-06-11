@@ -80,9 +80,9 @@
 									<span class="hidden lg:inline">Edit</span>
 								</Button>
 
-								<Button variant="destructive" size="icon" onclick={() => confirmDelete(wh.id)}>
+								<!-- <Button variant="destructive" size="icon" onclick={() => confirmDelete(wh.id)}>
 									<Trash2 />
-								</Button>
+								</Button> -->
 							</div>
 						</Table.Cell>
 					</Table.Row>
@@ -114,7 +114,7 @@
 				notificationType = 'success';
 				notificationOpen = true;
 			} else {
-				notificationMsg = ((result as any)?.data as any)?.message || 'Gagal menghapus gudang';
+				notificationMsg = 'Gagal menghapus gudang';
 				notificationType = 'error';
 				notificationOpen = true;
 			}

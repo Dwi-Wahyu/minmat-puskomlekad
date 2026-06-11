@@ -1,18 +1,21 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { lending, lendingItem, equipment, organization, auditLog } from '$lib/server/db/schema';
-import { and, eq, ne, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { createNotification } from '$lib/server/notification';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
+import { superValidate, message } from 'sveltekit-superforms';
+import { yup } from 'sveltekit-superforms/adapters';
+import { lendingMutationSchema } from '$lib/schemas/lending-mutation-schema';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { user } = locals;
 	if (!user || !user.organization) throw redirect(302, '/');
 
-	let targetOrgId = url.searchParams.get('targetOrgId');
+	const targetOrgId = url.searchParams.get('targetOrgId');
 	const preselectedEquipmentId = url.searchParams.get('equipmentId');
 
 	// Identifikasi Satuan Induk (Puskomlekad)
@@ -57,7 +60,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		}
 	}
 
+	const form = await superValidate(yup(lendingMutationSchema));
+
 	return {
+		form,
 		groupedEquipment: [],
 		targetOrg,
 		organizations: allowedOrganizations,
@@ -69,37 +75,44 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 export const actions: Actions = {
 	default: async ({ request, locals }) => {
 		const formData = await request.formData();
+		const form = await superValidate(formData, yup(lendingMutationSchema));
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
 
 		const { user } = locals;
 
-		// Parse data grup & manual pick
+		// Parse data grup & manual pick (these might not map perfectly via superforms due to the array bracket naming convention in the original HTML)
 		const itemIds = formData.getAll('itemId[]');
 		const warehouseIds = formData.getAll('warehouseId[]');
 		const conditions = formData.getAll('condition[]');
 		const qtys = formData.getAll('qty[]');
 		const manualEquipmentIds = formData.getAll('manualEquipmentId[]').map((id) => id.toString());
 
-		const targetOrgId = formData.get('targetOrgId')?.toString();
+		const targetOrgId = form.data.targetOrgId;
 
-		if (!targetOrgId) return fail(400, { message: 'Organisasi tujuan harus ditentukan' });
+		if (!targetOrgId) return message(form, 'Organisasi tujuan harus ditentukan', { status: 400 });
 
 		const targetOrg = await db.query.organization.findFirst({
 			where: eq(organization.id, targetOrgId)
 		});
 
-		if (!targetOrg) return fail(400, { message: 'Organisasi tujuan tidak ditemukan' });
+		if (!targetOrg) return message(form, 'Organisasi tujuan tidak ditemukan', { status: 400 });
 
 		const isUserParent = !user.organization.parentId;
 		const isTargetParent = !targetOrg.parentId;
 
 		if (isUserParent === isTargetParent) {
-			return fail(400, {
-				message: 'Peminjaman hanya diperbolehkan antara satuan jajaran dan satuan induk'
-			});
+			return message(
+				form,
+				'Peminjaman hanya diperbolehkan antara satuan jajaran dan satuan induk',
+				{ status: 400 }
+			);
 		}
 
 		if (targetOrgId === user.organization.id) {
-			return fail(400, { message: 'Tidak dapat meminjam dari organisasi sendiri' });
+			return message(form, 'Tidak dapat meminjam dari organisasi sendiri', { status: 400 });
 		}
 
 		// Group requests (Auto-pick)
@@ -113,26 +126,15 @@ export const actions: Actions = {
 			.filter((g) => g.qty > 0);
 
 		if (requestedGroups.length === 0 && manualEquipmentIds.length === 0) {
-			return fail(400, { message: 'Minimal 1 alat harus dipilih' });
+			return message(form, 'Minimal 1 alat harus dipilih', { status: 400 });
 		}
 
-		const unit = formData.get('unit')?.toString();
-		const purpose = formData.get('purpose')?.toString() as
-			| 'OPERASI'
-			| 'LATIHAN'
-			| 'PERINTAH_LANGSUNG';
-		const startDateStr = formData.get('startDate')?.toString();
-		const endDateStr = formData.get('endDate')?.toString();
-		const overrideReason = formData.get('overrideReason')?.toString();
+		const unit = form.data.unit;
+		const purpose = form.data.purpose as 'OPERASI' | 'LATIHAN' | 'PERINTAH_LANGSUNG';
+		const startDateStr = form.data.startDate;
+		const endDateStr = form.data.endDate;
+		const overrideReason = form.data.overrideReason;
 		const attachment = formData.get('attachment') as File;
-
-		if (!unit || !purpose || !startDateStr) {
-			return fail(400, { message: 'Data peminjaman tidak lengkap' });
-		}
-
-		if (purpose === 'PERINTAH_LANGSUNG' && !overrideReason) {
-			return fail(400, { message: 'Keterangan perintah langsung wajib diisi' });
-		}
 
 		// Handle file upload
 		let attachmentPath = null;
@@ -141,12 +143,12 @@ export const actions: Actions = {
 		if (attachment && attachment.size > 0) {
 			const ext = path.extname(attachment.name).toLowerCase();
 			if (ext !== '.pdf' && ext !== '.docx') {
-				return fail(400, { message: 'Hanya file PDF atau DOCX yang diperbolehkan' });
+				return message(form, 'Hanya file PDF atau DOCX yang diperbolehkan', { status: 400 });
 			}
 
 			// Maks 5MB
 			if (attachment.size > 5 * 1024 * 1024) {
-				return fail(400, { message: 'Ukuran file maksimal 5MB' });
+				return message(form, 'Ukuran file maksimal 5MB', { status: 400 });
 			}
 
 			const fileName = `${uuidv4()}${ext}`;
@@ -263,10 +265,10 @@ export const actions: Actions = {
 				}
 			});
 
-			return { success: true, message: 'Peminjaman berhasil diajukan' };
+			return message(form, 'Peminjaman berhasil diajukan');
 		} catch (err) {
 			console.error('Error creating lending:', err);
-			return fail(500, { message: 'Gagal membuat pengajuan peminjaman' });
+			return message(form, 'Gagal membuat pengajuan peminjaman', { status: 500 });
 		}
 	}
 };

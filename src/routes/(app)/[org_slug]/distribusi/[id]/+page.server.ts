@@ -1,26 +1,48 @@
 import { db } from '$lib/server/db';
-import { distribution, organization, warehouse, approval } from '$lib/server/db/schema';
+import {
+	distribution,
+	warehouse,
+	distributionEquipment,
+	distributionConsumable
+} from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
-import { error } from '@sveltejs/kit';
-import { validateDistribution, approveDistribution, shipDistribution, receiveDistribution } from '$lib/server/distribution';
+import { error, fail } from '@sveltejs/kit';
+import {
+	validateDistribution,
+	approveDistribution,
+	shipDistribution,
+	receiveDistribution
+} from '$lib/server/distribution';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
+	const { id } = params;
+	if (!locals.user) throw error(401, 'Unauthorized');
+
 	const dist = await db.query.distribution.findFirst({
-		where: eq(distribution.id, params.id),
+		where: eq(distribution.id, id),
 		with: {
 			fromOrganization: true,
 			toOrganization: true,
 			requestedByUser: true,
 			approvedByUser: true,
-			items: {
+			equipmentItems: {
 				with: {
 					equipment: {
+						with: { item: true, warehouse: true }
+					}
+				}
+			},
+			consumableItems: {
+				with: {
+					item: {
 						with: {
-							item: true
+							stocks: {
+								with: { warehouse: true }
+							}
 						}
 					},
-					item: true
+					fromWarehouse: true
 				}
 			}
 		}
@@ -28,99 +50,147 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	if (!dist) throw error(404, 'Distribusi tidak ditemukan');
 
-	// Get latest approval
-	const latestApproval = await db.query.approval.findFirst({
-		where: and(
-			eq(approval.referenceType, 'DISTRIBUTION'),
-			eq(approval.referenceId, dist.id)
-		),
-		with: {
-			approvedByUser: true
-		},
-		orderBy: (approval, { desc }) => [desc(approval.createdAt)]
-	});
+	// Filter consumable stocks to only include those from the sending organization
+	if (dist.consumableItems) {
+		for (const cons of dist.consumableItems) {
+			if (cons.item?.stocks) {
+				cons.item.stocks = cons.item.stocks.filter(
+					(s) => s.warehouse?.organizationId === dist.fromOrganizationId
+				);
+			}
+		}
+	}
 
-	const org = await db.query.organization.findFirst({
-		where: eq(organization.slug, params.org_slug)
-	});
-
-	if (!org) throw error(404, 'Kesatuan tidak ditemukan');
-
-	// Get warehouses for shipping/receiving
+	// Get warehouses for the current organization to handle shipping/receiving
 	const warehouses = await db.query.warehouse.findMany({
-		where: eq(warehouse.organizationId, org.id)
+		where: eq(warehouse.organizationId, locals.user.organization.id)
+	});
+
+	// Get approval if exists
+	const approvalData = await db.query.approval.findFirst({
+		where: (a, { and, eq }) => and(eq(a.referenceId, id), eq(a.referenceType, 'DISTRIBUTION')),
+		with: { approvedByUser: true },
+		orderBy: (a, { desc }) => [desc(a.createdAt)]
 	});
 
 	return {
 		distribution: dist,
-		approval: latestApproval,
 		warehouses,
-		currentOrgId: org.id
+		approval: approvalData,
+		currentOrgId: locals.user.organization.id,
+		canValidate: ['operatorBinmatDanBekharrah', 'operatorPusatDanDaerah', 'superadmin'].includes(
+			locals.user.role
+		),
+		canApprove:
+			['pimpinan', 'kakomlek', 'superadmin'].includes(locals.user.role) &&
+			dist.status === 'VALIDATED'
 	};
 };
 
 export const actions: Actions = {
-	validate: async ({ params, locals }) => {
-		const user = locals.user;
-		if (!user) throw error(401, 'Unauthorized');
-		if (user.role !== 'operatorBinmatDanBekharrah' && user.role !== 'superadmin') {
-			return { success: false, message: 'Hanya role Binmat yang dapat memvalidasi' };
-		}
+	delete: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+		const formData = await request.formData();
+		const id = formData.get('id')?.toString();
+		if (!id) return fail(400, { message: 'ID required' });
+
 		try {
-			await validateDistribution(params.id, user.id);
-			return { success: true, message: 'Distribusi divalidasi' };
+			const dist = await db.query.distribution.findFirst({
+				where: eq(distribution.id, id)
+			});
+
+			if (!dist) return fail(404, { message: 'Distribusi tidak ditemukan' });
+			if (dist.status !== 'DRAFT')
+				return fail(400, { message: 'Hanya distribusi DRAFT yang dapat dihapus' });
+			if (dist.requestedBy !== locals.user.id)
+				return fail(403, { message: 'Hanya pembuat yang dapat menghapus' });
+
+			// Delete related items first (assuming no cascading deletes for safety)
+			await db.delete(distributionEquipment).where(eq(distributionEquipment.distributionId, id));
+			await db.delete(distributionConsumable).where(eq(distributionConsumable.distributionId, id));
+			await db.delete(distribution).where(eq(distribution.id, id));
+
+			return { success: true, message: 'Distribusi berhasil dihapus', action: 'delete' };
 		} catch (e) {
-			return { success: false, message: e instanceof Error ? e.message : 'Gagal memvalidasi' };
+			console.log('Gagal hapus distribusi: ' + e);
+			return fail(500, { message: 'Gagal menghapus distribusi' });
 		}
 	},
-	approve: async ({ params, locals, request }) => {
-		const user = locals.user;
-		if (!user) throw error(401, 'Unauthorized');
-		if (user.role !== 'pimpinan' && user.role !== 'superadmin') {
-			return { success: false, message: 'Hanya role Pimpinan yang dapat memberikan approval' };
-		}
+
+	validate: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
 		const formData = await request.formData();
-		const isApproved = formData.get('isApproved') === 'true';
-		const note = formData.get('note') as string;
+		const id = formData.get('id')?.toString();
+		if (!id) return fail(400, { message: 'ID required' });
 
 		try {
-			await approveDistribution(params.id, user.id, isApproved, note);
-			return { success: true, message: isApproved ? 'Distribusi disetujui' : 'Distribusi ditolak (DRAFT)' };
+			await validateDistribution(id, locals.user.id);
+			return { success: true, message: 'Distribusi berhasil divalidasi' };
 		} catch (e) {
-			return { success: false, message: e instanceof Error ? e.message : 'Gagal memproses approval' };
+			console.log('Gagal validasi kesiapan distribusi: ' + e);
+			return fail(500, { message: 'Gagal validasi' });
 		}
 	},
-	ship: async ({ params, locals, request }) => {
-		const user = locals.user;
-		if (!user) throw error(401, 'Unauthorized');
-		if (user.role !== 'operatorBinmatDanBekharrah' && user.role !== 'superadmin') {
-			return { success: false, message: 'Hanya role Bekharrah yang dapat memproses pengiriman' };
-		}
-		const formData = await request.formData();
-		const fromWarehouseId = formData.get('fromWarehouseId') as string;
 
-		if (!fromWarehouseId) return { success: false, message: 'Pilih gudang asal' };
+	approve: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+		const formData = await request.formData();
+		const id = formData.get('id')?.toString();
+		const isApproved = formData.get('isApproved')?.toString() === 'true';
+		const note = formData.get('note')?.toString();
+
+		if (!id) return fail(400, { message: 'ID required' });
 
 		try {
-			await shipDistribution(params.id, user.id, fromWarehouseId);
-			return { success: true, message: 'Materi telah dikirim' };
+			await approveDistribution(id, locals.user.id, isApproved, note);
+			return {
+				success: true,
+				message: isApproved ? 'Distribusi disetujui' : 'Distribusi ditolak'
+			};
 		} catch (e) {
-			return { success: false, message: e instanceof Error ? e.message : 'Gagal mengirim materi' };
+			console.log('Gagal approve distribusi: ' + e);
+			return fail(500, { message: 'Gagal approval' });
 		}
 	},
-	receive: async ({ params, locals, request }) => {
-		const user = locals.user;
-		if (!user) throw error(401, 'Unauthorized');
-		const formData = await request.formData();
-		const toWarehouseId = formData.get('toWarehouseId') as string;
 
-		if (!toWarehouseId) return { success: false, message: 'Pilih gudang tujuan' };
+	ship: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+		const formData = await request.formData();
+		const id = formData.get('id')?.toString();
+
+		if (!id) return fail(400, { message: 'ID required' });
+
+		const consumableWarehouses: Record<string, string> = {};
+		for (const [key, value] of formData.entries()) {
+			if (key.startsWith('warehouse_')) {
+				const distConsId = key.replace('warehouse_', '');
+				consumableWarehouses[distConsId] = value.toString();
+			}
+		}
 
 		try {
-			await receiveDistribution(params.id, user.id, toWarehouseId);
-			return { success: true, message: 'Materi telah diterima' };
+			await shipDistribution(id, locals.user.id, consumableWarehouses);
+			return { success: true, message: 'Materi dalam pengiriman' };
 		} catch (e) {
-			return { success: false, message: e instanceof Error ? e.message : 'Gagal menerima materi' };
+			console.log('Gagal konfirmasi kirim: ' + e);
+			return fail(500, { message: e instanceof Error ? e.message : 'Gagal pengiriman' });
+		}
+	},
+
+	receive: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Unauthorized' });
+		const formData = await request.formData();
+		const id = formData.get('id')?.toString();
+		const toWarehouseId = formData.get('toWarehouseId')?.toString();
+
+		if (!id || !toWarehouseId) return fail(400, { message: 'ID dan Gudang required' });
+
+		try {
+			await receiveDistribution(id, locals.user.id, toWarehouseId);
+			return { success: true, message: 'Materi berhasil diterima' };
+		} catch (e) {
+			console.log('Gagal konfirmasi terima: ' + e);
+			return fail(500, { message: 'Gagal penerimaan' });
 		}
 	}
 };

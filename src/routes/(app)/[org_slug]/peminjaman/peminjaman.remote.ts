@@ -64,7 +64,8 @@ const availableEquipmentSchema = v.object({
 	targetOrgId: v.string(),
 	q: v.optional(v.string(), ''),
 	page: v.optional(v.number(), 1),
-	preselectedEquipmentId: v.optional(v.string(), '')
+	preselectedEquipmentId: v.optional(v.string(), ''),
+	preselectedEquipmentIds: v.optional(v.array(v.string()), [])
 });
 
 export type GroupedEquipmentData = {
@@ -79,13 +80,24 @@ export type GroupedEquipmentData = {
 export const getAvailableEquipment = query(
 	availableEquipmentSchema,
 	async (args): Promise<GroupedEquipmentData> => {
-		const { targetOrgId, q: searchQuery = '', page = 1, preselectedEquipmentId = '' } = args;
+		const { targetOrgId, q: searchQuery = '', page = 1, preselectedEquipmentId = '', preselectedEquipmentIds = [] } = args;
 		const limit = 10;
 		const offset = (page - 1) * limit;
 
-		// 1. Fetch all READY equipment in targetOrgId
+		const allPreselectedIds = [...preselectedEquipmentIds];
+		if (preselectedEquipmentId && !allPreselectedIds.includes(preselectedEquipmentId)) {
+			allPreselectedIds.push(preselectedEquipmentId);
+		}
+
+		// 1. Fetch all READY equipment in targetOrgId OR equipment that is currently pre-selected
 		const rawEquipment = await db.query.equipment.findMany({
-			where: and(eq(equipment.status, 'READY'), eq(equipment.organizationId, targetOrgId)),
+			where: and(
+				or(
+					eq(equipment.status, 'READY'),
+					allPreselectedIds.length > 0 ? inArray(equipment.id, allPreselectedIds) : undefined
+				),
+				eq(equipment.organizationId, targetOrgId)
+			),
 			with: {
 				item: true,
 				warehouse: true
@@ -106,7 +118,8 @@ export const getAvailableEquipment = query(
 					condition: eqp.condition,
 					warehouseName: eqp.warehouse?.name,
 					totalAvailable: 0,
-					equipments: []
+					equipments: [],
+					preselectedIds: []
 				};
 			}
 			groups[key].totalAvailable++;
@@ -117,10 +130,12 @@ export const getAvailableEquipment = query(
 				status: eqp.status
 			});
 
-			if (eqp.id === preselectedEquipmentId) {
+			if (allPreselectedIds.includes(eqp.id)) {
 				groups[key].preselected = true;
+				groups[key].preselectedIds.push(eqp.id);
 			}
 		});
+
 
 		let groupedList = Object.values(groups);
 

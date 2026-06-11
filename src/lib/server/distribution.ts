@@ -1,7 +1,17 @@
 import { db } from './db';
-import { distribution, distributionItem, movement, approval, stock, equipment, auditLog, warehouse } from './db/schema';
+import {
+	distribution,
+	distributionEquipment,
+	distributionConsumable,
+	movement,
+	approval,
+	stock,
+	equipment,
+	warehouse,
+	member
+} from './db/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { createNotification } from './notification';
 import { createAuditLog } from './audit';
 
@@ -9,9 +19,10 @@ export interface CreateDistributionParams {
 	fromOrganizationId: string;
 	toOrganizationId: string;
 	requestedBy: string;
+	requesterRole: string;
 	items: {
-		equipmentId?: string;
-		itemId?: string;
+		type: 'EQUIPMENT' | 'CONSUMABLE';
+		id: string; // equipmentId or itemId
 		quantity: number;
 		unit?: string;
 		note?: string;
@@ -25,36 +36,40 @@ export async function createDistribution(params: CreateDistributionParams) {
 	return await db.transaction(async (tx) => {
 		const distributionId = uuidv4();
 
+		const isAutoValidated = ['operatorBinmatDanBekharrah', 'operatorPusatDanDaerah', 'superadmin'].includes(params.requesterRole);
+		const initialStatus = isAutoValidated ? 'VALIDATED' : 'DRAFT';
+
 		// Insert into distribution
 		await tx.insert(distribution).values({
 			id: distributionId,
 			fromOrganizationId: params.fromOrganizationId,
 			toOrganizationId: params.toOrganizationId,
 			requestedBy: params.requestedBy,
-			status: 'DRAFT',
+			status: initialStatus,
 			createdAt: new Date()
 		});
 
-		// Insert into distribution_item
+		// Insert items based on type
 		for (const itemData of params.items) {
-			if (itemData.equipmentId && itemData.itemId) {
-				throw new Error('A distribution item cannot have both equipmentId and itemId');
+			if (itemData.type === 'EQUIPMENT') {
+				await tx.insert(distributionEquipment).values({
+					id: uuidv4(),
+					distributionId,
+					equipmentId: itemData.id,
+					note: itemData.note || null,
+					createdAt: new Date()
+				});
+			} else {
+				await tx.insert(distributionConsumable).values({
+					id: uuidv4(),
+					distributionId,
+					itemId: itemData.id,
+					quantity: String(itemData.quantity),
+					unit: itemData.unit || null,
+					note: itemData.note || null,
+					createdAt: new Date()
+				});
 			}
-			if (itemData.equipmentId && itemData.quantity !== 1) {
-				throw new Error('Equipment quantity must be 1');
-			}
-			if (!itemData.equipmentId && !itemData.itemId) {
-				throw new Error('A distribution item must have either equipmentId or itemId');
-			}
-			await tx.insert(distributionItem).values({
-				id: uuidv4(),
-				distributionId,
-				equipmentId: itemData.equipmentId || null,
-				itemId: itemData.itemId || null,
-				quantity: String(itemData.quantity),
-				note: itemData.note || null,
-				createdAt: new Date()
-			});
 		}
 
 		// Audit Log
@@ -63,8 +78,70 @@ export async function createDistribution(params: CreateDistributionParams) {
 			action: 'CREATE',
 			tableName: 'distribution',
 			recordId: distributionId,
-			newValue: { status: 'DRAFT', itemsCount: params.items.length }
+			newValue: { status: initialStatus, itemsCount: params.items.length }
 		});
+
+		if (initialStatus === 'DRAFT') {
+			// NOTIFIKASI: Ke Operator untuk Validasi
+			const validators = await tx.query.member.findMany({
+				where: and(
+					eq(member.organizationId, params.fromOrganizationId),
+					inArray(member.role, ['operatorBinmatDanBekharrah', 'operatorPusatDanDaerah', 'superadmin'])
+				),
+				columns: { userId: true },
+				with: {
+					organization: {
+						columns: { slug: true }
+					}
+				}
+			});
+
+			for (const validator of validators) {
+				if (validator.userId !== params.requestedBy) {
+					await createNotification({
+						userId: validator.userId!,
+						title: 'Validasi Distribusi Diperlukan',
+						body: `Terdapat pengajuan distribusi baru yang membutuhkan validasi Anda.`,
+						priority: 'HIGH',
+						action: {
+							type: 'DISTRIBUTION_DETAIL',
+							resourceId: distributionId,
+							webPath: `/${validator.organization?.slug || 'pusat'}/distribusi/${distributionId}`
+						}
+					});
+				}
+			}
+		} else {
+			// NOTIFIKASI: Ke Pimpinan dan Kakomlek organisasi pengirim (Approval)
+			const stakeholders = await tx.query.member.findMany({
+				where: and(
+					eq(member.organizationId, params.fromOrganizationId),
+					inArray(member.role, ['pimpinan', 'kakomlek'])
+				),
+				columns: { userId: true },
+				with: {
+					organization: {
+						columns: { slug: true }
+					}
+				}
+			});
+
+			for (const stake of stakeholders) {
+				if (stake.userId !== params.requestedBy) {
+					await createNotification({
+						userId: stake.userId!,
+						title: 'Verifikasi Distribusi Diperlukan',
+						body: `Operator telah membuat pengajuan distribusi. Mohon verifikasi dan approve.`,
+						priority: 'HIGH',
+						action: {
+							type: 'DISTRIBUTION_DETAIL',
+							resourceId: distributionId,
+							webPath: `/${stake.organization?.slug || 'pusat'}/distribusi/${distributionId}`
+						}
+					});
+				}
+			}
+		}
 
 		return distributionId;
 	});
@@ -78,52 +155,55 @@ export async function validateDistribution(distributionId: string, userId: strin
 		const dist = await tx.query.distribution.findFirst({
 			where: eq(distribution.id, distributionId),
 			with: {
-				items: true
+				equipmentItems: true,
+				consumableItems: true,
+				fromOrganization: true
 			}
 		});
 
 		if (!dist) throw new Error('Distribution not found');
 
-		// Perform basic validations
-		for (const itemData of dist.items) {
-			if (itemData.equipmentId) {
-				const eqp = await tx.query.equipment.findFirst({
-					where: eq(equipment.id, itemData.equipmentId)
-				});
-				if (!eqp) throw new Error(`Equipment ${itemData.equipmentId} not found`);
-				if (eqp.status !== 'READY') throw new Error(`Equipment ${eqp.serialNumber} is not READY`);
-			} else if (itemData.itemId) {
-				// Consumable check scoped to fromOrganization
-				const warehousesInOrg = await tx.query.warehouse.findMany({
-					where: eq(warehouse.organizationId, dist.fromOrganizationId as string),
-					columns: { id: true }
-				});
-				const warehouseIds = warehousesInOrg.map(w => w.id);
+		// 1. Validate Equipment
+		for (const eqItem of dist.equipmentItems) {
+			const eqp = await tx.query.equipment.findFirst({
+				where: eq(equipment.id, eqItem.equipmentId)
+			});
+			if (!eqp) throw new Error(`Equipment ${eqItem.equipmentId} not found`);
+			if (eqp.status !== 'READY') throw new Error(`Equipment ${eqp.serialNumber} is not READY`);
+		}
 
-				if (warehouseIds.length === 0) {
-					throw new Error('Organisasi pengirim tidak memiliki gudang');
-				}
+		// 2. Validate Consumables
+		if (dist.consumableItems.length > 0) {
+			const warehousesInOrg = await tx.query.warehouse.findMany({
+				where: eq(warehouse.organizationId, dist.fromOrganizationId as string),
+				columns: { id: true }
+			});
+			const warehouseIds = warehousesInOrg.map((w) => w.id);
 
+			if (warehouseIds.length === 0) {
+				throw new Error('Organisasi pengirim tidak memiliki gudang');
+			}
+
+			for (const consItem of dist.consumableItems) {
 				const totalStock = await tx
 					.select({ total: sql<number>`sum(${stock.qty})` })
 					.from(stock)
-					.where(and(
-						eq(stock.itemId, itemData.itemId),
-						sql`${stock.warehouseId} IN ${warehouseIds}`
-					));
+					.where(
+						and(eq(stock.itemId, consItem.itemId), sql`${stock.warehouseId} IN ${warehouseIds}`)
+					);
 
 				const qty = Number(totalStock[0]?.total || 0);
-				if (qty < Number(itemData.quantity)) {
-					throw new Error(`Stok tidak mencukupi di kesatuan pengirim. Tersedia: ${qty}, Dibutuhkan: ${itemData.quantity}`);
+				if (qty < Number(consItem.quantity)) {
+					throw new Error(
+						`Stok tidak mencukupi di kesatuan pengirim. Tersedia: ${qty}, Dibutuhkan: ${consItem.quantity}`
+					);
 				}
-			}
- else {
-				throw new Error('Distribution item must have either equipmentId or itemId');
 			}
 		}
 
 		// Update distribution status to VALIDATED
-		await tx.update(distribution)
+		await tx
+			.update(distribution)
 			.set({ status: 'VALIDATED' })
 			.where(eq(distribution.id, distributionId));
 
@@ -136,6 +216,29 @@ export async function validateDistribution(distributionId: string, userId: strin
 			newValue: { status: 'VALIDATED' }
 		});
 
+		// NOTIFIKASI: Ke Pimpinan dan Kakomlek organisasi pengirim
+		const stakeholders = await tx.query.member.findMany({
+			where: and(
+				eq(member.organizationId, dist.fromOrganizationId!),
+				inArray(member.role, ['pimpinan', 'kakomlek'])
+			),
+			columns: { userId: true }
+		});
+
+		for (const stake of stakeholders) {
+			await createNotification({
+				userId: stake.userId!,
+				title: 'Verifikasi Distribusi Diperlukan',
+				body: `BINMAT telah memvalidasi permintaan distribusi. Mohon verifikasi dan approve.`,
+				priority: 'HIGH',
+				action: {
+					type: 'DISTRIBUTION_DETAIL',
+					resourceId: distributionId,
+					webPath: `/${dist.fromOrganization?.slug}/distribusi/${distributionId}`
+				}
+			});
+		}
+
 		return { success: true };
 	});
 }
@@ -143,10 +246,16 @@ export async function validateDistribution(distributionId: string, userId: strin
 /**
  * 3. APPROVAL KOMANDO
  */
-export async function approveDistribution(distributionId: string, userId: string, isApproved: boolean, note?: string) {
+export async function approveDistribution(
+	distributionId: string,
+	userId: string,
+	isApproved: boolean,
+	note?: string
+) {
 	return await db.transaction(async (tx) => {
 		const dist = await tx.query.distribution.findFirst({
-			where: eq(distribution.id, distributionId)
+			where: eq(distribution.id, distributionId),
+			with: { fromOrganization: true }
 		});
 
 		if (!dist) throw new Error('Distribution not found');
@@ -170,8 +279,9 @@ export async function approveDistribution(distributionId: string, userId: string
 		});
 
 		// Update distribution status
-		await tx.update(distribution)
-			.set({ 
+		await tx
+			.update(distribution)
+			.set({
 				status: status,
 				approvedBy: isApproved ? userId : null
 			})
@@ -186,25 +296,19 @@ export async function approveDistribution(distributionId: string, userId: string
 			newValue: { status }
 		});
 
-		// Notification
-		if (isApproved) {
-			const dist = await tx.query.distribution.findFirst({
-				where: eq(distribution.id, distributionId)
+		// Notification: To Requester
+		if (isApproved && dist.requestedBy) {
+			await createNotification({
+				userId: dist.requestedBy,
+				title: 'Distribusi Disetujui',
+				body: `Permintaan distribusi telah disetujui oleh pimpinan.`,
+				priority: 'HIGH',
+				action: {
+					type: 'DISTRIBUTION_DETAIL',
+					resourceId: distributionId,
+					webPath: `/${dist.fromOrganization?.slug}/distribusi/${distributionId}`
+				}
 			});
-
-			if (dist) {
-				await createNotification({
-					organizationId: dist.fromOrganizationId || undefined,
-					title: 'Distribusi Disetujui',
-					body: `Permintaan distribusi ${distributionId} telah disetujui.`,
-					priority: 'HIGH',
-					action: {
-						type: 'DISTRIBUTION_DETAIL',
-						resourceId: distributionId,
-						webPath: `/distribusi/${distributionId}`
-					}
-				});
-			}
 		}
 
 		return { success: true, status };
@@ -214,79 +318,110 @@ export async function approveDistribution(distributionId: string, userId: string
 /**
  * 4. PREPARE & SHIPMENT (BEKHARRAH)
  */
-export async function shipDistribution(distributionId: string, userId: string, fromWarehouseId: string) {
+export async function shipDistribution(
+	distributionId: string,
+	userId: string,
+	consumableWarehouses?: Record<string, string>
+) {
 	return await db.transaction(async (tx) => {
+		// 0. Update consumable items with selected warehouses if provided
+		if (consumableWarehouses) {
+			for (const [distConsId, warehouseId] of Object.entries(consumableWarehouses)) {
+				await tx
+					.update(distributionConsumable)
+					.set({ fromWarehouseId: warehouseId })
+					.where(eq(distributionConsumable.id, distConsId));
+			}
+		}
+
 		const dist = await tx.query.distribution.findFirst({
 			where: eq(distribution.id, distributionId),
 			with: {
-				items: true
+				equipmentItems: {
+					with: {
+						equipment: true
+					}
+				},
+				consumableItems: true,
+				toOrganization: true
 			}
 		});
 
 		if (!dist) throw new Error('Distribution not found');
-		if (dist.status !== 'APPROVED') throw new Error('Distribution must be APPROVED before shipping');
+		if (dist.status !== 'APPROVED')
+			throw new Error('Distribution must be APPROVED before shipping');
 
-		for (const itemData of dist.items) {
-			if (itemData.equipmentId) {
-				// Insert movement for equipment
-				await tx.insert(movement).values({
-					id: uuidv4(),
-					equipmentId: itemData.equipmentId,
-					eventType: 'DISTRIBUTE_OUT',
-					qty: '1',
-					fromWarehouseId,
-					classification: 'TRANSITO',
-					referenceType: 'DISTRIBUTION',
-					referenceId: distributionId,
-					organizationId: dist.fromOrganizationId,
-					picId: userId,
-					notes: itemData.note,
-					createdAt: new Date()
-				});
+		// 1. Ship Equipment
+		for (const eqItem of dist.equipmentItems) {
+			const eqp = eqItem.equipment;
+			if (!eqp) throw new Error(`Equipment ${eqItem.equipmentId} not found`);
 
-				// Update equipment status
-				await tx.update(equipment)
-					.set({ status: 'TRANSIT' })
-					.where(eq(equipment.id, itemData.equipmentId));
+			await tx.insert(movement).values({
+				id: uuidv4(),
+				equipmentId: eqItem.equipmentId,
+				itemId: eqp.itemId,
+				eventType: 'DISTRIBUTE_OUT',
+				qty: '1.0000',
+				fromWarehouseId: eqp.warehouseId,
+				classification: 'TRANSITO',
+				referenceType: 'DISTRIBUTION',
+				referenceId: distributionId,
+				organizationId: dist.fromOrganizationId,
+				picId: userId,
+				notes: eqItem.note,
+				createdAt: new Date()
+			});
 
-			} else if (itemData.itemId) {
-				// Reduce stock for consumable
-				const currentStock = await tx.query.stock.findFirst({
-					where: and(
-						eq(stock.itemId, itemData.itemId),
-						eq(stock.warehouseId, fromWarehouseId)
-					)
-				});
+			await tx
+				.update(equipment)
+				.set({ status: 'TRANSIT' })
+				.where(eq(equipment.id, eqItem.equipmentId));
+		}
 
-				if (!currentStock || currentStock.qty < itemData.quantity) {
-					throw new Error(`Insufficient stock for item ${itemData.itemId} in warehouse ${fromWarehouseId}`);
-				}
-
-				await tx.update(stock)
-					.set({ qty: String(Number(currentStock.qty) - Number(itemData.quantity)) })
-					.where(eq(stock.id, currentStock.id));
-
-				// Insert movement for consumable
-				await tx.insert(movement).values({
-					id: uuidv4(),
-					itemId: itemData.itemId,
-					qty: String(itemData.quantity),
-					unit: itemData.unit,
-					eventType: 'DISTRIBUTE_OUT',
-					fromWarehouseId,
-					classification: 'TRANSITO',
-					referenceType: 'DISTRIBUTION',
-					referenceId: distributionId,
-					organizationId: dist.fromOrganizationId,
-					picId: userId,
-					notes: itemData.note,
-					createdAt: new Date()
-				});
+		// 2. Ship Consumables
+		for (const consItem of dist.consumableItems) {
+			if (!consItem.fromWarehouseId) {
+				throw new Error(`Gudang asal belum dipilih untuk item ${consItem.itemId}`);
 			}
+
+			const currentStock = await tx.query.stock.findFirst({
+				where: and(
+					eq(stock.itemId, consItem.itemId),
+					eq(stock.warehouseId, consItem.fromWarehouseId)
+				)
+			});
+
+			if (!currentStock || Number(currentStock.qty) < Number(consItem.quantity)) {
+				throw new Error(
+					`Stok tidak mencukupi untuk item ${consItem.itemId} di gudang yang dipilih`
+				);
+			}
+
+			await tx
+				.update(stock)
+				.set({ qty: String(Number(currentStock.qty) - Number(consItem.quantity)) })
+				.where(eq(stock.id, currentStock.id));
+
+			await tx.insert(movement).values({
+				id: uuidv4(),
+				itemId: consItem.itemId,
+				qty: String(consItem.quantity),
+				unit: consItem.unit,
+				eventType: 'DISTRIBUTE_OUT',
+				fromWarehouseId: consItem.fromWarehouseId,
+				classification: 'TRANSITO',
+				referenceType: 'DISTRIBUTION',
+				referenceId: distributionId,
+				organizationId: dist.fromOrganizationId,
+				picId: userId,
+				notes: consItem.note,
+				createdAt: new Date()
+			});
 		}
 
 		// Update distribution status
-		await tx.update(distribution)
+		await tx
+			.update(distribution)
 			.set({ status: 'SHIPPED' })
 			.where(eq(distribution.id, distributionId));
 
@@ -299,18 +434,38 @@ export async function shipDistribution(distributionId: string, userId: string, f
 			newValue: { status: 'SHIPPED' }
 		});
 
-		// Notification
-		await createNotification({
-			organizationId: dist.toOrganizationId || undefined,
-			title: 'Materi Dalam Pengiriman',
-			body: `Materi dari distribusi ${distributionId} sedang dikirim ke satuan Anda.`,
-			priority: 'MEDIUM',
-			action: {
-				type: 'DISTRIBUTION_DETAIL',
-				resourceId: distributionId,
-				webPath: `/distribusi/${distributionId}`
-			}
+		// NOTIFIKASI: Ke Stakeholders TUJUAN
+		const targetStakeholders = await tx.query.member.findMany({
+			where: and(
+				eq(member.organizationId, dist.toOrganizationId!),
+				inArray(member.role, [
+					'pimpinan',
+					'kakomlek',
+					'operatorPusatDanDaerah',
+					'operatorBinmatDanBekharrah'
+				])
+			),
+			columns: { userId: true, role: true }
 		});
+
+		for (const stake of targetStakeholders) {
+			const isOperator =
+				stake.role === 'operatorPusatDanDaerah' || stake.role === 'operatorBinmatDanBekharrah';
+
+			await createNotification({
+				userId: stake.userId!,
+				title: 'Inventaris Dalam Pengiriman',
+				body: isOperator
+					? `Inventaris distribusi sedang dikirim ke satuan Anda. Mohon verifikasi apakah sudah sampai.`
+					: `Inventaris dari distribusi sedang dikirim ke satuan Anda.`,
+				priority: 'MEDIUM',
+				action: {
+					type: 'DISTRIBUTION_DETAIL',
+					resourceId: distributionId,
+					webPath: `/${dist.toOrganization?.slug}/distribusi/${distributionId}`
+				}
+			});
+		}
 
 		return { success: true };
 	});
@@ -319,89 +474,98 @@ export async function shipDistribution(distributionId: string, userId: string, f
 /**
  * 5. RECEIVING (SATUAN TUJUAN)
  */
-export async function receiveDistribution(distributionId: string, userId: string, toWarehouseId: string) {
+export async function receiveDistribution(
+	distributionId: string,
+	userId: string,
+	toWarehouseId: string
+) {
 	return await db.transaction(async (tx) => {
 		const dist = await tx.query.distribution.findFirst({
 			where: eq(distribution.id, distributionId),
 			with: {
-				items: true
+				equipmentItems: true,
+				consumableItems: true,
+				fromOrganization: true
 			}
 		});
 
 		if (!dist) throw new Error('Distribution not found');
 		if (dist.status !== 'SHIPPED') throw new Error('Distribution must be SHIPPED before receiving');
 
-		for (const itemData of dist.items) {
-			if (itemData.equipmentId) {
-				// Update equipment: warehouseId = tujuan, status = "READY"
-				await tx.update(equipment)
-					.set({ 
-						warehouseId: toWarehouseId,
-						organizationId: dist.toOrganizationId,
-						status: 'READY' 
-					})
-					.where(eq(equipment.id, itemData.equipmentId));
+		// 1. Receive Equipment
+		for (const eqItem of dist.equipmentItems) {
+			const eqp = await tx.query.equipment.findFirst({
+				where: eq(equipment.id, eqItem.equipmentId)
+			});
+			if (!eqp) throw new Error(`Equipment ${eqItem.equipmentId} not found`);
 
-				// Insert movement for equipment
-				await tx.insert(movement).values({
-					id: uuidv4(),
-					equipmentId: itemData.equipmentId,
-					eventType: 'DISTRIBUTE_IN',
-					qty: '1',
-					toWarehouseId,
-					classification: 'KOMUNITY',
-					referenceType: 'DISTRIBUTION',
-					referenceId: distributionId,
+			await tx
+				.update(equipment)
+				.set({
+					warehouseId: toWarehouseId,
 					organizationId: dist.toOrganizationId,
-					picId: userId,
-					notes: itemData.note,
-					createdAt: new Date()
-				});
+					status: 'READY'
+				})
+				.where(eq(equipment.id, eqItem.equipmentId));
 
-			} else if (itemData.itemId) {
-				// Increase stock for consumable
-				const existingStock = await tx.query.stock.findFirst({
-					where: and(
-						eq(stock.itemId, itemData.itemId),
-						eq(stock.warehouseId, toWarehouseId)
-					)
-				});
+			await tx.insert(movement).values({
+				id: uuidv4(),
+				equipmentId: eqItem.equipmentId,
+				itemId: eqp.itemId,
+				eventType: 'DISTRIBUTE_IN',
+				qty: '1.0000',
+				toWarehouseId,
+				classification: 'KOMUNITY',
+				referenceType: 'DISTRIBUTION',
+				referenceId: distributionId,
+				organizationId: dist.toOrganizationId,
+				picId: userId,
+				notes: eqItem.note,
+				createdAt: new Date()
+			});
+		}
 
-				if (existingStock) {
-					await tx.update(stock)
-						.set({ qty: String(Number(existingStock.qty) + Number(itemData.quantity)) })
-						.where(eq(stock.id, existingStock.id));
-				} else {
-					await tx.insert(stock).values({
-						id: uuidv4(),
-						itemId: itemData.itemId,
-						warehouseId: toWarehouseId,
-						qty: String(itemData.quantity),
-						updatedAt: new Date()
-					});
-				}
+		// 2. Receive Consumables
+		for (const consItem of dist.consumableItems) {
+			const existingStock = await tx.query.stock.findFirst({
+				where: and(eq(stock.itemId, consItem.itemId), eq(stock.warehouseId, toWarehouseId))
+			});
 
-				// Insert movement for consumable
-				await tx.insert(movement).values({
+			if (existingStock) {
+				await tx
+					.update(stock)
+					.set({ qty: String(Number(existingStock.qty) + Number(consItem.quantity)) })
+					.where(eq(stock.id, existingStock.id));
+			} else {
+				await tx.insert(stock).values({
 					id: uuidv4(),
-					itemId: itemData.itemId,
-					qty: String(itemData.quantity),
-					unit: itemData.unit,
-					eventType: 'DISTRIBUTE_IN',
-					toWarehouseId,
-					classification: 'KOMUNITY',
-					referenceType: 'DISTRIBUTION',
-					referenceId: distributionId,
-					organizationId: dist.toOrganizationId,
-					picId: userId,
-					notes: itemData.note,
-					createdAt: new Date()
+					itemId: consItem.itemId,
+					warehouseId: toWarehouseId,
+					qty: String(consItem.quantity),
+					updatedAt: new Date()
 				});
 			}
+
+			await tx.insert(movement).values({
+				id: uuidv4(),
+				itemId: consItem.itemId,
+				qty: String(consItem.quantity),
+				unit: consItem.unit,
+				eventType: 'DISTRIBUTE_IN',
+				toWarehouseId,
+				classification: 'KOMUNITY',
+				referenceType: 'DISTRIBUTION',
+				referenceId: distributionId,
+				organizationId: dist.toOrganizationId,
+				picId: userId,
+				notes: consItem.note,
+				createdAt: new Date()
+			});
 		}
 
 		// Update distribution status
-		await tx.update(distribution)
+		await tx
+			.update(distribution)
 			.set({ status: 'RECEIVED' })
 			.where(eq(distribution.id, distributionId));
 
@@ -414,16 +578,16 @@ export async function receiveDistribution(distributionId: string, userId: string
 			newValue: { status: 'RECEIVED' }
 		});
 
-		// Notification
+		// Notification: To Sender
 		await createNotification({
 			organizationId: dist.fromOrganizationId || undefined,
 			title: 'Distribusi Diterima',
-			body: `Materi dari distribusi ${distributionId} telah diterima oleh satuan tujuan.`,
+			body: `Materi dari distribusi telah diterima oleh satuan tujuan.`,
 			priority: 'MEDIUM',
 			action: {
 				type: 'DISTRIBUTION_DETAIL',
 				resourceId: distributionId,
-				webPath: `/distribusi/${distributionId}`
+				webPath: `/${dist.fromOrganization?.slug}/distribusi/${distributionId}`
 			}
 		});
 

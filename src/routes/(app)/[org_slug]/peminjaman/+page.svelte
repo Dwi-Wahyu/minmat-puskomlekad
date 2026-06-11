@@ -16,11 +16,13 @@
 		XCircle,
 		Package,
 		RotateCcw,
-		Filter,
-		AlertCircle
+		AlertCircle,
+		Edit,
+		Truck
 	} from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { lendingPurposeLabel, lendingStatusLabel } from '@/enums/lending-enum';
 
 	let { data }: { data: PageData } = $props();
 
@@ -67,6 +69,16 @@
 			label: 'Dipinjam',
 			color: 'bg-purple-100 text-purple-700 border-purple-200',
 			icon: Package
+		},
+		DALAM_PENGIRIMAN: {
+			label: 'Dikirim',
+			color: 'bg-purple-100 text-purple-700 border-purple-200',
+			icon: Truck
+		},
+		DIKIRIM_KEMBALI: {
+			label: 'Dikirim Kembali',
+			color: 'bg-purple-100 text-purple-700 border-purple-200',
+			icon: Truck
 		},
 		KEMBALI: {
 			label: 'Kembali',
@@ -123,8 +135,6 @@
 				onValueChange={handleStatusChange}
 			>
 				<Select.Trigger class="w-45">
-					<Filter class="size-4 text-muted-foreground" />
-
 					{statusOptions.find((o) => o.value === (data.filters.status || 'ALL'))?.label ||
 						'Semua Status'}
 				</Select.Trigger>
@@ -143,8 +153,7 @@
 				<Table.Row class="bg-muted/50">
 					<Table.Head>Unit Peminjam</Table.Head>
 					<Table.Head>Tujuan</Table.Head>
-					<Table.Head>Satuan Pemilik</Table.Head>
-					<Table.Head>Tanggal Pinjam</Table.Head>
+					<Table.Head>Tanggal</Table.Head>
 					<Table.Head>Status</Table.Head>
 					<Table.Head class="text-right">Aksi</Table.Head>
 				</Table.Row>
@@ -161,31 +170,43 @@
 							</div>
 						</Table.Cell>
 						<Table.Cell>
-							<Badge variant="outline" class="text-[10px] font-bold uppercase">{item.purpose}</Badge
-							>
+							<Badge variant="outline">{lendingPurposeLabel[item.purpose]}</Badge>
 						</Table.Cell>
 						<Table.Cell>
-							<span class="text-sm font-medium">{item.organization?.name}</span>
-						</Table.Cell>
-						<Table.Cell>
-							<div class="flex flex-col text-xs">
+							<div class="flex flex-col text-sm">
 								<span>{formatDate(item.startDate)}</span>
-								<span class="text-muted-foreground">s/d {formatDate(item.endDate as Date)}</span>
+								{#if item.endDate}
+									<span class="text-muted-foreground">s/d {formatDate(item.endDate as Date)}</span>
+								{/if}
 							</div>
 						</Table.Cell>
 						<Table.Cell>
 							<Badge variant="outline" class={config.color}>
-								<config.icon class="mr-1 size-3" />
-								{config.label}
+								<config.icon />
+								{lendingStatusLabel[item.status!]}
 							</Badge>
 						</Table.Cell>
 						<Table.Cell class="text-right">
+							{#if item.status === 'DRAFT' && item.requestedBy === data.user.id}
+								<Button
+									variant="ghost"
+									size="icon"
+									href={resolve('/(app)/[org_slug]/peminjaman/[id]/edit', {
+										org_slug: data.org_slug,
+										id: item.id
+									})}
+									title="Edit Pengajuan"
+								>
+									<Edit class="size-4" />
+								</Button>
+							{/if}
 							<Button
 								variant="ghost"
 								size="icon"
 								href="/{page.params.org_slug}/peminjaman/{item.id}"
+								title="Detail Pengajuan"
 							>
-								<Eye class="size-4 text-blue-600" />
+								<Eye class="size-4 " />
 							</Button>
 						</Table.Cell>
 					</Table.Row>

@@ -114,13 +114,14 @@
 						{btkQuery.loading ? 'Memproses...' : 'Muat Ulang Data'}
 					</button>
 				</form>
-				<button
+				<Button
 					onclick={exportCSV}
+					variant="secondary"
 					disabled={btkQuery.loading || !btkQuery.current?.reports.length}
-					class="rounded bg-success px-4 py-2 text-sm whitespace-nowrap text-success-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+					class="rounded px-4 py-2 text-sm whitespace-nowrap shadow-sm transition-opacity"
 				>
 					Ekspor CSV
-				</button>
+				</Button>
 			</div>
 		</div>
 	</div>

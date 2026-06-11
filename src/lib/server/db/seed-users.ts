@@ -48,7 +48,7 @@ async function main() {
 	console.log('Sedang melakukan seeding user...');
 
 	const orgs = await db.query.organization.findMany();
-	
+
 	if (orgs.length === 0) {
 		console.error('Tidak ada organisasi ditemukan. Jalankan seed.ts terlebih dahulu.');
 		process.exit(1);
@@ -97,7 +97,7 @@ async function main() {
 				const signUpRes = await auth.api.signUpEmail({
 					body: {
 						email,
-						password: roleName, // Kembali menggunakan roleName sebagai password
+						password: roleName,
 						name,
 						username: usernameValue,
 						displayUsername: name
@@ -106,10 +106,15 @@ async function main() {
 
 				if (signUpRes.user) {
 					await auth.api.addMember({
-						body: { 
-							organizationId: org.id, 
-							userId: signUpRes.user.id, 
-							role: roleName as any 
+						body: {
+							organizationId: org.id,
+							userId: signUpRes.user.id,
+							role: roleName as
+								| 'operatorPusatDanDaerah'
+								| 'operatorBinmatDanBekharrah'
+								| 'pimpinan'
+								| 'superadmin'
+								| 'kakomlek'
 						}
 					});
 					console.log(`User created: ${usernameValue} [${roleName}]`);

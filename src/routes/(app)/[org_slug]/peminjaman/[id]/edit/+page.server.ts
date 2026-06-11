@@ -1,47 +1,52 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { lending, lendingItem, equipment } from '$lib/server/db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { lending, lendingItem, equipment, organization } from '$lib/server/db/schema';
+import { and, eq, or } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { z } from 'zod';
 import type { PageServerLoad, Actions } from './$types';
+import { superValidate, message } from 'sveltekit-superforms';
+import { yup } from 'sveltekit-superforms/adapters';
+import { lendingMutationSchema } from '$lib/schemas/lending-mutation-schema';
+import fs from 'fs';
+import path from 'path';
 
-const lendingItemSchema = z.object({
-	equipmentId: z.string().uuid(),
-	qty: z.number().int().min(1).default(1)
-});
-
-const lendingSchema = z.object({
-	unit: z.string().min(1),
-	purpose: z.enum(['OPERASI', 'LATIHAN']),
-	startDate: z.string().datetime(),
-	endDate: z.string().datetime().optional().nullable(),
-	items: z.array(lendingItemSchema).min(1, 'Minimal 1 item harus dipilih')
-});
+// Format tanggal untuk input datetime-local to ISO for superforms initial data
+const formatDateForISO = (date: Date | null): string | undefined => {
+	if (!date) return undefined;
+	return new Date(date).toISOString();
+};
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const { id, org_slug } = params;
 	const { user } = locals;
 
-	if (!user) {
-		throw new Error('User tidak ditemukan');
+	if (!user || !user.organization) {
+		throw error(401, 'Unauthorized');
 	}
 
 	const lendingData = await db.query.lending.findFirst({
-		where: and(eq(lending.id, id), eq(lending.organizationId, user.organization.id)),
+		where: and(
+			eq(lending.id, id),
+			or(eq(lending.organizationId, user.organization.id), eq(lending.requestedBy, user.id))
+		),
 		with: {
 			organization: true,
 			requestedByUser: true,
 			items: {
 				with: {
-					equipment: true
+					equipment: {
+						with: {
+							item: true,
+							warehouse: true
+						}
+					}
 				}
 			}
 		}
 	});
 
 	if (!lendingData) {
-		throw redirect(303, `/${org_slug}/peminjaman`);
+		throw error(404, { message: 'Peminjaman tidak ditemukan' });
 	}
 
 	// Cek apakah status masih DRAFT dan user adalah pemohon
@@ -49,40 +54,32 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		throw redirect(303, `/${org_slug}/peminjaman/${id}`);
 	}
 
-	// Format tanggal untuk input datetime-local
-	const formatDateForInput = (date: Date | null): string => {
-		if (!date) return '';
-		return new Date(date).toISOString().slice(0, 16);
-	};
-
-	// Ambil semua equipment yang tersedia di organisasi ini
-	const availableEquipment = await db.query.equipment.findMany({
-		where: and(eq(equipment.status, 'READY'), eq(equipment.organizationId, user.organization.id)),
-		with: {
-			item: true,
-			warehouse: true
-		},
-		orderBy: (fields, { desc }) => [desc(fields.createdAt)]
+	const targetOrgId = lendingData.organizationId;
+	const targetOrg = await db.query.organization.findFirst({
+		where: eq(organization.id, targetOrgId!)
 	});
 
-	// Tandai equipment mana yang sudah dipilih dalam peminjaman ini
-	const selectedEquipmentIds = lendingData.items.map((item: any) => item.equipmentId);
+	// Prepare pre-selected equipment IDs
+	const manualEquipmentIds = lendingData.items.map((item) => item.equipmentId!).filter(Boolean);
 
-	const equipmentWithSelection = availableEquipment.map((eq) => ({
-		...eq,
-		isSelected: selectedEquipmentIds.includes(eq.id),
-		selectedQty: lendingData.items.find((item) => item.equipmentId === eq.id)?.qty || 1
-	}));
+	const initialData = {
+		targetOrgId: targetOrgId!,
+		unit: lendingData.unit,
+		purpose: lendingData.purpose,
+		overrideReason: lendingData.overrideReason || '',
+		startDate: formatDateForISO(lendingData.startDate)!,
+		endDate: formatDateForISO(lendingData.endDate),
+		manualEquipmentIds: manualEquipmentIds
+	};
+
+	const form = await superValidate(initialData, yup(lendingMutationSchema));
 
 	return {
-		lending: {
-			...lendingData,
-			startDate: formatDateForInput(lendingData.startDate),
-			endDate: formatDateForInput(lendingData.endDate)
-		},
-		equipment: equipmentWithSelection,
-		orgSlug: org_slug,
-		selectedEquipmentIds
+		form,
+		lending: lendingData,
+		targetOrg,
+		orgSlug: user.organization.slug,
+		preselectedEquipmentIds: manualEquipmentIds
 	};
 };
 
@@ -94,98 +91,153 @@ export const actions: Actions = {
 		if (!user) return fail(401, { message: 'Unauthorized' });
 
 		const formData = await request.formData();
+		const form = await superValidate(formData, yup(lendingMutationSchema));
 
-		// Parse items dari form data
-		const equipmentIds = formData.getAll('equipmentId[]');
-		const qtys = formData.getAll('qty[]');
-
-		const items = equipmentIds.map((id, index) => ({
-			equipmentId: id.toString(),
-			qty: parseInt(qtys[index]?.toString() || '1')
-		}));
-
-		const data = {
-			unit: formData.get('unit')?.toString(),
-			purpose: formData.get('purpose')?.toString(),
-			startDate: formData.get('startDate')?.toString(),
-			endDate: formData.get('endDate')?.toString() || null,
-			items
-		};
-
-		try {
-			// Validasi data
-			const validated = lendingSchema.parse(data);
-
-			// Cek apakah peminjaman masih DRAFT dan user adalah pemohon
-			const existingLending = await db.query.lending.findFirst({
-				where: and(eq(lending.id, id), eq(lending.organizationId, user.organization.id))
-			});
-
-			if (!existingLending) {
-				return fail(404, { message: 'Data peminjaman tidak ditemukan' });
-			}
-
-			if (existingLending.status !== 'DRAFT') {
-				return fail(400, { message: 'Hanya peminjaman dengan status DRAFT yang dapat diedit' });
-			}
-
-			if (existingLending.requestedBy !== user.id) {
-				return fail(403, { message: 'Anda tidak memiliki izin untuk mengedit peminjaman ini' });
-			}
-
-			// Validasi ketersediaan equipment
-			for (const item of validated.items) {
-				const equip = await db.query.equipment.findFirst({
-					where: and(
-						eq(equipment.id, item.equipmentId!),
-						eq(equipment.status, 'READY'),
-						eq(equipment.organizationId, user.organization.id)
-					)
-				});
-
-				// Jika equipment tidak tersedia, cek apakah equipment tersebut sudah ada di peminjaman ini
-				if (!equip) {
-					const existingItem = await db.query.lendingItem.findFirst({
-						where: and(eq(lendingItem.lendingId, id), eq(lendingItem.equipmentId, item.equipmentId))
-					});
-
-					if (!existingItem) {
-						return fail(400, { message: `Equipment dengan ID ${item.equipmentId} tidak tersedia` });
-					}
-				}
-			}
-
-			// Update lending
-			await db
-				.update(lending)
-				.set({
-					unit: validated.unit,
-					purpose: validated.purpose,
-					startDate: new Date(validated.startDate),
-					endDate: validated.endDate ? new Date(validated.endDate) : null
-				})
-				.where(eq(lending.id, id));
-
-			// Hapus semua lending item yang lama
-			await db.delete(lendingItem).where(eq(lendingItem.lendingId, id));
-
-			// Insert lending items yang baru
-			for (const item of validated.items) {
-				await db.insert(lendingItem).values({
-					id: uuidv4(),
-					lendingId: id,
-					equipmentId: item.equipmentId,
-					qty: String(item.qty)
-				});
-			}
-		} catch (err) {
-			if (err instanceof z.ZodError) {
-				return fail(400, { errors: (err as any).errors });
-			}
-			console.error('Error updating lending:', err);
-			return fail(500, { message: 'Kesalahan server internal' });
+		if (!form.valid) {
+			return fail(400, { form });
 		}
 
-		throw redirect(303, `/${user.organization.slug}/peminjaman/${id}`);
+		// Parse data grup & manual pick
+		const itemIds = formData.getAll('itemId[]');
+		const warehouseIds = formData.getAll('warehouseId[]');
+		const conditions = formData.getAll('condition[]');
+		const qtys = formData.getAll('qty[]');
+		const manualEquipmentIds = formData.getAll('manualEquipmentId[]').map((id) => id.toString());
+
+		const targetOrgId = form.data.targetOrgId;
+
+		if (!targetOrgId) return message(form, 'Organisasi tujuan harus ditentukan', { status: 400 });
+
+		// Group requests (Auto-pick)
+		const requestedGroups = itemIds
+			.map((id, index) => ({
+				itemId: id.toString(),
+				warehouseId: warehouseIds[index]?.toString(),
+				condition: conditions[index]?.toString() as any,
+				qty: parseInt(qtys[index]?.toString() || '0')
+			}))
+			.filter((g) => g.qty > 0);
+
+		if (requestedGroups.length === 0 && manualEquipmentIds.length === 0) {
+			return message(form, 'Minimal 1 alat harus dipilih', { status: 400 });
+		}
+
+		const attachment = formData.get('attachment') as File;
+		let attachmentPath = null;
+		let attachmentName = null;
+
+		if (attachment && attachment.size > 0) {
+			const ext = path.extname(attachment.name).toLowerCase();
+			if (ext !== '.pdf' && ext !== '.docx') {
+				return message(form, 'Hanya file PDF atau DOCX yang diperbolehkan', { status: 400 });
+			}
+			if (attachment.size > 5 * 1024 * 1024) {
+				return message(form, 'Ukuran file maksimal 5MB', { status: 400 });
+			}
+
+			const fileName = `${uuidv4()}${ext}`;
+			const uploadDir = path.join(process.cwd(), 'static', 'uploads', 'lending');
+			if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+			const filePath = path.join(uploadDir, fileName);
+			const arrayBuffer = await attachment.arrayBuffer();
+			fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+
+			attachmentPath = `/uploads/lending/${fileName}`;
+			attachmentName = attachment.name;
+		}
+
+		try {
+			// Validate existence and permissions
+			const existingLending = await db.query.lending.findFirst({
+				where: and(
+					eq(lending.id, id),
+					or(eq(lending.organizationId, user.organization.id), eq(lending.requestedBy, user.id))
+				)
+			});
+
+			if (!existingLending)
+				return message(form, 'Data peminjaman tidak ditemukan', { status: 404 });
+			if (existingLending.status !== 'DRAFT')
+				return message(form, 'Hanya peminjaman dengan status DRAFT yang dapat diedit', {
+					status: 400
+				});
+			if (existingLending.requestedBy !== user.id)
+				return message(form, 'Anda tidak memiliki izin untuk mengedit peminjaman ini', {
+					status: 403
+				});
+
+			await db.transaction(async (tx) => {
+				const isOverride = form.data.purpose === 'PERINTAH_LANGSUNG';
+
+				// Update lending
+				const updateValues: any = {
+					unit: form.data.unit,
+					purpose: form.data.purpose,
+					startDate: new Date(form.data.startDate),
+					endDate: form.data.endDate ? new Date(form.data.endDate) : null,
+					overrideReason: isOverride ? form.data.overrideReason : null,
+					status: isOverride ? 'PERINTAH_LANGSUNG' : 'DRAFT'
+				};
+
+				if (attachmentPath) {
+					updateValues.attachmentPath = attachmentPath;
+					updateValues.attachmentName = attachmentName;
+				}
+
+				await tx.update(lending).set(updateValues).where(eq(lending.id, id));
+
+				// Hapus semua lending item yang lama
+				await tx.delete(lendingItem).where(eq(lendingItem.lendingId, id));
+
+				// 1. Proses Manual Selection
+				for (const eqId of manualEquipmentIds) {
+					const eqp = await tx.query.equipment.findFirst({
+						where: and(eq(equipment.id, eqId), eq(equipment.organizationId, targetOrgId))
+					});
+					if (!eqp) throw new Error(`Alat dengan ID ${eqId} tidak ditemukan atau tidak tersedia`);
+
+					await tx.insert(lendingItem).values({
+						id: uuidv4(),
+						lendingId: id,
+						equipmentId: eqId,
+						qty: '1'
+					});
+				}
+
+				// 2. Proses Auto-pick by Quantity
+				for (const group of requestedGroups) {
+					const availableEqs = await tx.query.equipment.findMany({
+						where: and(
+							eq(equipment.itemId, group.itemId),
+							eq(equipment.organizationId, targetOrgId),
+							eq(equipment.warehouseId, group.warehouseId),
+							eq(equipment.condition, group.condition),
+							eq(equipment.status, 'READY')
+						),
+						limit: group.qty,
+						columns: { id: true }
+					});
+
+					if (availableEqs.length < group.qty) {
+						throw new Error(`Stok alat tidak mencukupi untuk item kriteria tertentu`);
+					}
+
+					for (const eqp of availableEqs) {
+						await tx.insert(lendingItem).values({
+							id: uuidv4(),
+							lendingId: id,
+							equipmentId: eqp.id,
+							qty: '1'
+						});
+					}
+				}
+			});
+
+			return message(form, 'Perubahan peminjaman berhasil disimpan');
+		} catch (err) {
+			console.error('Error updating lending:', err);
+			return message(form, (err.message as string) || 'Kesalahan server internal', { status: 500 });
+		}
 	}
 };

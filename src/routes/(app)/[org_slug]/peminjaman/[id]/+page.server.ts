@@ -55,11 +55,24 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const canOverride =
 		isLender && !isRequester && user.role === 'pimpinan' && lendingDetail.status === 'DRAFT';
 
-	const canExecute =
+	const OPERATOR_ROLES = ['operatorPusatDanDaerah', 'operatorBinmatDanBekharrah'];
+	const isOperatorRole = OPERATOR_ROLES.includes(user.role);
+
+	// Operator GUDANG (isLender = org pemilik alat) yang keluarkan alat
+	const canDispatch =
 		isLender &&
+		isOperatorRole &&
 		(lendingDetail.status === 'APPROVED' || lendingDetail.status === 'PERINTAH_LANGSUNG');
 
-	const canReturn = isLender && lendingDetail.status === 'DIPINJAM';
+	// Operator PEMINJAM (bukan isLender) yang konfirmasi terima
+	const canConfirmReceive =
+		!isLender && isOperatorRole && lendingDetail.status === 'DALAM_PENGIRIMAN';
+
+	// Operator PEMINJAM yang kirim balik
+	const canSendBack = !isLender && isOperatorRole && lendingDetail.status === 'DIPINJAM';
+
+	// Operator GUDANG yang konfirmasi terima kembali
+	const canConfirmReturn = isLender && isOperatorRole && lendingDetail.status === 'DIKIRIM_KEMBALI';
 
 	const canDelete = isRequester && lendingDetail.status === 'DRAFT';
 
@@ -67,8 +80,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		lending: lendingDetail,
 		canApprove,
 		canOverride,
-		canExecute,
-		canReturn,
+		canDispatch,
+		canConfirmReceive,
+		canSendBack,
+		canConfirmReturn,
 		canDelete,
 		orgSlug: org_slug,
 		userId: user.id
@@ -283,12 +298,14 @@ export const actions: Actions = {
 		}
 	},
 
-	startLending: async ({ request, locals, params }) => {
+	dispatch: async ({ request, locals, params }) => {
 		const { user } = locals;
 		const { org_slug } = params;
+		if (!user) return fail(401, { message: 'Unauthorized' });
+
 		const formData = await request.formData();
 		const id = formData.get('id')?.toString();
-		if (!id || !user) return fail(400, { message: 'ID required' });
+		if (!id) return fail(400, { message: 'ID required' });
 
 		try {
 			const lendingData = await db.query.lending.findFirst({
@@ -296,35 +313,20 @@ export const actions: Actions = {
 				columns: { requestedBy: true, unit: true, status: true, organizationId: true }
 			});
 
-			if (lendingData?.status !== 'APPROVED' && lendingData?.status !== 'PERINTAH_LANGSUNG') {
-				return fail(400, {
-					message: 'Hanya peminjaman berstatus APPROVED atau PERINTAH_LANGSUNG yang dapat diambil'
-				});
+			if (!lendingData || !['APPROVED', 'PERINTAH_LANGSUNG'].includes(lendingData.status!)) {
+				return fail(400, { message: 'Status peminjaman tidak valid untuk pengeluaran' });
 			}
 
 			await db.transaction(async (tx) => {
-				// Update status peminjaman
-				await tx.update(lending).set({ status: 'DIPINJAM' }).where(eq(lending.id, id));
+				await tx.update(lending).set({ status: 'DALAM_PENGIRIMAN' }).where(eq(lending.id, id));
 
-				// Audit Log Peminjaman
-				await tx.insert(auditLog).values({
-					id: uuidv4(),
-					userId: user.id,
-					action: 'START_LENDING',
-					tableName: 'lending',
-					recordId: id,
-					oldValue: JSON.stringify({ status: lendingData.status }),
-					newValue: JSON.stringify({ status: 'DIPINJAM' })
-				});
-
-				// Catat History Peminjaman ke tabel approval
 				await tx.insert(approval).values({
 					id: uuidv4(),
 					referenceType: 'LENDING',
 					referenceId: id,
 					approvedBy: user.id,
 					status: 'APPROVED',
-					note: `[DIPINJAM] Barang telah diambil/dipinjam oleh unit: ${lendingData.unit}`
+					note: `[DALAM_PENGIRIMAN] Alat dikeluarkan dari gudang oleh: ${user.name}`
 				});
 
 				const items = await tx.query.lendingItem.findMany({
@@ -333,22 +335,20 @@ export const actions: Actions = {
 				});
 
 				for (const item of items) {
-					// VALIDASI: equipment.status HARUS = READY
 					if (item.equipment!.status !== 'READY') {
 						throw new Error(`Alat ${item.equipment!.serialNumber} tidak dalam status READY`);
 					}
-					// VALIDASI: equipment.condition TIDAK BOLEH RUSAK_BERAT
 					if (item.equipment!.condition === 'RUSAK_BERAT') {
 						throw new Error(`Alat ${item.equipment!.serialNumber} dalam kondisi RUSAK_BERAT`);
 					}
 
-					// Update status alat
+					// Update status equipment
 					await tx
 						.update(equipment)
 						.set({ status: 'IN_USE' })
 						.where(eq(equipment.id, item.equipmentId!));
 
-					// Catat Movement (WAJIB)
+					// Catat LOAN_OUT — gudang asal dari equipment.warehouseId, tujuan null (unit peminjam tidak punya warehouseId)
 					await tx.insert(movement).values({
 						id: uuidv4(),
 						equipmentId: item.equipmentId,
@@ -356,16 +356,16 @@ export const actions: Actions = {
 						organizationId: lendingData.organizationId,
 						eventType: 'LOAN_OUT',
 						classification: 'KOMUNITY',
+						fromWarehouseId: item.equipment!.warehouseId, // ← gudang asal otomatis dari equipment
+						toWarehouseId: null, // unit peminjam tidak punya warehouseId terdaftar
 						specificLocationName: lendingData.unit,
-						fromWarehouseId: item.equipment!.warehouseId,
 						referenceType: 'LENDING',
 						referenceId: id,
 						qty: '1',
-						notes: `Alat dipinjam oleh unit: ${lendingData.unit}`,
+						notes: `Alat dikeluarkan ke unit: ${lendingData.unit}`,
 						picId: user.id
 					});
 
-					// Audit Log Alat
 					await tx.insert(auditLog).values({
 						id: uuidv4(),
 						userId: user.id,
@@ -376,14 +376,35 @@ export const actions: Actions = {
 						newValue: JSON.stringify({ status: 'IN_USE' })
 					});
 				}
+
+				await tx.insert(auditLog).values({
+					id: uuidv4(),
+					userId: user.id,
+					action: 'DISPATCH_LENDING',
+					tableName: 'lending',
+					recordId: id,
+					oldValue: JSON.stringify({ status: lendingData.status }),
+					newValue: JSON.stringify({ status: 'DALAM_PENGIRIMAN' })
+				});
 			});
 
-			if (lendingData?.requestedBy) {
+			// Notifikasi ke operator peminjam (organisasi peminjam)
+			// Ambil organisasi peminjam dari requestedBy user
+			const requesterUser = await db.query.user.findFirst({
+				where: eq(user.id, lendingData.requestedBy!),
+				with: { members: { with: { organization: true } } }
+			});
+
+			// Cari org peminjam (bukan org pemberi)
+			const requesterOrgId = requesterUser?.members?.[0]?.organizationId;
+
+			if (requesterOrgId) {
+				// Kirim notifikasi ke semua operator di org peminjam
 				await createNotification({
-					userId: lendingData.requestedBy,
-					title: 'Barang Dipinjam',
-					body: `Proses penyerahan barang untuk peminjaman unit ${lendingData.unit} telah selesai.`,
-					priority: 'MEDIUM',
+					organizationId: requesterOrgId,
+					title: 'Alat Siap Diterima',
+					body: `Alat untuk peminjaman unit ${lendingData.unit} telah dikirim dari gudang. Mohon konfirmasi penerimaan.`,
+					priority: 'HIGH',
 					action: {
 						type: 'LENDING_DETAIL',
 						resourceId: id,
@@ -392,19 +413,100 @@ export const actions: Actions = {
 				});
 			}
 
-			return { success: true, message: 'Barang berhasil dipinjam' };
-		} catch (err: any) {
+			// Notifikasi ke requester
+			if (lendingData.requestedBy) {
+				await createNotification({
+					userId: lendingData.requestedBy,
+					title: 'Alat Dalam Pengiriman',
+					body: `Alat peminjaman untuk unit ${lendingData.unit} sedang dalam pengiriman. Konfirmasi penerimaan saat alat tiba.`,
+					priority: 'HIGH',
+					action: {
+						type: 'LENDING_DETAIL',
+						resourceId: id,
+						webPath: `/${org_slug}/peminjaman/${id}`
+					}
+				});
+			}
+
+			return { success: true, message: 'Alat berhasil dikeluarkan dari gudang' };
+		} catch (err) {
 			console.error(err);
-			return fail(500, { message: err.message || 'Gagal memulai peminjaman' });
+			return fail(500, { message: 'Gagal mengeluarkan alat' });
 		}
 	},
 
-	returnLending: async ({ request, locals, params }) => {
+	confirmReceive: async ({ request, locals, params }) => {
 		const { user } = locals;
 		const { org_slug } = params;
+		if (!user) return fail(401, { message: 'Unauthorized' });
+
 		const formData = await request.formData();
 		const id = formData.get('id')?.toString();
-		if (!id || !user) return fail(400, { message: 'ID required' });
+		const notes = formData.get('notes')?.toString() || '';
+		if (!id) return fail(400, { message: 'ID required' });
+
+		try {
+			const lendingData = await db.query.lending.findFirst({
+				where: eq(lending.id, id),
+				columns: { requestedBy: true, unit: true, status: true, organizationId: true }
+			});
+
+			if (lendingData?.status !== 'DALAM_PENGIRIMAN') {
+				return fail(400, { message: 'Status tidak valid untuk konfirmasi penerimaan' });
+			}
+
+			await db.transaction(async (tx) => {
+				await tx.update(lending).set({ status: 'DIPINJAM' }).where(eq(lending.id, id));
+
+				await tx.insert(approval).values({
+					id: uuidv4(),
+					referenceType: 'LENDING',
+					referenceId: id,
+					approvedBy: user.id,
+					status: 'APPROVED',
+					note: `[DIPINJAM] Penerimaan dikonfirmasi oleh operator: ${user.name}${notes ? '. Catatan: ' + notes : ''}`
+				});
+
+				await tx.insert(auditLog).values({
+					id: uuidv4(),
+					userId: user.id,
+					action: 'CONFIRM_RECEIVE_LENDING',
+					tableName: 'lending',
+					recordId: id,
+					oldValue: JSON.stringify({ status: 'DALAM_PENGIRIMAN' }),
+					newValue: JSON.stringify({ status: 'DIPINJAM', confirmedBy: user.id })
+				});
+			});
+
+			// Notifikasi ke org pemberi (Puskomlekad) bahwa alat sudah diterima
+			await createNotification({
+				organizationId: lendingData.organizationId!,
+				title: 'Alat Dikonfirmasi Diterima',
+				body: `Unit ${lendingData.unit} telah mengkonfirmasi penerimaan alat.`,
+				priority: 'MEDIUM',
+				action: {
+					type: 'LENDING_DETAIL',
+					resourceId: id,
+					webPath: `/${org_slug}/peminjaman/${id}`
+				}
+			});
+
+			return { success: true, message: 'Penerimaan alat berhasil dikonfirmasi' };
+		} catch (err) {
+			console.error(err);
+			return fail(500, { message: 'Gagal konfirmasi penerimaan' });
+		}
+	},
+
+	sendBack: async ({ request, locals, params }) => {
+		const { user } = locals;
+		const { org_slug } = params;
+		if (!user) return fail(401, { message: 'Unauthorized' });
+
+		const formData = await request.formData();
+		const id = formData.get('id')?.toString();
+		const notes = formData.get('notes')?.toString() || '';
+		if (!id) return fail(400, { message: 'ID required' });
 
 		try {
 			const lendingData = await db.query.lending.findFirst({
@@ -413,34 +515,88 @@ export const actions: Actions = {
 			});
 
 			if (lendingData?.status !== 'DIPINJAM') {
-				return fail(400, {
-					message: 'Hanya peminjaman berstatus DIPINJAM yang dapat dikembalikan'
-				});
+				return fail(400, { message: 'Hanya peminjaman DIPINJAM yang dapat dikirim kembali' });
 			}
 
 			await db.transaction(async (tx) => {
-				// Update status peminjaman
-				await tx.update(lending).set({ status: 'KEMBALI' }).where(eq(lending.id, id));
+				await tx.update(lending).set({ status: 'DIKIRIM_KEMBALI' }).where(eq(lending.id, id));
 
-				// Audit Log Peminjaman
-				await tx.insert(auditLog).values({
-					id: uuidv4(),
-					userId: user.id,
-					action: 'RETURN_LENDING',
-					tableName: 'lending',
-					recordId: id,
-					oldValue: JSON.stringify({ status: lendingData.status }),
-					newValue: JSON.stringify({ status: 'KEMBALI' })
-				});
-
-				// Catat History Pengembalian ke tabel approval
 				await tx.insert(approval).values({
 					id: uuidv4(),
 					referenceType: 'LENDING',
 					referenceId: id,
 					approvedBy: user.id,
 					status: 'APPROVED',
-					note: `[DIKEMBALIKAN] Barang telah dikembalikan ke gudang`
+					note: `[DIKIRIM_KEMBALI] Alat dikirim kembali oleh: ${user.name}${notes ? '. Catatan: ' + notes : ''}`
+				});
+
+				await tx.insert(auditLog).values({
+					id: uuidv4(),
+					userId: user.id,
+					action: 'SEND_BACK_LENDING',
+					tableName: 'lending',
+					recordId: id,
+					oldValue: JSON.stringify({ status: 'DIPINJAM' }),
+					newValue: JSON.stringify({ status: 'DIKIRIM_KEMBALI' })
+				});
+			});
+
+			// Notifikasi ke operator gudang (org pemberi / Puskomlekad)
+			await createNotification({
+				organizationId: lendingData.organizationId!,
+				title: 'Alat Dikirim Kembali — Perlu Konfirmasi',
+				body: `Unit ${lendingData.unit} telah mengirimkan kembali alat. Konfirmasi penerimaan di gudang diperlukan.`,
+				priority: 'HIGH',
+				action: {
+					type: 'LENDING_DETAIL',
+					resourceId: id,
+					webPath: `/${org_slug}/peminjaman/${id}`
+				}
+			});
+
+			return { success: true, message: 'Alat berhasil dikirim kembali' };
+		} catch (err) {
+			console.error(err);
+			return fail(500, { message: 'Gagal mengirim kembali alat' });
+		}
+	},
+
+	confirmReturn: async ({ request, locals, params }) => {
+		const { user } = locals;
+		const { org_slug } = params;
+		if (!user) return fail(401, { message: 'Unauthorized' });
+
+		const formData = await request.formData();
+		const id = formData.get('id')?.toString();
+		const notes = formData.get('notes')?.toString() || '';
+		// conditionOverrides: JSON string array [{equipmentId, condition}] untuk alat yang kondisinya berubah
+		const conditionOverridesRaw = formData.get('conditionOverrides')?.toString();
+		const conditionOverrides: { equipmentId: string; condition: string }[] = conditionOverridesRaw
+			? JSON.parse(conditionOverridesRaw)
+			: [];
+
+		if (!id) return fail(400, { message: 'ID required' });
+
+		try {
+			const lendingData = await db.query.lending.findFirst({
+				where: eq(lending.id, id),
+				columns: { requestedBy: true, unit: true, status: true, organizationId: true }
+			});
+
+			if (lendingData?.status !== 'DIKIRIM_KEMBALI') {
+				return fail(400, { message: 'Status tidak valid untuk konfirmasi pengembalian' });
+			}
+
+			await db.transaction(async (tx) => {
+				await tx.update(lending).set({ status: 'KEMBALI' }).where(eq(lending.id, id));
+
+				await tx.insert(approval).values({
+					id: uuidv4(),
+					referenceType: 'LENDING',
+					referenceId: id,
+					approvedBy: user.id,
+					status: 'APPROVED',
+					note: `[KEMBALI] Pengembalian dikonfirmasi oleh: ${user.name}${notes ? '. Catatan: ' + notes : ''}`
 				});
 
 				const items = await tx.query.lendingItem.findMany({
@@ -449,18 +605,17 @@ export const actions: Actions = {
 				});
 
 				for (const item of items) {
-					// VALIDASI: equipment.status HARUS = IN_USE
-					if (item.equipment!.status !== 'IN_USE') {
-						throw new Error(`Alat ${item.equipment!.serialNumber} tidak dalam status IN_USE`);
-					}
+					// Cek apakah ada override kondisi untuk alat ini
+					const override = conditionOverrides.find((o) => o.equipmentId === item.equipmentId);
+					const finalCondition = override?.condition ?? item.equipment!.condition;
 
-					// Update status alat
+					// Kembalikan status ke READY
 					await tx
 						.update(equipment)
-						.set({ status: 'READY' })
+						.set({ status: 'READY', condition: finalCondition })
 						.where(eq(equipment.id, item.equipmentId!));
 
-					// Catat Movement (WAJIB)
+					// Catat LOAN_RETURN — gudang tujuan adalah warehouseId asal equipment
 					await tx.insert(movement).values({
 						id: uuidv4(),
 						equipmentId: item.equipmentId,
@@ -468,32 +623,44 @@ export const actions: Actions = {
 						organizationId: lendingData.organizationId,
 						eventType: 'LOAN_RETURN',
 						classification: 'KOMUNITY',
-						specificLocationName: 'Gudang',
+						fromWarehouseId: null, // unit peminjam tidak punya warehouseId
+						toWarehouseId: item.equipment!.warehouseId, // ← kembali ke gudang asal equipment
+						specificLocationName: lendingData.unit,
 						referenceType: 'LENDING',
 						referenceId: id,
 						qty: '1',
-						notes: `Alat telah dikembalikan dari peminjaman unit ${lendingData.unit}`,
+						conditionAtArrival: finalCondition,
+						notes: `Alat dikembalikan dari unit: ${lendingData.unit}${notes ? '. Catatan: ' + notes : ''}`,
 						picId: user.id
 					});
 
-					// Audit Log Alat
 					await tx.insert(auditLog).values({
 						id: uuidv4(),
 						userId: user.id,
 						action: 'UPDATE_EQUIPMENT_STATUS',
 						tableName: 'equipment',
 						recordId: item.equipmentId,
-						oldValue: JSON.stringify({ status: 'IN_USE' }),
-						newValue: JSON.stringify({ status: 'READY' })
+						oldValue: JSON.stringify({ status: 'IN_USE', condition: item.equipment!.condition }),
+						newValue: JSON.stringify({ status: 'READY', condition: finalCondition })
 					});
 				}
+
+				await tx.insert(auditLog).values({
+					id: uuidv4(),
+					userId: user.id,
+					action: 'CONFIRM_RETURN_LENDING',
+					tableName: 'lending',
+					recordId: id,
+					oldValue: JSON.stringify({ status: 'DIKIRIM_KEMBALI' }),
+					newValue: JSON.stringify({ status: 'KEMBALI' })
+				});
 			});
 
-			if (lendingData?.requestedBy) {
+			if (lendingData.requestedBy) {
 				await createNotification({
 					userId: lendingData.requestedBy,
 					title: 'Peminjaman Selesai',
-					body: `Barang untuk peminjaman unit ${lendingData.unit} telah dikembalikan dan diproses.`,
+					body: `Pengembalian alat untuk unit ${lendingData.unit} telah dikonfirmasi oleh gudang.`,
 					priority: 'MEDIUM',
 					action: {
 						type: 'LENDING_DETAIL',
@@ -503,10 +670,10 @@ export const actions: Actions = {
 				});
 			}
 
-			return { success: true, message: 'Barang telah dikembalikan' };
-		} catch (err: any) {
+			return { success: true, message: 'Pengembalian alat berhasil dikonfirmasi' };
+		} catch (err) {
 			console.error(err);
-			return fail(500, { message: err.message || 'Gagal mengembalikan barang' });
+			return fail(500, { message: 'Gagal konfirmasi pengembalian' });
 		}
 	},
 
@@ -518,7 +685,7 @@ export const actions: Actions = {
 		try {
 			await db.delete(lending).where(eq(lending.id, id));
 			return { success: true };
-		} catch (err) {
+		} catch {
 			return fail(500, { message: 'Gagal menghapus data' });
 		}
 	}

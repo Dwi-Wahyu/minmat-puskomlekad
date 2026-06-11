@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import { notification } from '$lib/server/db/schema';
 import { and, desc, eq, or } from 'drizzle-orm';
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { invalidateNotifCache } from '$lib/server/redis';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
@@ -43,6 +44,9 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 		.set({ read: true })
 		.where(and(eq(notification.id, id), whereClause));
 
+	// Invalidate cache
+	await invalidateNotifCache(locals.user.id);
+
 	return json({ success: true });
 };
 
@@ -54,13 +58,15 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
 	const userOrgId = locals.user.organization?.id;
 
 	if (clearAll) {
-		await db.delete(notification).where(
-			or(
-				eq(notification.userId, locals.user.id),
-				organizationId ? eq(notification.organizationId, organizationId) : undefined,
-				userOrgId ? eq(notification.organizationId, userOrgId) : undefined
-			)
-		);
+		const conditions = [eq(notification.userId, locals.user.id)];
+		if (organizationId) conditions.push(eq(notification.organizationId, organizationId));
+		if (userOrgId) conditions.push(eq(notification.organizationId, userOrgId));
+
+		await db.delete(notification).where(or(...conditions));
+
+		// Invalidate cache
+		await invalidateNotifCache(locals.user.id);
+
 		return json({ success: true });
 	}
 
@@ -70,9 +76,10 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
 		? or(eq(notification.userId, locals.user.id), eq(notification.organizationId, userOrgId))
 		: eq(notification.userId, locals.user.id);
 
-	await db
-		.delete(notification)
-		.where(and(eq(notification.id, id), whereClause));
+	await db.delete(notification).where(and(eq(notification.id, id), whereClause));
+
+	// Invalidate cache
+	await invalidateNotifCache(locals.user.id);
 
 	return json({ success: true });
 };

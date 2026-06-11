@@ -1,11 +1,12 @@
 import { db } from '$lib/server/db';
-import { session, auditLog } from '$lib/server/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { session, auditLog, account } from '$lib/server/db/schema';
+import { eq, and, desc, count } from 'drizzle-orm';
 import { error, redirect, fail } from '@sveltejs/kit';
 import { auth } from '$lib/server/auth';
 import type { PageServerLoad, Actions } from './$types';
+import { verifyPassword } from 'better-auth/crypto';
 
-export const load: PageServerLoad = async ({ locals, params }) => {
+export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const currentUser = locals.user;
 	const { org_slug } = params;
 
@@ -13,25 +14,79 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const userId = currentUser.id;
 
-	// Ambil sesi aktif untuk user ini
-	const activeSessions = await db.query.session.findMany({
-		where: eq(session.userId, userId),
-		orderBy: [desc(session.createdAt)]
+	// Check if using default password (role in lowercase)
+	const acc = await db.query.account.findFirst({
+		where: and(eq(account.userId, userId), eq(account.providerId, 'credential'))
 	});
 
-	// Ambil riwayat login dari audit_log
+	let isDefaultPassword = false;
+	if (acc?.password && currentUser.role) {
+		const usernameMapping: Record<string, string> = {
+			operatorPusatDanDaerah: 'operatorpd',
+			operatorBinmatDanBekharrah: 'operatorbb'
+		};
+		const defaultPassStr = usernameMapping[currentUser.role] || currentUser.role;
+		isDefaultPassword = await verifyPassword({ hash: acc.password, password: defaultPassStr });
+	}
+
+	// Pagination setup
+	const sessionPage = Number(url.searchParams.get('session_page')) || 1;
+	const historyPage = Number(url.searchParams.get('history_page')) || 1;
+	const limit = 5;
+
+	const sessionOffset = (sessionPage - 1) * limit;
+	const historyOffset = (historyPage - 1) * limit;
+
+	// Total counts for pagination
+	const [{ count: totalSessions }] = await db
+		.select({ count: count() })
+		.from(session)
+		.where(eq(session.userId, userId));
+
+	const [{ count: totalHistory }] = await db
+		.select({ count: count() })
+		.from(auditLog)
+		.where(and(eq(auditLog.userId, userId), eq(auditLog.action, 'LOGIN')));
+
+	// Ambil sesi aktif untuk user ini (Paginated)
+	const activeSessions = await db.query.session.findMany({
+		where: eq(session.userId, userId),
+		orderBy: [desc(session.createdAt)],
+		limit,
+		offset: sessionOffset
+	});
+
+	// Ambil riwayat login dari audit_log (Paginated)
 	const loginHistory = await db.query.auditLog.findMany({
 		where: and(eq(auditLog.userId, userId), eq(auditLog.action, 'LOGIN')),
 		orderBy: [desc(auditLog.createdAt)],
-		limit: 20
+		limit,
+		offset: historyOffset
 	});
 
 	return {
-		sessions: activeSessions,
-		loginHistory: loginHistory.map((log) => ({
-			...log,
-			data: log.newValue ? JSON.parse(log.newValue) : {}
-		})),
+		isDefaultPassword,
+		sessions: {
+			data: activeSessions,
+			pagination: {
+				page: sessionPage,
+				limit,
+				total: Number(totalSessions),
+				totalPages: Math.ceil(Number(totalSessions) / limit)
+			}
+		},
+		loginHistory: {
+			data: loginHistory.map((log) => ({
+				...log,
+				data: log.newValue ? JSON.parse(log.newValue) : {}
+			})),
+			pagination: {
+				page: historyPage,
+				limit,
+				total: Number(totalHistory),
+				totalPages: Math.ceil(Number(totalHistory) / limit)
+			}
+		},
 		orgSlug: org_slug
 	};
 };

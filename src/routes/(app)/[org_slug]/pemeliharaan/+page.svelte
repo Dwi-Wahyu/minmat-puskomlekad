@@ -1,11 +1,12 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { invalidateAll, goto } from '$app/navigation';
-	import { enhance } from '$app/forms';
+	import { enhance, applyAction } from '$app/forms';
 	import { Button } from '$lib/components/ui/button';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
+	import { toast } from '$lib/components/ui/toast';
 	import * as SearchableSelect from '$lib/components/ui/searchable-select';
 	import {
 		Wrench,
@@ -19,6 +20,7 @@
 		AlertCircle,
 		Filter
 	} from '@lucide/svelte';
+	import { maintenanceStatusLabel, maintenanceTypeLabel } from '@/enums/maintenance-enum';
 
 	let { data }: { data: PageData } = $props();
 
@@ -50,9 +52,13 @@
 	let deleteForm: HTMLFormElement | null = $state(null);
 
 	// Handler untuk membuka dialog hapus
-	function confirmDelete(id: string, formElement: HTMLFormElement) {
-		deleteForm = formElement;
-		showDeleteDialog = true;
+	function confirmDelete(id: string, event: Event) {
+		const target = event.currentTarget as HTMLElement;
+		const form = target.closest('form');
+		if (form) {
+			deleteForm = form;
+			showDeleteDialog = true;
+		}
 	}
 
 	// Handler untuk aksi hapus
@@ -115,11 +121,8 @@
 			<p class="text-muted-foreground">Kelola jadwal perawatan dan perbaikan peralatan matkomlek</p>
 		</div>
 
-		<Button
-			href="/{data.org_slug}/pemeliharaan/create"
-			class="gap-2 bg-primary text-primary-foreground shadow-sm transition-all hover:-translate-y-1 hover:bg-primary/90"
-		>
-			<Plus size={18} />
+		<Button href="/{data.org_slug}/pemeliharaan/create">
+			<Plus />
 			Tambah Pemeliharaan
 		</Button>
 	</div>
@@ -185,7 +188,6 @@
 				<Table.Row>
 					<Table.Head class="w-75">Peralatan</Table.Head>
 					<Table.Head>Tipe</Table.Head>
-					<Table.Head>Deskripsi</Table.Head>
 					<Table.Head>Jadwal</Table.Head>
 					<Table.Head>Status</Table.Head>
 					<Table.Head class="text-right">Aksi</Table.Head>
@@ -197,26 +199,21 @@
 						<Table.Cell>
 							<div class="flex max-w-75 items-center gap-3">
 								<div class="flex flex-col">
-									<span class="leading-tight font-bold text-wrap text-foreground"
-										>{item.equipment!?.item?.name ?? item.equipmentId}</span
-									>
+									<span class="leading-tight font-bold text-wrap text-foreground">
+										{item.equipment?.item?.name ?? item.equipmentId}
+									</span>
 									<span class="mt-1 font-mono text-[10px] text-muted-foreground"
-										>SN: {item.equipment!?.serialNumber || '-'}</span
+										>SN: {item.equipment?.serialNumber || '-'}</span
 									>
 								</div>
 							</div>
 						</Table.Cell>
 						<Table.Cell>
-							<Badge
-								variant="outline"
-								class="border-border bg-muted text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
-							>
-								{item.maintenanceType}
+							<Badge variant="outline">
+								{maintenanceTypeLabel[item.maintenanceType]}
 							</Badge>
 						</Table.Cell>
-						<Table.Cell class="max-w-xs">
-							<p class="truncate text-sm text-muted-foreground italic">"{item.description}"</p>
-						</Table.Cell>
+
 						<Table.Cell>
 							<div class="flex flex-col">
 								<span class="text-sm font-medium text-foreground"
@@ -226,9 +223,9 @@
 						</Table.Cell>
 						<Table.Cell>
 							{@const StatusIcon = getStatusIcon(item.status)}
-							<Badge variant="outline" class="gap-1.5 px-3 py-1 {getStatusColor(item.status)}">
-								<StatusIcon size={14} />
-								{item.status}
+							<Badge variant="outline" class={getStatusColor(item.status)}>
+								<StatusIcon />
+								{maintenanceStatusLabel[item.status]}
 							</Badge>
 						</Table.Cell>
 						<Table.Cell class="text-right">
@@ -246,15 +243,18 @@
 								<form
 									method="POST"
 									action="?/delete"
-									bind:this={deleteForm}
 									use:enhance={() => {
-										return async ({ result, update }) => {
+										return async ({ result }) => {
 											if (result?.type === 'success') {
+												toast.success('Berhasil', 'Pemeliharaan berhasil dihapus');
 												await invalidateAll();
 											} else if (result?.type === 'failure') {
-												alert((result?.data as any)?.message || 'Gagal menghapus');
+												toast.error(
+													'Gagal',
+													(result?.data as any)?.message || 'Gagal menghapus pemeliharaan'
+												);
 											}
-											await update();
+											await applyAction(result);
 										};
 									}}
 								>
@@ -263,7 +263,7 @@
 										size="icon"
 										variant="ghost"
 										type="button"
-										onclick={() => confirmDelete(item.id, deleteForm!)}
+										onclick={(e) => confirmDelete(item.id, e)}
 										class="h-8 w-8 text-muted-foreground hover:text-destructive"
 									>
 										<Trash2 size={16} />

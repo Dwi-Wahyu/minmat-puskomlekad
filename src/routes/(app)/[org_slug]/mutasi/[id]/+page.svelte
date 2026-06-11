@@ -69,9 +69,10 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
-			<Button variant="outline" size="icon" onclick={handleBack}>
-				<ArrowLeft class="size-4" />
+			<Button variant="outline" size="icon" onclick={handleBack} class="rounded-full shadow-sm">
+				<ArrowLeft size={18} />
 			</Button>
+
 			<div>
 				<h1 class="text-3xl font-bold tracking-tight text-foreground">Detail Mutasi</h1>
 				<p class="text-sm text-muted-foreground">Detail pencatatan pergerakan sistem.</p>
@@ -126,24 +127,6 @@
 
 					<!-- Details Grid -->
 					<div class="grid grid-cols-1 gap-6 pt-2 sm:grid-cols-2">
-						{#if movement.conditionAtArrival && movement.eventType === 'TRANSFER_IN'}
-							<div
-								class="col-span-1 rounded-lg border px-4 py-3 text-sm sm:col-span-2
-								{movement.conditionAtArrival === 'BAIK'
-									? 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
-									: movement.conditionAtArrival === 'RUSAK_RINGAN'
-										? 'border-yellow-200 bg-yellow-50 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
-										: 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300'}"
-							>
-								<span class="font-medium">Kondisi saat tiba:</span>
-								{movement.conditionAtArrival === 'BAIK'
-									? '✅ Baik'
-									: movement.conditionAtArrival === 'RUSAK_RINGAN'
-										? '⚠️ Rusak Ringan'
-										: '🔴 Rusak Berat'}
-							</div>
-						{/if}
-
 						<div class="space-y-1">
 							<Label>Jenis Transaksi</Label>
 

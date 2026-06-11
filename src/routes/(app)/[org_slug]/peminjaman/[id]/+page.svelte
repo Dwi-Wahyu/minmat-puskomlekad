@@ -7,6 +7,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
+	import * as Select from '$lib/components/ui/select';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Label } from '$lib/components/ui/label';
 	import { Separator } from '$lib/components/ui/separator';
@@ -23,22 +24,32 @@
 		History,
 		User,
 		AlertCircle,
-		PlayCircle,
 		RotateCcw,
 		Download,
-		FileText
+		FileText,
+		Truck,
+		PackageCheck,
+		Send,
+		ClipboardCheck,
+		AlertTriangle,
+		Warehouse
 	} from '@lucide/svelte';
+	import { equipmentStatusLabel, equipmentTypeLabel } from '@/enums/equipment-enum';
+	import { lendingPurposeLabel } from '@/enums/lending-enum';
+	import AlertDescription from '@/components/ui/alert/alert-description.svelte';
+	import { Alert, AlertTitle } from '@/components/ui/alert';
 
 	let { data }: { data: PageData } = $props();
 
-	const assets = $derived(data.lending.items.filter((item) => item.equipment?.item?.type === 'ASSET'));
-	const consumables = $derived(
-		data.lending.items.filter((item) => item.equipment?.item?.type === 'CONSUMABLE')
+	const assets = $derived(
+		data.lending.items.filter((item) => item.equipment?.item?.type === 'ASSET')
 	);
 
 	// State Dialog
 	let notificationOpen = $state(false);
 	let notificationType = $state<'success' | 'error' | 'info'>('success');
+	let notificationTitle = $state('');
+
 	let notificationMsg = $state('');
 
 	let approveDialogOpen = $state(false);
@@ -52,14 +63,27 @@
 	let rejectLoading = $state(false);
 	let rejectReason = $state('');
 
-	let startDialogOpen = $state(false);
-	let startLoading = $state(false);
+	// let startDialogOpen = $state(false);
+	// let startLoading = $state(false);
 
-	let returnDialogOpen = $state(false);
-	let returnLoading = $state(false);
+	// let returnDialogOpen = $state(false);
+	// let returnLoading = $state(false);
 
 	let deleteDialogOpen = $state(false);
 	let deleteLoading = $state(false);
+
+	let dispatchDialogOpen = $state(false);
+	let dispatchLoading = $state(false);
+	let confirmReceiveDialogOpen = $state(false);
+	let confirmReceiveLoading = $state(false);
+	let confirmReceiveNotes = $state('');
+	let sendBackDialogOpen = $state(false);
+	let sendBackLoading = $state(false);
+	let sendBackNotes = $state('');
+	let confirmReturnDialogOpen = $state(false);
+	let confirmReturnLoading = $state(false);
+	let confirmReturnNotes = $state('');
+	let conditionOverrides = $state<{ equipmentId: string; condition: string }[]>([]);
 
 	const statusConfig = {
 		DRAFT: {
@@ -82,10 +106,20 @@
 			color: 'bg-secondary/10 text-secondary border-secondary/20',
 			icon: AlertCircle
 		},
+		DALAM_PENGIRIMAN: {
+			label: 'Dalam Pengiriman',
+			color: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+			icon: Truck
+		},
 		DIPINJAM: {
 			label: 'Sedang Dipinjam',
 			color: 'bg-primary/10 text-primary border-primary/20',
 			icon: Package
+		},
+		DIKIRIM_KEMBALI: {
+			label: 'Dikirim Kembali',
+			color: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+			icon: Send
 		},
 		KEMBALI: {
 			label: 'Sudah Kembali',
@@ -103,11 +137,13 @@
 			label: data.lending.status === 'PERINTAH_LANGSUNG' ? 'Perintah' : 'Disetujui',
 			icon: data.lending.status === 'PERINTAH_LANGSUNG' ? AlertCircle : CheckCircle2
 		},
-		{ status: 'DIPINJAM', label: 'Dipinjam', icon: Package },
+		{ status: 'DALAM_PENGIRIMAN', label: 'Dikirim', icon: Truck },
+		{ status: 'DIPINJAM', label: 'Diterima', icon: Package },
+		{ status: 'DIKIRIM_KEMBALI', label: 'Dikirim Kembali', icon: Send },
 		{ status: 'KEMBALI', label: 'Kembali', icon: RotateCcw }
 	]);
 
-	function formatDate(date: any) {
+	function formatDate(date: Date) {
 		if (!date) return '-';
 		return new Date(date).toLocaleDateString('id-ID', {
 			day: 'numeric',
@@ -123,7 +159,12 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
-			<Button variant="outline" size="icon" href="/{page.params.org_slug}/peminjaman">
+			<Button
+				variant="outline"
+				class="border"
+				size="icon"
+				href="/{page.params.org_slug}/peminjaman"
+			>
 				<ChevronLeft class="size-4" />
 			</Button>
 			<div>
@@ -149,16 +190,6 @@
 				</Button>
 			{/if}
 
-			{#if data.canOverride}
-				<Button
-					variant="outline"
-					class="border-secondary/20 text-secondary hover:bg-secondary/10"
-					onclick={() => (overrideDialogOpen = true)}
-				>
-					Perintah Langsung
-				</Button>
-			{/if}
-
 			{#if data.canApprove}
 				<Button
 					variant="outline"
@@ -175,23 +206,30 @@
 				</Button>
 			{/if}
 
-			{#if data.canExecute}
-				<Button
-					class="bg-primary text-primary-foreground hover:bg-primary/90"
-					onclick={() => (startDialogOpen = true)}
-				>
-					<PlayCircle class="mr-2 size-4" />
-					Barang Diambil
+			{#if data.canDispatch}
+				<Button onclick={() => (dispatchDialogOpen = true)} class="gap-2">
+					<Truck class="h-4 w-4" /> Keluarkan Alat dari Gudang
 				</Button>
 			{/if}
 
-			{#if data.canReturn}
+			{#if data.canConfirmReceive}
+				<Button href={`/${data.orgSlug}/peminjaman/${data.lending.id}/terima`} class="gap-2">
+					<PackageCheck class="h-4 w-4" /> Konfirmasi Penerimaan
+				</Button>
+			{/if}
+
+			{#if data.canSendBack}
+				<Button onclick={() => (sendBackDialogOpen = true)} variant="outline" class="gap-2">
+					<Send class="h-4 w-4" /> Kirim Kembali
+				</Button>
+			{/if}
+
+			{#if data.canConfirmReturn}
 				<Button
-					class="bg-secondary text-secondary-foreground hover:bg-secondary/90"
-					onclick={() => (returnDialogOpen = true)}
+					href={`/${data.orgSlug}/peminjaman/${data.lending.id}/konfirmasi-kembali`}
+					class="gap-2"
 				>
-					<RotateCcw class="mr-2 size-4" />
-					Kembalikan Barang
+					<ClipboardCheck class="h-4 w-4" /> Konfirmasi Penerimaan Kembali
 				</Button>
 			{/if}
 		</div>
@@ -199,9 +237,17 @@
 
 	<!-- Stepper -->
 	<div class="mb-2">
-		<div class="grid grid-cols-4 gap-2 rounded-xl border bg-card p-4 shadow-sm md:p-6">
+		<div class="grid grid-cols-6 gap-2 rounded-xl border bg-card p-4 shadow-sm md:p-6">
 			{#each steps as step, i (step.status)}
-				{@const statusOrder = ['DRAFT', 'APPROVED', 'PERINTAH_LANGSUNG', 'DIPINJAM', 'KEMBALI']}
+				{@const statusOrder = [
+					'DRAFT',
+					'APPROVED',
+					'PERINTAH_LANGSUNG',
+					'DALAM_PENGIRIMAN',
+					'DIPINJAM',
+					'DIKIRIM_KEMBALI',
+					'KEMBALI'
+				]}
 				{@const currentIndex = statusOrder.indexOf(data.lending.status!)}
 				{@const stepIndex = statusOrder.indexOf(step.status)}
 				{@const isCompleted =
@@ -269,32 +315,38 @@
 					<Card.Content class="space-y-4">
 						<div class="grid grid-cols-2 gap-4">
 							<div class="space-y-1">
-								<Label class="text-xs text-muted-foreground uppercase">Unit Peminjam</Label>
-								<p class="font-medium">{data.lending.unit}</p>
+								<Label>Unit Peminjam</Label>
+								<p class="font-medium text-muted-foreground">{data.lending.unit}</p>
 							</div>
 							<div class="space-y-1">
-								<Label class="text-xs text-muted-foreground uppercase">Tujuan</Label>
-								<p><Badge variant="secondary">{data.lending.purpose}</Badge></p>
+								<Label>Tujuan</Label>
+								<Badge variant="secondary" class="mt-1"
+									>{lendingPurposeLabel[data.lending.purpose]}</Badge
+								>
 							</div>
 							<div class="space-y-1">
-								<Label class="text-xs text-muted-foreground uppercase">Rencana Mulai</Label>
-								<p class="text-sm">{formatDate(data.lending.startDate)}</p>
+								<Label>Rencana Mulai</Label>
+								<p class="text-sm text-muted-foreground">{formatDate(data.lending.startDate)}</p>
 							</div>
-							<div class="space-y-1">
-								<Label class="text-xs text-muted-foreground uppercase">Rencana Selesai</Label>
-								<p class="text-sm">{formatDate(data.lending.endDate)}</p>
-							</div>
+							{#if data.lending.endDate}
+								<div class="space-y-1">
+									<Label>Rencana Selesai</Label>
+									<p class="text-sm text-muted-foreground">{formatDate(data.lending.endDate)}</p>
+								</div>
+							{/if}
 						</div>
 						<Separator />
 						<div class="space-y-1">
-							<Label class="text-xs text-muted-foreground uppercase">Satuan Pemilik Aset</Label>
-							<p class="text-sm font-semibold">{data.lending.organization?.name}</p>
+							<Label>Satuan Pemilik Aset</Label>
+							<p class="text-sm font-semibold text-muted-foreground">
+								{data.lending.organization?.name}
+							</p>
 						</div>
 
 						{#if data.lending.attachmentPath}
 							<Separator />
 							<div class="space-y-2">
-								<Label class="text-xs text-muted-foreground uppercase">Dokumen Pendukung</Label>
+								<Label>Dokumen Pendukung</Label>
 								<div class="flex items-center justify-between gap-3">
 									<div class="flex items-center gap-3 overflow-hidden">
 										<div class="rounded bg-background p-2 text-primary shadow-sm">
@@ -328,47 +380,49 @@
 						<Card.Title class="text-lg">Pemohon & Persetujuan</Card.Title>
 					</Card.Header>
 					<Card.Content class="space-y-4">
+						{#if data.lending.status === 'REJECTED'}
+							<Alert variant="destructive">
+								<AlertCircle />
+
+								<AlertTitle>Alasan Penolakan</AlertTitle>
+								<AlertDescription>
+									{data.lending.rejectedReason}
+								</AlertDescription>
+							</Alert>
+						{/if}
+
+						{#if data.lending.status === 'PERINTAH_LANGSUNG'}
+							<Alert variant="destructive">
+								<AlertCircle />
+
+								<AlertTitle>Perintah Langsung</AlertTitle>
+								<AlertDescription>
+									{data.lending.overrideReason}. Oleh: {data.lending.overrideByUser?.name ||
+										'Pimpinan'}
+								</AlertDescription>
+							</Alert>
+						{/if}
+
 						<div class="flex items-center gap-3">
 							<div class="rounded-full bg-muted p-2">
 								<User class="size-5" />
 							</div>
 							<div>
-								<Label class="text-xs text-muted-foreground uppercase">Diajukan Oleh</Label>
-								<p class="text-sm font-medium">{data.lending.requestedByUser?.name}</p>
+								<Label>Diajukan Oleh</Label>
+								<p class="text-sm text-muted-foreground">
+									{data.lending.requestedByUser?.name}
+								</p>
 							</div>
 						</div>
 
-						{#if data.lending.status === 'REJECTED'}
-							<div class="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
-								<div class="mb-1 flex items-center gap-2 font-bold text-destructive">
-									<AlertCircle class="size-4" />
-									Alasan Penolakan
-								</div>
-								<p class="text-sm text-destructive/80">{data.lending.rejectedReason}</p>
-							</div>
-						{/if}
-
-						{#if data.lending.status === 'PERINTAH_LANGSUNG'}
-							<div class="rounded-lg border border-secondary/20 bg-secondary/10 p-4">
-								<div class="mb-1 flex items-center gap-2 font-bold text-secondary">
-									<AlertCircle class="size-4" />
-									Perintah Langsung
-								</div>
-								<p class="text-sm text-secondary/80">{data.lending.overrideReason}</p>
-								<p class="mt-2 text-xs font-medium text-secondary italic">
-									Oleh: {data.lending.overrideByUser?.name || 'Pimpinan'}
-								</p>
-							</div>
-						{/if}
-
 						{#if data.lending.approvedByUser}
-							<div class="flex items-center gap-3 border-t pt-2">
+							<div class="flex items-center gap-3 pt-2">
 								<div class="rounded-full bg-primary/10 p-2 text-primary">
 									<CheckCircle2 class="size-5" />
 								</div>
 								<div>
-									<Label class="text-xs text-muted-foreground uppercase">Diproses Oleh</Label>
-									<p class="text-sm font-medium">{data.lending.approvedByUser?.name}</p>
+									<Label>Diproses Oleh</Label>
+									<p class="text-sm text-muted-foreground">{data.lending.approvedByUser?.name}</p>
 								</div>
 							</div>
 						{/if}
@@ -380,9 +434,6 @@
 		<TabsContent value="items" class="mt-6 space-y-6">
 			{#if assets.length > 0}
 				<Card.Root class="py-0">
-					<Card.Header class="px-6 pt-6 pb-2">
-						<Card.Title class="text-lg font-bold">Daftar Alat (Asset)</Card.Title>
-					</Card.Header>
 					<Table.Root>
 						<Table.Header>
 							<Table.Row>
@@ -399,12 +450,18 @@
 									<Table.Cell class="font-medium">{item.equipment?.item?.name || '-'}</Table.Cell>
 									<Table.Cell>
 										{#if item.equipment?.serialNumber}
-											<code class="rounded bg-muted px-1 text-xs">{item.equipment.serialNumber}</code>
+											<code class="rounded bg-muted px-1 text-xs"
+												>{item.equipment.serialNumber}</code
+											>
 										{:else}
 											-
 										{/if}
 									</Table.Cell>
-									<Table.Cell>{item.equipment?.item?.equipmentType || 'ALAT'}</Table.Cell>
+									<Table.Cell
+										>{equipmentTypeLabel[
+											item.equipment?.item?.equipmentType ?? 'ALKOMLEK'
+										]}</Table.Cell
+									>
 									<Table.Cell>{item.equipment?.brand || '-'}</Table.Cell>
 									<Table.Cell>{item.equipment?.warehouse?.name || '-'}</Table.Cell>
 								</Table.Row>
@@ -414,33 +471,11 @@
 				</Card.Root>
 			{/if}
 
-			{#if consumables.length > 0}
-				<Card.Root class="py-0">
-					<Card.Header class="px-6 pt-6 pb-2">
-						<Card.Title class="text-lg font-bold">Daftar Bahan (Consumable)</Card.Title>
-					</Card.Header>
-					<Table.Root>
-						<Table.Header>
-							<Table.Row>
-								<Table.Head>Nama Bahan</Table.Head>
-								<Table.Head class="text-right">Stock yang Ingin Dipinjam (Qty)</Table.Head>
-							</Table.Row>
-						</Table.Header>
-						<Table.Body>
-							{#each consumables as item (item.id)}
-								<Table.Row>
-									<Table.Cell class="font-medium">{item.equipment?.item?.name || '-'}</Table.Cell>
-									<Table.Cell class="text-right font-bold">{item.qty}</Table.Cell>
-								</Table.Row>
-							{/each}
-						</Table.Body>
-					</Table.Root>
-				</Card.Root>
-			{/if}
-
-			{#if assets.length === 0 && consumables.length === 0}
-				<div class="flex flex-col items-center justify-center p-8 text-center text-muted-foreground border rounded-lg bg-card">
-					<Package class="size-8 mb-2" />
+			{#if assets.length === 0}
+				<div
+					class="flex flex-col items-center justify-center rounded-lg border bg-card p-8 text-center text-muted-foreground"
+				>
+					<Package class="mb-2 size-8" />
 					<p>Tidak ada daftar inventaris dalam peminjaman ini</p>
 				</div>
 			{/if}
@@ -453,20 +488,27 @@
 						{#each data.lending.approvals as log (log.id)}
 							{@const noteText = log.note || ''}
 							{@const isOverride = noteText.startsWith('[COMMAND OVERRIDE]')}
+							{@const isDispatch = noteText.startsWith('[DALAM_PENGIRIMAN]')}
 							{@const isDipinjam = noteText.startsWith('[DIPINJAM]')}
-							{@const isDikembalikan = noteText.startsWith('[DIKEMBALIKAN]')}
+							{@const isDikirimKembali = noteText.startsWith('[DIKIRIM_KEMBALI]')}
+							{@const isKembali = noteText.startsWith('[KEMBALI]')}
+
 							{@const displayNote = isOverride
 								? noteText.replace('[COMMAND OVERRIDE] ', '')
-								: isDipinjam
-									? noteText.replace('[DIPINJAM] ', '')
-									: isDikembalikan
-										? noteText.replace('[DIKEMBALIKAN] ', '')
-										: noteText}
+								: isDispatch
+									? noteText.replace('[DALAM_PENGIRIMAN] ', '')
+									: isDipinjam
+										? noteText.replace('[DIPINJAM] ', '')
+										: isDikirimKembali
+											? noteText.replace('[DIKIRIM_KEMBALI] ', '')
+											: isKembali
+												? noteText.replace('[KEMBALI] ', '')
+												: noteText}
 
 							<div class="flex gap-4">
 								<div class="flex flex-col items-center">
 									<div
-										class={isDipinjam || isDikembalikan
+										class={isDispatch || isDipinjam || isDikirimKembali || isKembali
 											? 'text-primary'
 											: isOverride
 												? 'text-secondary'
@@ -474,9 +516,13 @@
 													? 'text-success'
 													: 'text-destructive'}
 									>
-										{#if isDipinjam}
-											<Package class="size-5" />
-										{:else if isDikembalikan}
+										{#if isDispatch}
+											<Truck class="size-5" />
+										{:else if isDipinjam}
+											<PackageCheck class="size-5" />
+										{:else if isDikirimKembali}
+											<Send class="size-5" />
+										{:else if isKembali}
 											<RotateCcw class="size-5" />
 										{:else if isOverride}
 											<AlertCircle class="size-5" />
@@ -488,10 +534,14 @@
 								</div>
 								<div class="space-y-1 pb-6">
 									<p class="text-sm font-bold">
-										{#if isDipinjam}
-											Barang Dipinjam
-										{:else if isDikembalikan}
-											Barang Dikembalikan
+										{#if isDispatch}
+											Alat Dikeluarkan dari Gudang
+										{:else if isDipinjam}
+											Alat Diterima Peminjam
+										{:else if isDikirimKembali}
+											Alat Dikirim Kembali
+										{:else if isKembali}
+											Alat Kembali ke Gudang
 										{:else if isOverride}
 											Perintah Langsung (Override)
 										{:else}
@@ -531,13 +581,13 @@
 			overrideLoading = false;
 			overrideDialogOpen = false;
 			if (result?.type === 'success') {
-				notificationMsg = ((result?.data as any)?.message as string) || '';
+				notificationMsg = (result?.data?.message as string) || '';
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
 			} else if (result?.type === 'failure') {
 				notificationMsg =
-					(result?.data as any)?.message || 'Gagal melakukan override perintah langsung';
+					(result?.data?.message as string) || 'Gagal melakukan override perintah langsung';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -559,12 +609,12 @@
 			approveLoading = false;
 			approveDialogOpen = false;
 			if (result?.type === 'success') {
-				notificationMsg = ((result?.data as any)?.message as string) || '';
+				notificationMsg = (result?.data?.message as string) || '';
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
 			} else if (result?.type === 'failure') {
-				notificationMsg = (result?.data as any)?.message || 'Gagal menyetujui peminjaman';
+				notificationMsg = (result?.data?.message as string) || 'Gagal menyetujui peminjaman';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -585,12 +635,12 @@
 			rejectLoading = false;
 			rejectDialogOpen = false;
 			if (result?.type === 'success') {
-				notificationMsg = ((result?.data as any)?.message as string) || '';
+				notificationMsg = (result?.data?.message as string) || '';
 				notificationType = 'success';
 				notificationOpen = true;
 				invalidateAll();
 			} else if (result?.type === 'failure') {
-				notificationMsg = (result?.data as any)?.message || 'Gagal menolak peminjaman';
+				notificationMsg = (result?.data?.message as string) || 'Gagal menolak peminjaman';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -600,58 +650,6 @@
 >
 	<input type="hidden" name="id" value={data.lending.id} />
 	<input type="hidden" name="reason" value={rejectReason} />
-</form>
-
-<form
-	id="start-form"
-	method="POST"
-	action="?/startLending"
-	use:enhance={() => {
-		startLoading = true;
-		return ({ result }) => {
-			startLoading = false;
-			startDialogOpen = false;
-			if (result?.type === 'success') {
-				notificationMsg = ((result?.data as any)?.message as string) || '';
-				notificationType = 'success';
-				notificationOpen = true;
-				invalidateAll();
-			} else if (result?.type === 'failure') {
-				notificationMsg = (result?.data as any)?.message || 'Gagal memproses pengambilan barang';
-				notificationType = 'error';
-				notificationOpen = true;
-			}
-		};
-	}}
-	hidden
->
-	<input type="hidden" name="id" value={data.lending.id} />
-</form>
-
-<form
-	id="return-form"
-	method="POST"
-	action="?/returnLending"
-	use:enhance={() => {
-		returnLoading = true;
-		return ({ result }) => {
-			returnLoading = false;
-			returnDialogOpen = false;
-			if (result?.type === 'success') {
-				notificationMsg = ((result?.data as any)?.message as string) || '';
-				notificationType = 'success';
-				notificationOpen = true;
-				invalidateAll();
-			} else if (result?.type === 'failure') {
-				notificationMsg = (result?.data as any)?.message || 'Gagal memproses pengembalian barang';
-				notificationType = 'error';
-				notificationOpen = true;
-			}
-		};
-	}}
-	hidden
->
-	<input type="hidden" name="id" value={data.lending.id} />
 </form>
 
 <!-- DIALOGS -->
@@ -672,7 +670,7 @@
 					window.location.href = `/${page.params.org_slug}/peminjaman`;
 				}, 1500);
 			} else if (result?.type === 'failure') {
-				notificationMsg = (result?.data as any)?.message || 'Gagal menghapus pengajuan';
+				notificationMsg = (result?.data?.message as string) || 'Gagal menghapus pengajuan';
 				notificationType = 'error';
 				notificationOpen = true;
 			}
@@ -738,36 +736,224 @@
 		(document.getElementById('reject-form') as HTMLFormElement)?.requestSubmit();
 	}}
 >
-	<div class="mt-4">
-		<Label for="reason">Alasan Penolakan</Label>
+	<Textarea
+		bind:value={rejectReason}
+		placeholder="Contoh: Alat sedang dibutuhkan untuk operasi lain..."
+		required
+	/>
+</ConfirmationDialog>
+
+<ConfirmationDialog
+	bind:open={dispatchDialogOpen}
+	title="Keluarkan Alat dari Gudang"
+	description="Alat-alat berikut akan dikeluarkan dari gudang asal masing-masing dan berstatus {equipmentStatusLabel[
+		'TRANSIT'
+	]}. Gudang asal ditentukan otomatis dari data alat."
+	loading={dispatchLoading}
+	onAction={async () => {
+		dispatchLoading = true;
+		const fd = new FormData();
+		fd.append('id', data.lending.id);
+		const res = await fetch(`?/dispatch`, { method: 'POST', body: fd });
+		const result = await res.json();
+		console.log(result);
+
+		dispatchLoading = false;
+		dispatchDialogOpen = false;
+		notificationMsg = result.data?.message || 'Berhasil';
+		notificationType = res.ok ? 'success' : 'error';
+		notificationTitle = res.ok ? 'Berhasil!' : 'Gagal!';
+		notificationOpen = true;
+		if (res.ok) await invalidateAll();
+	}}
+>
+	<div class="mt-3 space-y-2">
+		{#each data.lending.items as lendingItem (lendingItem.id)}
+			<div class="rounded border px-3 py-2 text-sm">
+				<h1 class="font-medium">{lendingItem.equipment?.item?.name ?? '-'}</h1>
+
+				<div class="flex items-center gap-1 text-muted-foreground">
+					<Warehouse size={10} />
+
+					{lendingItem.equipment?.warehouse?.name ?? 'Tidak diketahui'}
+				</div>
+			</div>
+		{/each}
+	</div>
+</ConfirmationDialog>
+
+<ConfirmationDialog
+	bind:open={confirmReceiveDialogOpen}
+	title="Konfirmasi Penerimaan Alat"
+	description="Konfirmasi bahwa semua alat di bawah ini telah diterima dalam kondisi baik."
+	loading={confirmReceiveLoading}
+	onAction={async () => {
+		confirmReceiveLoading = true;
+		const fd = new FormData();
+		fd.append('id', data.lending.id);
+		fd.append('notes', confirmReceiveNotes);
+		const res = await fetch(`?/confirmReceive`, { method: 'POST', body: fd });
+		const result = await res.json();
+		confirmReceiveLoading = false;
+		confirmReceiveDialogOpen = false;
+		notificationMsg = result.data?.message || 'Berhasil';
+		notificationType = res.ok ? 'success' : 'error';
+		notificationTitle = res.ok ? 'Berhasil!' : 'Gagal!';
+		notificationOpen = true;
+		if (res.ok) await invalidateAll();
+	}}
+>
+	<div class="mt-3 space-y-3 text-left">
+		{#each data.lending.items as lendingItem (lendingItem.id)}
+			<div class="flex items-center gap-2 rounded-xl border bg-muted/30 px-4 py-3 text-sm">
+				<PackageCheck class="h-4 w-4 shrink-0 text-success" />
+				<span class="font-semibold">{lendingItem.equipment?.item?.name ?? '-'}</span>
+				<Badge variant="outline" class="ml-auto font-mono text-[10px]"
+					>SN: {lendingItem.equipment?.serialNumber ?? '-'}</Badge
+				>
+			</div>
+		{/each}
+		<div class="space-y-2">
+			<Label for="confirm-receive-notes">Catatan Penerimaan (Opsional)</Label>
+			<Textarea
+				id="confirm-receive-notes"
+				bind:value={confirmReceiveNotes}
+				class="w-full"
+				placeholder="Catatan kondisi saat penerimaan..."
+			/>
+		</div>
+	</div>
+</ConfirmationDialog>
+
+<ConfirmationDialog
+	bind:open={sendBackDialogOpen}
+	title="Kirim Kembali"
+	description="Tandai bahwa semua alat telah dikirimkan kembali. Operator gudang akan mengkonfirmasi penerimaan."
+	loading={sendBackLoading}
+	onAction={async () => {
+		sendBackLoading = true;
+		const fd = new FormData();
+		fd.append('id', data.lending.id);
+		fd.append('notes', sendBackNotes);
+		const res = await fetch(`?/sendBack`, { method: 'POST', body: fd });
+		const result = await res.json();
+
+		// SvelteKit action fetch result parsing
+		let message = 'Berhasil';
+		try {
+			const actionData = JSON.parse(result.data);
+			// Data usually looks like ["success", {"message": "..."}] or similar depending on version/config
+			message = actionData[1]?.message || actionData?.message || 'Berhasil';
+		} catch (e) {
+			console.error('Error parsing action data:', e);
+		}
+
+		sendBackLoading = false;
+		sendBackDialogOpen = false;
+		notificationMsg = message;
+		notificationType = res.ok ? 'success' : 'error';
+		notificationTitle = res.ok ? 'Berhasil!' : 'Gagal!';
+		notificationOpen = true;
+		if (res.ok) await invalidateAll();
+	}}
+>
+	<div class="mt-3 space-y-2 text-left">
+		<Label for="send-back-notes">Catatan Pengiriman (Opsional)</Label>
 		<Textarea
-			bind:value={rejectReason}
-			placeholder="Contoh: Alat sedang dibutuhkan untuk operasi lain..."
-			class="mt-2"
-			required
+			id="send-back-notes"
+			bind:value={sendBackNotes}
+			class="w-full"
+			placeholder="Misal: semua alat kondisi baik, dikirim via kurir internal..."
 		/>
 	</div>
 </ConfirmationDialog>
 
 <ConfirmationDialog
-	bind:open={startDialogOpen}
-	loading={startLoading}
-	type="info"
-	title="Konfirmasi Pengambilan"
-	description="Konfirmasi bahwa barang telah diserahterimakan kepada unit peminjam."
-	actionLabel="Konfirmasi"
-	onAction={() => (document.getElementById('start-form') as HTMLFormElement)?.requestSubmit()}
-/>
-
-<ConfirmationDialog
-	bind:open={returnDialogOpen}
-	loading={returnLoading}
-	type="success"
-	title="Konfirmasi Pengembalian"
-	description="Pastikan semua alat telah diperiksa kondisinya sebelum dikembalikan ke gudang."
-	actionLabel="Selesai"
-	onAction={() => (document.getElementById('return-form') as HTMLFormElement)?.requestSubmit()}
-/>
+	bind:open={confirmReturnDialogOpen}
+	title="Konfirmasi Penerimaan Kembali"
+	description="Periksa kondisi setiap alat. Tandai alat yang kondisinya berubah setelah pemakaian."
+	loading={confirmReturnLoading}
+	onAction={async () => {
+		confirmReturnLoading = true;
+		const fd = new FormData();
+		fd.append('id', data.lending.id);
+		fd.append('notes', confirmReturnNotes);
+		fd.append('conditionOverrides', JSON.stringify(conditionOverrides));
+		const res = await fetch(`?/confirmReturn`, { method: 'POST', body: fd });
+		const result = await res.json();
+		confirmReturnLoading = false;
+		confirmReturnDialogOpen = false;
+		notificationMsg = result.data?.message || 'Berhasil';
+		notificationType = res.ok ? 'success' : 'error';
+		notificationTitle = res.ok ? 'Berhasil!' : 'Gagal!';
+		notificationOpen = true;
+		if (res.ok) await invalidateAll();
+	}}
+>
+	<div class="mt-3 space-y-3 text-left">
+		{#each data.lending.items as lendingItem (lendingItem.id)}
+			{@const eqId = lendingItem.equipment?.id ?? ''}
+			{@const currentOverride = conditionOverrides.find((o) => o.equipmentId === eqId)}
+			{@const displayCondition =
+				currentOverride?.condition ?? lendingItem.equipment?.condition ?? 'BAIK'}
+			<div class="space-y-2 rounded-xl border bg-muted/30 p-4 text-sm">
+				<div class="flex items-center justify-between">
+					<span class="font-semibold">{lendingItem.equipment?.item?.name ?? '-'}</span>
+					<Badge variant="outline" class="font-mono text-[10px]"
+						>SN: {lendingItem.equipment?.serialNumber ?? '-'}</Badge
+					>
+				</div>
+				<div class="flex items-center justify-between gap-4">
+					<div class="flex items-center gap-2">
+						{#if displayCondition !== 'BAIK'}
+							<AlertTriangle class="h-4 w-4 shrink-0 text-amber-500" />
+						{/if}
+						<Label for="condition-{eqId}" class="text-xs text-muted-foreground"
+							>Kondisi kembali:</Label
+						>
+					</div>
+					<div class="w-40">
+						<Select.Root
+							type="single"
+							value={displayCondition}
+							onValueChange={(val) => {
+								conditionOverrides = conditionOverrides.filter((o) => o.equipmentId !== eqId);
+								if (val !== lendingItem.equipment?.condition) {
+									conditionOverrides = [
+										...conditionOverrides,
+										{ equipmentId: eqId, condition: val }
+									];
+								}
+							}}
+						>
+							<Select.Trigger class="h-8 text-xs">
+								{displayCondition === 'BAIK'
+									? 'Baik'
+									: displayCondition === 'RUSAK_RINGAN'
+										? 'Rusak Ringan'
+										: 'Rusak Berat'}
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item value="BAIK">Baik</Select.Item>
+								<Select.Item value="RUSAK_RINGAN">Rusak Ringan</Select.Item>
+								<Select.Item value="RUSAK_BERAT">Rusak Berat</Select.Item>
+							</Select.Content>
+						</Select.Root>
+					</div>
+				</div>
+			</div>
+		{/each}
+		<div class="space-y-2">
+			<Label for="confirm-return-notes">Catatan Penerimaan (Opsional)</Label>
+			<Textarea
+				id="confirm-return-notes"
+				bind:value={confirmReturnNotes}
+				class="w-full"
+				placeholder="Catatan tambahan mengenai kondisi pengembalian..."
+			/>
+		</div>
+	</div>
+</ConfirmationDialog>
 
 <NotificationDialog
 	bind:open={notificationOpen}

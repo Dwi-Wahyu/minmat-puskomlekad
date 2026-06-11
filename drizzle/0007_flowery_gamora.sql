@@ -1,0 +1,2 @@
+ALTER TABLE `distribution_consumable` ADD `from_warehouse_id` varchar(36);--> statement-breakpoint
+ALTER TABLE `distribution_consumable` ADD CONSTRAINT `distribution_consumable_from_warehouse_id_warehouse_id_fk` FOREIGN KEY (`from_warehouse_id`) REFERENCES `warehouse`(`id`) ON DELETE no action ON UPDATE no action;

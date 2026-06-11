@@ -98,7 +98,7 @@
 						</DropdownMenu.Group>
 						<DropdownMenu.Separator />
 						<DropdownMenu.Item onclick={() => (isLogoutDialogOpen = true)} variant="destructive">
-							<LogOut class="mr-2 h-4 w-4" />
+							<LogOut />
 							<span>Keluar</span>
 						</DropdownMenu.Item>
 					</DropdownMenu.Content>
@@ -130,19 +130,21 @@
 />
 
 <Dialog.Root bind:open={onboardingOpen}>
-	<Dialog.Content class="sm:max-w-106.25">
-		<Dialog.Header>
-			<div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+	<Dialog.Content class="sm:max-w-106.25" showCloseButton={false}>
+		<Dialog.Header class="flex flex-col justify-center text-center">
+			<div
+				class="mb-4 flex h-12 w-12 items-center justify-center self-center rounded-full bg-primary/10"
+			>
 				<BookText class="h-6 w-6 text-primary" />
 			</div>
-			<Dialog.Title class="text-xl">Selamat Datang!</Dialog.Title>
-			<Dialog.Description class="pt-2 text-base">
+			<Dialog.Title>Selamat Datang!</Dialog.Title>
+			<Dialog.Description>
 				Halo <strong>{data.user.name}</strong>, selamat datang di sistem MINMAT. Untuk memudahkan
 				Anda memahami fitur-fitur yang ada, kami menyarankan Anda membaca Panduan Penggunaan (Guide
 				Book) terlebih dahulu.
 			</Dialog.Description>
 		</Dialog.Header>
-		<Dialog.Footer class="mt-6 flex flex-col gap-2 sm:flex-row">
+		<Dialog.Footer class="flex flex-col gap-2 sm:flex-row">
 			<Button.Root variant="outline" onclick={handleCloseOnboarding} class="sm:flex-1">
 				Nanti Saja
 			</Button.Root>

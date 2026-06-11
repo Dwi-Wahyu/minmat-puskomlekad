@@ -13,49 +13,54 @@
 	import { goto } from '$app/navigation';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import { resolve } from '$app/paths';
-	import type { Stock } from '@/server/db/schema.js';
+	import type { Stock } from '$lib/server/db/schema';
 	import { movementClassificationLabel } from '$lib/enums/movement-enum';
+	import type { PageData } from './$types';
+	import { untrack } from 'svelte';
 
-	let { data } = $props();
+	let { data }: { data: PageData } = $props();
 
-	const { form, errors, enhance, delayed, submit } = superForm(() => data.form, {
-		validators: yup(barangMutationSchema),
-		onUpdated: ({ form }) => {
-			if (form.message) {
-				notificationMsg = form.message;
-				notificationType = form.valid ? 'success' : 'error';
-				notificationOpen = true;
-			}
-		},
-		onSubmit: ({ cancel }) => {
-			if ($form.type === 'TRANSFER_OUT') {
-				if ($form.warehouseId === $form.toWarehouseId) {
-					notificationMsg = 'Gudang asal dan tujuan tidak boleh sama';
-					notificationType = 'error';
+	const { form, errors, enhance, delayed } = superForm(
+		untrack(() => data.form),
+		{
+			validators: yup(barangMutationSchema),
+			onUpdated: ({ form }) => {
+				if (form.message) {
+					notificationMsg = form.message;
+					notificationType = form.valid ? 'success' : 'error';
 					notificationOpen = true;
-					cancel();
-					return;
 				}
+			},
+			onSubmit: ({ cancel }) => {
+				if ($form.type === 'TRANSFER_OUT') {
+					if ($form.warehouseId === $form.toWarehouseId) {
+						notificationMsg = 'Gudang asal dan tujuan tidak boleh sama';
+						notificationType = 'error';
+						notificationOpen = true;
+						cancel();
+						return;
+					}
 
-				const stock = Number(currentStockInSelectedWarehouse);
-				if (stock <= 0) {
-					notificationMsg = 'Stok di gudang asal kosong, tidak dapat melakukan transfer keluar';
-					notificationType = 'error';
-					notificationOpen = true;
-					cancel();
-					return;
-				}
+					const stock = Number(currentStockInSelectedWarehouse);
+					if (stock <= 0) {
+						notificationMsg = 'Stok di gudang asal kosong, tidak dapat melakukan transfer keluar';
+						notificationType = 'error';
+						notificationOpen = true;
+						cancel();
+						return;
+					}
 
-				if ($form.qty > stock) {
-					notificationMsg = 'Stok tidak mencukupi untuk jumlah transfer tersebut';
-					notificationType = 'error';
-					notificationOpen = true;
-					cancel();
-					return;
+					if ($form.qty > stock) {
+						notificationMsg = 'Stok tidak mencukupi untuk jumlah transfer tersebut';
+						notificationType = 'error';
+						notificationOpen = true;
+						cancel();
+						return;
+					}
 				}
 			}
 		}
-	});
+	);
 
 	let notificationOpen = $state(false);
 	let notificationMsg = $state('');
@@ -69,10 +74,12 @@
 		{ value: 'TRANSFER_IN', label: 'Transfer Masuk' }
 	];
 
-	const classificationOptions = Object.entries(movementClassificationLabel).map(([value, label]) => ({
-		value,
-		label
-	}));
+	const classificationOptions = Object.entries(movementClassificationLabel).map(
+		([value, label]) => ({
+			value,
+			label
+		})
+	);
 
 	const selectedTypeLabel = $derived(
 		typeOptions.find((o) => o.value === $form.type)?.label ?? 'Pilih Jenis'
@@ -187,7 +194,9 @@
 
 					<div class="grid gap-4 sm:grid-cols-2">
 						<div class="space-y-2">
-							<Label for="warehouseId">{$form.type === 'TRANSFER_OUT' ? 'Asal' : 'Pilih Gudang'}</Label>
+							<Label for="warehouseId"
+								>{$form.type === 'TRANSFER_OUT' ? 'Asal' : 'Pilih Gudang'}</Label
+							>
 							<Select.Root type="single" bind:value={$form.warehouseId as string}>
 								<Select.Trigger class="w-full">
 									{selectedWhLabel}

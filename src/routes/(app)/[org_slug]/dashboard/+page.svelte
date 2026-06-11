@@ -11,7 +11,12 @@
 		Activity,
 		Box,
 		ChevronRight,
-		PocketKnife
+		PocketKnife,
+		Truck,
+		PackageCheck,
+		Send,
+		ClipboardCheck,
+		ArrowRight
 	} from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -167,6 +172,50 @@
 					</div>
 				</div>
 			{/if}
+
+			{#if operatorDashboard.pendingLendingActions?.length > 0}
+				<div class="overflow-hidden rounded-xl border border-border bg-card">
+					<div class="flex items-center gap-2 border-b border-border px-5 py-4">
+						<ClipboardCheck class="h-4 w-4 text-amber-500" />
+						<h2 class="font-semibold">Aksi Peminjaman Diperlukan</h2>
+						<span
+							class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+						>
+							{operatorDashboard.pendingLendingActions.length}
+						</span>
+					</div>
+					<div class="divide-y divide-border">
+						{#each operatorDashboard.pendingLendingActions as action (action.lendingId)}
+							<a
+								href={resolve('/(app)/[org_slug]/peminjaman/[id]', {
+									org_slug: data.org_slug,
+									id: action.lendingId
+								})}
+								class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/40"
+							>
+								<div class="flex items-center gap-3">
+									<div class="rounded-full bg-muted p-2 text-muted-foreground">
+										{#if action.status === 'APPROVED' || action.status === 'PERINTAH_LANGSUNG'}
+											<Truck class="h-4 w-4" />
+										{:else if action.status === 'DALAM_PENGIRIMAN'}
+											<PackageCheck class="h-4 w-4" />
+										{:else if action.status === 'DIPINJAM'}
+											<Send class="h-4 w-4" />
+										{:else if action.status === 'DIKIRIM_KEMBALI'}
+											<ClipboardCheck class="h-4 w-4 text-amber-500" />
+										{/if}
+									</div>
+									<div>
+										<p class="text-sm font-medium">{action.unit}</p>
+										<p class="text-xs text-muted-foreground">{action.actionLabel}</p>
+									</div>
+								</div>
+								<ArrowRight class="h-4 w-4 text-muted-foreground" />
+							</a>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		</div>
 	{:else}
 		<!-- Filter Toolbar -->
@@ -280,14 +329,16 @@
 							Gudang Transito
 						</h3>
 					</div>
-					<div class="flex-1 space-y-4 p-5">
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-muted-foreground">Barang Masuk</span>
-							<span class="font-bold text-foreground">{transito.incoming}</span>
-						</div>
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-muted-foreground">Barang Keluar</span>
-							<span class="font-bold text-foreground">{transito.outgoing}</span>
+					<div class="flex flex-1 flex-col justify-between space-y-4 p-5">
+						<div>
+							<div class="mb-4 flex items-center justify-between text-sm">
+								<span class="text-muted-foreground">Barang Masuk</span>
+								<span class="font-bold text-foreground">{transito.incoming}</span>
+							</div>
+							<div class="flex items-center justify-between text-sm">
+								<span class="text-muted-foreground">Barang Keluar</span>
+								<span class="font-bold text-foreground">{transito.outgoing}</span>
+							</div>
 						</div>
 						<div
 							class="flex items-center justify-between border-t border-border pt-2 text-sm font-semibold text-primary"
@@ -307,14 +358,16 @@
 							Gudang Komunity
 						</h3>
 					</div>
-					<div class="flex-1 space-y-4 p-5">
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-muted-foreground">Stok Aktif</span>
-							<span class="font-bold text-foreground">{komoditi.active.toLocaleString()}</span>
-						</div>
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-muted-foreground">Barang Keluar</span>
-							<span class="font-bold text-foreground">{komoditi.outgoing}</span>
+					<div class="flex flex-1 flex-col justify-between space-y-4 p-5">
+						<div>
+							<div class="mb-4 flex items-center justify-between text-sm">
+								<span class="text-muted-foreground">Stok Aktif</span>
+								<span class="font-bold text-foreground">{komoditi.active.toLocaleString()}</span>
+							</div>
+							<div class="flex items-center justify-between text-sm">
+								<span class="text-muted-foreground">Barang Keluar</span>
+								<span class="font-bold text-foreground">{komoditi.outgoing}</span>
+							</div>
 						</div>
 						<div
 							class="flex items-center justify-between border-t border-border pt-2 text-sm font-semibold text-success"
@@ -332,14 +385,17 @@
 					<div class="border-b border-border bg-muted/50 px-5 py-4">
 						<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">Gudang Balkir</h3>
 					</div>
-					<div class="flex-1 space-y-4 p-5">
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-muted-foreground">Masuk</span>
-							<span class="font-bold text-foreground">{balkir.incoming}</span>
-						</div>
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-muted-foreground">Barang Dihapus</span>
-							<span class="font-bold text-foreground">{balkir.outgoing}</span>
+
+					<div class="flex flex-1 flex-col justify-between space-y-4 p-5">
+						<div>
+							<div class="mb-4 flex items-center justify-between text-sm">
+								<span class="text-muted-foreground">Masuk</span>
+								<span class="font-bold text-foreground">{balkir.incoming}</span>
+							</div>
+							<div class="flex items-center justify-between text-sm">
+								<span class="text-muted-foreground">Barang Dihapus</span>
+								<span class="font-bold text-foreground">{balkir.outgoing}</span>
+							</div>
 						</div>
 						<div
 							class="flex items-center justify-between border-t border-border pt-2 text-sm font-semibold text-destructive"
@@ -520,7 +576,7 @@
 				>
 			</a>
 			<a
-				href={resolve('/(app)/[org_slug]/alat/[type]/create', {
+				href={resolve('/(app)/[org_slug]/alat/[type]', {
 					org_slug: data.org_slug,
 					type: 'ALKOMLEK'
 				})}
@@ -533,7 +589,7 @@
 				>
 			</a>
 			<a
-				href={resolve('/(app)/[org_slug]/barang/create', { org_slug: data.org_slug })}
+				href={resolve('/(app)/[org_slug]/barang', { org_slug: data.org_slug })}
 				class="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/20 hover:bg-primary/5"
 			>
 				<Package size={22} class="text-muted-foreground group-hover:text-primary" />

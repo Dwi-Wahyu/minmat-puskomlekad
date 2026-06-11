@@ -1,0 +1,1 @@
+ALTER TABLE `maintenance` MODIFY COLUMN `description` text;

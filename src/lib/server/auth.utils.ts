@@ -40,45 +40,69 @@ export function requirePermission(
 ) {
 	const { user } = requireAuth(locals);
 
-	// Ambil objek role dari map, jika tidak ada fallback ke user.role (string)
-	const userRole = roles[user.role as keyof typeof roles] || user.role;
+	// Ambil objek role dari map
+	const userRole = roles[user.role as keyof typeof roles];
 
 	// Cek apakah role user memiliki permission untuk resource dan action tersebut
-	const { can } = (accessControl as any).authorize(userRole as any, {
-		resource: resource as any,
-		action: action as any
-	});
+	let can = false;
+	if (userRole && typeof (userRole as any).authorize === 'function') {
+		const result = (userRole as any).authorize({
+			[resource]: [action]
+		});
+		can = result.success;
+	}
 
 	if (!can) {
-		throw error(403, `Forbidden: Role ${user.role} tidak memiliki izin ${String(action)} pada ${String(resource)}`);
+		throw error(
+			403,
+			`Forbidden: Role ${user.role} tidak memiliki izin ${String(action)} pada ${String(resource)}`
+		);
 	}
 
 	// Cek batasan organisasi untuk aksi modifikasi/menulis
-	const isWriteAction = ['create', 'update', 'delete', 'approve', 'validate', 'ship', 'receive'].includes(action);
+	const isWriteAction = [
+		'create',
+		'update',
+		'delete',
+		'approve',
+		'validate',
+		'ship',
+		'receive'
+	].includes(action);
 	if (isWriteAction && user.role !== 'superadmin') {
 		// Pimpinan dan Kakomlek hanya bisa memodifikasi resource organisasinya sendiri (kecuali jika organisasi pusat parentId === null)
 		if (['pimpinan', 'kakomlek'].includes(user.role)) {
 			const isCentralOrg = user.organization && user.organization.parentId === null;
 			if (!isCentralOrg && targetOrgId && targetOrgId !== user.organization?.id) {
-				throw error(403, `Forbidden: Role ${user.role} hanya dapat memodifikasi resource milik organisasinya sendiri`);
+				throw error(
+					403,
+					`Forbidden: Role ${user.role} hanya dapat memodifikasi resource milik organisasinya sendiri`
+				);
 			}
 		}
 
 		// Operator hanya bisa membuat mutasi/movement di organisasinya sendiri
 		if (['operatorPusatDanDaerah', 'operatorBinmatDanBekharrah'].includes(user.role)) {
-			const isOperatorAllowed = (resource === 'movement' && action === 'create') || 
-									  (resource === 'distribution' && ['validate', 'ship', 'receive'].includes(action));
+			const isOperatorAllowed =
+				(resource === 'inventory' && ['create', 'update', 'delete'].includes(action)) ||
+				(resource === 'movement' && action === 'create') ||
+				(resource === 'maintenance' && ['create', 'update', 'delete'].includes(action)) ||
+				(resource === 'distribution' && ['validate', 'ship', 'receive'].includes(action));
 			if (!isOperatorAllowed) {
-				throw error(403, `Forbidden: Operator hanya diizinkan untuk membuat mutasi dan pergerakan inventaris`);
+				throw error(
+					403,
+					`Forbidden: Operator hanya diizinkan untuk mengelola inventaris, mutasi, pergerakan, dan pemeliharaan`
+				);
 			}
-			
+
 			if (targetOrgId && targetOrgId !== user.organization?.id) {
-				throw error(403, `Forbidden: Operator hanya dapat membuat mutasi/pergerakan di organisasi sendiri`);
+				throw error(
+					403,
+					`Forbidden: Operator hanya dapat membuat mutasi/pergerakan di organisasi sendiri`
+				);
 			}
 		}
 	}
 
 	return { user };
 }
-
-

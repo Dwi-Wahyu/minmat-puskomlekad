@@ -5,6 +5,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import * as Alert from '$lib/components/ui/alert';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import {
 		UserRound,
@@ -16,9 +17,13 @@
 		Trash2,
 		History,
 		KeyRound,
-		ShieldCheck
+		ShieldCheck,
+		AlertTriangle,
+		ChevronLeft,
+		ChevronRight
 	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 
 	let { data, form } = $props();
 
@@ -58,6 +63,16 @@
 		<h1 class="text-3xl font-bold tracking-tight text-foreground">Profil</h1>
 		<p class="text-muted-foreground">Kelola informasi akun dan keamanan sesi Anda.</p>
 	</div>
+
+	{#if data.isDefaultPassword}
+		<Alert.Root variant="destructive" class="mb-6">
+			<AlertTriangle class="size-4" />
+			<Alert.Title>Peringatan Keamanan</Alert.Title>
+			<Alert.Description>
+				Anda masih menggunakan password default. Harap segera ubah password Anda demi keamanan akun.
+			</Alert.Description>
+		</Alert.Root>
+	{/if}
 
 	{#if form?.success}
 		<div
@@ -218,7 +233,7 @@
 				</Tabs.List>
 
 				<Tabs.Content value="sessions">
-					<Card.Root class="overflow-hidden border-none pt-0 shadow-sm ring-1 ring-border">
+					<Card.Root class="overflow-hidden border-none pt-0 pb-0 shadow-sm ring-1 ring-border">
 						<Card.Content class="p-0">
 							<Table.Root>
 								<Table.Header class="bg-muted/30">
@@ -230,14 +245,14 @@
 									</Table.Row>
 								</Table.Header>
 								<Table.Body>
-									{#if data.sessions.length === 0}
+									{#if data.sessions.data.length === 0}
 										<Table.Row>
 											<Table.Cell colspan={4} class="py-12 text-center text-muted-foreground">
 												Tidak ada sesi aktif.
 											</Table.Cell>
 										</Table.Row>
 									{:else}
-										{#each data.sessions as sess (sess.id)}
+										{#each data.sessions.data as sess (sess.id)}
 											{@const Icon = getDeviceIcon(sess.userAgent)}
 											<Table.Row class="transition-colors hover:bg-muted/20">
 												<Table.Cell class="px-4">
@@ -284,12 +299,47 @@
 									{/if}
 								</Table.Body>
 							</Table.Root>
+							{#if data.sessions.pagination.totalPages > 1}
+								<div
+									class="flex items-center justify-between border-t border-border bg-muted/10 px-4 py-3"
+								>
+									<p class="text-xs text-muted-foreground">
+										Halaman {data.sessions.pagination.page} dari {data.sessions.pagination
+											.totalPages}
+									</p>
+									<div class="flex items-center gap-2">
+										<Button
+											variant="outline"
+											size="sm"
+											disabled={data.sessions.pagination.page === 1}
+											href={resolve(
+												`/(app)/[org_slug]/profil?session_page=${data.sessions.pagination.page - 1}&history_page=${data.loginHistory.pagination.page}`,
+												{ org_slug: data.orgSlug }
+											)}
+										>
+											<ChevronLeft class="size-4" />
+										</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											disabled={data.sessions.pagination.page ===
+												data.sessions.pagination.totalPages}
+											href={resolve(
+												`/(app)/[org_slug]/profil?session_page=${data.sessions.pagination.page + 1}&history_page=${data.loginHistory.pagination.page}`,
+												{ org_slug: data.orgSlug }
+											)}
+										>
+											<ChevronRight class="size-4" />
+										</Button>
+									</div>
+								</div>
+							{/if}
 						</Card.Content>
 					</Card.Root>
 				</Tabs.Content>
 
 				<Tabs.Content value="history">
-					<Card.Root class="overflow-hidden border-none pt-0 shadow-sm ring-1 ring-border">
+					<Card.Root class="overflow-hidden border-none pt-0 pb-0 shadow-sm ring-1 ring-border">
 						<Card.Content class="p-0">
 							<Table.Root>
 								<Table.Header class="bg-muted/30">
@@ -300,14 +350,14 @@
 									</Table.Row>
 								</Table.Header>
 								<Table.Body>
-									{#if data.loginHistory.length === 0}
+									{#if data.loginHistory.data.length === 0}
 										<Table.Row>
 											<Table.Cell colspan={3} class="py-12 text-center text-muted-foreground">
 												Belum ada riwayat login yang tercatat.
 											</Table.Cell>
 										</Table.Row>
 									{:else}
-										{#each data.loginHistory as log (log.id)}
+										{#each data.loginHistory.data as log (log.id)}
 											{@const Icon = getDeviceIcon(log.data?.userAgent)}
 											<Table.Row class="transition-colors hover:bg-muted/20">
 												<Table.Cell class="px-4">
@@ -336,6 +386,41 @@
 									{/if}
 								</Table.Body>
 							</Table.Root>
+							{#if data.loginHistory.pagination.totalPages > 1}
+								<div
+									class="flex items-center justify-between border-t border-border bg-muted/10 px-4 py-3"
+								>
+									<p class="text-xs text-muted-foreground">
+										Halaman {data.loginHistory.pagination.page} dari {data.loginHistory.pagination
+											.totalPages}
+									</p>
+									<div class="flex items-center gap-2">
+										<Button
+											variant="outline"
+											size="sm"
+											disabled={data.loginHistory.pagination.page === 1}
+											href={resolve(
+												`/(app)/[org_slug]/profil?session_page=${data.sessions.pagination.page}&history_page=${data.loginHistory.pagination.page - 1}`,
+												{ org_slug: data.orgSlug }
+											)}
+										>
+											<ChevronLeft class="size-4" />
+										</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											disabled={data.loginHistory.pagination.page ===
+												data.loginHistory.pagination.totalPages}
+											href={resolve(
+												`/(app)/[org_slug]/profil?session_page=${data.sessions.pagination.page}&history_page=${data.loginHistory.pagination.page + 1}`,
+												{ org_slug: data.orgSlug }
+											)}
+										>
+											<ChevronRight class="size-4" />
+										</Button>
+									</div>
+								</div>
+							{/if}
 						</Card.Content>
 					</Card.Root>
 				</Tabs.Content>

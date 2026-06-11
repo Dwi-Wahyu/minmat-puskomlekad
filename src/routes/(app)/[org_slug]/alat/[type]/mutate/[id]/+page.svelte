@@ -123,7 +123,12 @@
 			return ALL_EVENT_TYPES.filter((e) => e.value === 'RECEIVE');
 		}
 		// READY / IN_USE di gudang
-		return ALL_EVENT_TYPES.filter((e) => ['TRANSFER_OUT', 'ISSUE', 'RECEIVE'].includes(e.value));
+		const allowed: string[] = ['TRANSFER_OUT', 'ISSUE'];
+		// Jika mutasi terakhir BUKAN RECEIVE, mungkin masih boleh RECEIVE (misal setelah ISSUE lalu masuk lagi)
+		if (data.lastMovement?.eventType !== 'RECEIVE') {
+			allowed.push('RECEIVE');
+		}
+		return ALL_EVENT_TYPES.filter((e) => allowed.includes(e.value));
 	});
 
 	const ALL_CLASSIFICATIONS = [

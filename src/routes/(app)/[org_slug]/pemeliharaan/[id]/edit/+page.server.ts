@@ -1,129 +1,130 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { maintenance } from '$lib/server/db/schema';
+import { equipment, maintenance } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import type { PageServerLoad, Actions } from './$types';
+import { superValidate, message } from 'sveltekit-superforms';
+import { yup } from 'sveltekit-superforms/adapters';
+import { maintenanceMutationSchema } from '$lib/schemas/maintenance-mutation-schema';
+import { requirePermission } from '$lib/server/auth.utils';
 
-const maintenanceSchema = z.object({
-	equipmentId: z.string().uuid(),
-	maintenanceType: z.enum(['PERAWATAN', 'PERBAIKAN']),
-	description: z.string().min(1),
-	scheduledDate: z.string().datetime(),
-	completionDate: z.string().datetime().optional().nullable(),
-	status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED']).default('PENDING'),
-	technicianId: z.string().uuid().optional().nullable()
-});
+// Format tanggal untuk input datetime-local to ISO for superforms initial data
+const formatDateForISO = (date: Date | null): string | undefined => {
+	if (!date) return undefined;
+	return new Date(date).toISOString();
+};
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const { id, org_slug } = params;
 
-	// Ambil ID organisasi berdasarkan slug dari URL
-	const org = await db.query.organization.findFirst({
-		where: (org, { eq }) => eq(org.slug, org_slug)
-	});
-
-	if (!org) {
-		throw error(404, 'Organization not found');
-	}
-
 	const maintenanceData = await db.query.maintenance.findFirst({
-		where: eq(maintenance.id, id)
+		where: eq(maintenance.id, id),
+		with: {
+			equipment: {
+				with: {
+					item: true
+				}
+			}
+		}
 	});
 
 	if (!maintenanceData) {
 		throw error(404, { message: 'Jadwal maintenance tidak ditemukan' });
 	}
 
-	const equipmentList = await db.query.equipment.findMany({
-		where: (eqp, { eq }) => eq(eqp.organizationId, org.id),
-		columns: { id: true, serialNumber: true },
-		with: {
-			item: {
-				columns: {
-					name: true
-				}
-			}
-		}
-	});
-
-	// Urutkan berdasarkan nama item di memori jika perlu,
-	// atau biarkan karena dropdown biasanya tidak terlalu banyak
-	const sortedEquipment = [...equipmentList].sort((a, b) =>
-		(a.item?.name || '').localeCompare(b.item?.name || '')
-	);
+	// Cek izin view/update
+	requirePermission('maintenance', 'update', locals, maintenanceData.equipment?.organizationId);
 
 	const technicianList = await db.query.user.findMany({
 		columns: { id: true, name: true, email: true },
 		orderBy: (user, { asc }) => [asc(user.name)]
 	});
 
-	// Format tanggal untuk input datetime-local
-	const formatDateForInput = (date: Date | null): string => {
-		if (!date) return '';
-		return new Date(date).toISOString().slice(0, 16);
+	const initialData = {
+		...maintenanceData,
+		equipmentIds: maintenanceData.equipmentId ? [maintenanceData.equipmentId] : [],
+		scheduledDate: formatDateForISO(maintenanceData.scheduledDate)!,
+		completionDate: formatDateForISO(maintenanceData.completionDate)
 	};
 
+	const form = await superValidate(initialData, yup(maintenanceMutationSchema));
+
 	return {
-		maintenance: {
-			...maintenanceData,
-			scheduledDate: formatDateForInput(maintenanceData.scheduledDate),
-			completionDate: formatDateForInput(maintenanceData.completionDate)
-		},
-		equipment: sortedEquipment,
+		form,
+		maintenance: maintenanceData,
 		technicians: technicianList,
 		org_slug
 	};
 };
 
 export const actions: Actions = {
-	default: async ({ request, params }: any) => {
-		const { id, org_slug } = params;
+	default: async ({ request, params, locals }) => {
+		const { id } = params;
 		const formData = await request.formData();
 
 		const rawScheduledDate = formData.get('scheduledDate')?.toString();
 		const rawCompletionDate = formData.get('completionDate')?.toString();
-		const rawTechnicianId = formData.get('technicianId')?.toString();
 
-		const data = {
-			equipmentId: formData.get('equipmentId')?.toString(),
-			maintenanceType: formData.get('maintenanceType')?.toString(),
-			description: formData.get('description')?.toString(),
-			scheduledDate:
-				rawScheduledDate && rawScheduledDate !== ''
-					? new Date(rawScheduledDate).toISOString()
-					: null,
-			completionDate:
-				rawCompletionDate && rawCompletionDate !== ''
-					? new Date(rawCompletionDate).toISOString()
-					: null,
-			status: formData.get('status')?.toString() || 'PENDING',
-			technicianId: rawTechnicianId && rawTechnicianId.trim() !== '' ? rawTechnicianId : null
-		};
-
-		try {
-			const validated = maintenanceSchema.parse(data);
-
-			await db
-				.update(maintenance)
-				.set({
-					equipmentId: validated.equipmentId,
-					maintenanceType: validated.maintenanceType,
-					description: validated.description,
-					status: validated.status,
-					technicianId: validated.technicianId,
-					scheduledDate: new Date(validated.scheduledDate),
-					completionDate: validated.completionDate ? new Date(validated.completionDate) : null
-				})
-				.where(eq(maintenance.id, id));
-		} catch (err) {
-			console.error(err);
-			if (err instanceof z.ZodError) {
-				return fail(400, { errors: (err as any).errors });
-			}
-			return fail(500, { message: 'Kesalahan server internal' });
+		if (rawScheduledDate && rawScheduledDate.length === 16) {
+			formData.set('scheduledDate', new Date(rawScheduledDate).toISOString());
+		}
+		if (rawCompletionDate && rawCompletionDate.length === 16) {
+			formData.set('completionDate', new Date(rawCompletionDate).toISOString());
 		}
 
-		throw redirect(303, `/${org_slug}/pemeliharaan`);
+		const form = await superValidate(formData, yup(maintenanceMutationSchema));
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
+
+		const data = form.data;
+
+		try {
+			await db.transaction(async (tx) => {
+				// Cek izin update sebelum transaksi
+				const existing = await tx.query.maintenance.findFirst({
+					where: eq(maintenance.id, id),
+					with: {
+						equipment: true
+					}
+				});
+
+				if (!existing) {
+					throw error(404, 'Data pemeliharaan tidak ditemukan');
+				}
+
+				requirePermission('maintenance', 'update', locals, existing.equipment?.organizationId);
+
+				const equipmentId = data.equipmentIds[0];
+
+				// Update existing record
+				await tx
+					.update(maintenance)
+					.set({
+						maintenanceType: data.maintenanceType as 'PERAWATAN' | 'PERBAIKAN',
+						description: data.description,
+						status: data.status as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED',
+						technicianId: data.technicianId || null,
+						scheduledDate: new Date(data.scheduledDate),
+						completionDate: data.completionDate ? new Date(data.completionDate) : null
+					})
+					.where(eq(maintenance.id, id));
+
+				// Update status alat
+				const newEquipmentStatus = data.status === 'COMPLETED' ? 'READY' : 'MAINTENANCE';
+				await tx
+					.update(equipment)
+					.set({ status: newEquipmentStatus })
+					.where(eq(equipment.id, equipmentId));
+			});
+		} catch (err: any) {
+			if (err.status === 403 || err.status === 404) throw err;
+			console.error(err);
+			return message(form, 'Kesalahan server internal', { status: 500 });
+		}
+
+		return message(form, 'Perubahan data pemeliharaan berhasil disimpan');
 	}
 };

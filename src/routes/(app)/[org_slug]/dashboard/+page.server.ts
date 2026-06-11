@@ -7,7 +7,9 @@ import {
 	warehouse,
 	item,
 	organization,
-	user
+	user,
+	lending,
+	member
 } from '$lib/server/db/schema';
 import { eq, and, count, sum, gte, desc, sql, inArray, ne } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
@@ -79,6 +81,75 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			.from(equipment)
 			.where(and(eq(equipment.organizationId, orgId), ne(equipment.condition, 'BAIK')));
 
+		// Cek apakah org ini adalah org induk (Puskomlekad = tidak punya parentId)
+		const orgData = await db.query.organization.findFirst({
+			where: eq(organization.id, orgId),
+			columns: { parentId: true }
+		});
+		const isPuskomlekad = !orgData?.parentId;
+		let pendingLendingActions: {
+			lendingId: string;
+			unit: string;
+			status: string;
+			actionLabel: string;
+			createdAt: Date;
+		}[] = [];
+
+		if (isPuskomlekad) {
+			// Operator Puskomlekad perlu aksi pada status APPROVED/PERINTAH_LANGSUNG dan DIKIRIM_KEMBALI
+			const pending = await db.query.lending.findMany({
+				where: and(
+					eq(lending.organizationId, orgId),
+					inArray(lending.status, ['APPROVED', 'PERINTAH_LANGSUNG', 'DIKIRIM_KEMBALI'])
+				),
+				columns: { id: true, unit: true, status: true, createdAt: true },
+				limit: 10,
+				orderBy: (l, { desc }) => [desc(l.createdAt)]
+			});
+
+			pendingLendingActions = pending.map((l) => ({
+				lendingId: l.id,
+				unit: l.unit,
+				status: l.status!,
+				actionLabel:
+					l.status === 'DIKIRIM_KEMBALI'
+						? 'Konfirmasi penerimaan kembali'
+						: 'Keluarkan alat dari gudang',
+				createdAt: l.createdAt
+			}));
+		} else {
+			// Operator satuan jajaran perlu aksi pada status DALAM_PENGIRIMAN dan DIPINJAM
+			// Cari lending yang ditujukan ke org INDUK tapi requestedBy dari org ini
+			const members = await db.query.member.findMany({
+				where: eq(member.organizationId, orgId),
+				columns: { userId: true }
+			});
+			const memberIds = members.map((m) => m.userId!).filter(Boolean);
+
+			if (memberIds.length > 0) {
+				const pending = await db.query.lending.findMany({
+					where: and(
+						inArray(lending.requestedBy, memberIds),
+						inArray(lending.status, ['DALAM_PENGIRIMAN', 'DIPINJAM'])
+					),
+					columns: { id: true, unit: true, status: true, createdAt: true },
+					limit: 10,
+					orderBy: (l, { desc }) => [desc(l.createdAt)]
+				});
+
+				pendingLendingActions = pending.map((l) => ({
+					lendingId: l.id,
+					unit: l.unit,
+					status: l.status!,
+					actionLabel:
+						l.status === 'DALAM_PENGIRIMAN'
+							? 'Konfirmasi penerimaan alat'
+							: 'Kirim kembali ke gudang',
+					createdAt: l.createdAt
+				}));
+			}
+		}
+
 		return {
 			org_slug: params.org_slug,
 			isOperator: true,
@@ -95,7 +166,8 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				})),
 				transitCount: Number(transitCount?.count) || 0,
 				myMovementsThisMonth: Number(myMovementsCount?.count) || 0,
-				damagedCount: Number(damagedCount?.count) || 0
+				damagedCount: Number(damagedCount?.count) || 0,
+				pendingLendingActions
 			}
 		};
 	}

@@ -75,7 +75,9 @@
 	}
 
 	let selectedOrgName = $derived(
-		komunityQuery.current?.organizations.find((o: any) => o.id === komunityQuery.current?.selectedOrgId)?.name || 'Pilih Kesatuan'
+		komunityQuery.current?.organizations.find(
+			(o: any) => o.id === komunityQuery.current?.selectedOrgId
+		)?.name || 'Pilih Kesatuan'
 	);
 
 	const typeOptions = [
@@ -153,7 +155,8 @@
 				<Label for="category-filter">Kategori Alat</Label>
 				<Select.Root type="single" bind:value={categoryFilter} onValueChange={updateFilters}>
 					<Select.Trigger class="w-[180px] border-2">
-						{categoryOptions.find((o: any) => o.value === categoryFilter)?.label || 'Semua Kategori'}
+						{categoryOptions.find((o: any) => o.value === categoryFilter)?.label ||
+							'Semua Kategori'}
 					</Select.Trigger>
 					<Select.Content>
 						{#each categoryOptions as opt}
@@ -193,8 +196,8 @@
 				</div>
 			</div>
 
-			<Button variant="secondary" size="icon" onclick={updateFilters} title="Refresh Filter">
-				<Filter class="size-4" />
+			<Button variant="secondary" onclick={updateFilters} title="Refresh Filter">
+				Terapkan Filter
 			</Button>
 		</div>
 	</div>
@@ -204,19 +207,37 @@
 			<Table.Table class="w-full border-collapse text-sm">
 				<Table.Header class="sticky top-0 bg-muted/50">
 					<Table.Row class="border-b-2 border-border">
-						<Table.Head rowspan={2} class="border-r border-border text-center font-bold">Barang</Table.Head>
-						<Table.Head rowspan={2} class="border-r border-border text-center font-bold">Stok</Table.Head>
-						<Table.Head rowspan={2} class="border-r border-border text-center font-bold">Masuk</Table.Head>
-						<Table.Head rowspan={2} class="border-r border-border text-center font-bold">Keluar</Table.Head>
-						<Table.Head class="border-r border-border text-center font-bold" colspan={3}>Sisa</Table.Head>
-						<Table.Head rowspan={2} class="border-r border-border text-center font-bold">Ket</Table.Head>
+						<Table.Head rowspan={2} class="border-r border-border text-center font-bold"
+							>Barang</Table.Head
+						>
+						<Table.Head rowspan={2} class="border-r border-border text-center font-bold"
+							>Stok</Table.Head
+						>
+						<Table.Head rowspan={2} class="border-r border-border text-center font-bold"
+							>Masuk</Table.Head
+						>
+						<Table.Head rowspan={2} class="border-r border-border text-center font-bold"
+							>Keluar</Table.Head
+						>
+						<Table.Head class="border-r border-border text-center font-bold" colspan={3}
+							>Sisa</Table.Head
+						>
+						<Table.Head rowspan={2} class="border-r border-border text-center font-bold"
+							>Ket</Table.Head
+						>
 						<Table.Head rowspan={2} class="text-center font-bold">Tahun</Table.Head>
 					</Table.Row>
 
 					<Table.Row class="border-b-2 border-border bg-muted/30">
-						<Table.Head class="border-r border-border text-center font-semibold text-success">B</Table.Head>
-						<Table.Head class="border-r border-border text-center font-semibold text-primary">RR</Table.Head>
-						<Table.Head class="border-r border-border text-center font-semibold text-destructive">RB</Table.Head>
+						<Table.Head class="border-r border-border text-center font-semibold text-success"
+							>B</Table.Head
+						>
+						<Table.Head class="border-r border-border text-center font-semibold text-primary"
+							>RR</Table.Head
+						>
+						<Table.Head class="border-r border-border text-center font-semibold text-destructive"
+							>RB</Table.Head
+						>
 					</Table.Row>
 				</Table.Header>
 
@@ -231,28 +252,28 @@
 									</div>
 								</Table.Cell>
 								<Table.Cell class="border-r border-border">
-									<Skeleton class="h-5 w-8 mx-auto" />
+									<Skeleton class="mx-auto h-5 w-8" />
 								</Table.Cell>
 								<Table.Cell class="border-r border-border">
-									<Skeleton class="h-5 w-8 mx-auto" />
+									<Skeleton class="mx-auto h-5 w-8" />
 								</Table.Cell>
 								<Table.Cell class="border-r border-border">
-									<Skeleton class="h-5 w-8 mx-auto" />
+									<Skeleton class="mx-auto h-5 w-8" />
 								</Table.Cell>
 								<Table.Cell class="border-r border-border">
-									<Skeleton class="h-5 w-8 mx-auto" />
+									<Skeleton class="mx-auto h-5 w-8" />
 								</Table.Cell>
 								<Table.Cell class="border-r border-border">
-									<Skeleton class="h-5 w-8 mx-auto" />
+									<Skeleton class="mx-auto h-5 w-8" />
 								</Table.Cell>
 								<Table.Cell class="border-r border-border">
-									<Skeleton class="h-5 w-8 mx-auto" />
+									<Skeleton class="mx-auto h-5 w-8" />
 								</Table.Cell>
 								<Table.Cell class="border-r border-border">
 									<Skeleton class="h-3 w-[100px]" />
 								</Table.Cell>
 								<Table.Cell>
-									<Skeleton class="h-5 w-12 mx-auto" />
+									<Skeleton class="mx-auto h-5 w-12" />
 								</Table.Cell>
 							</Table.Row>
 						{/each}
@@ -269,11 +290,11 @@
 							<Table.Row class="border-b border-border hover:bg-muted/50">
 								<Table.Cell class="border-r border-border">
 									<div class="font-semibold">{item.namaBarang}</div>
-									<div class="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+									<div class="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
 										<span class="font-mono text-[10px] text-muted-foreground">
 											{item.matkomplek}
 										</span>
-										<span class="text-[10px] font-medium uppercase text-primary/70">
+										<span class="text-[10px] font-medium text-primary/70 uppercase">
 											• {item.tipe === 'ASSET' ? 'Alat' : 'Barang'}
 											{#if item.equipmentType}
 												({item.equipmentType})
@@ -321,7 +342,9 @@
 		</div>
 
 		{#if komunityQuery.current && komunityQuery.current.pagination.totalPages > 1}
-			<div class="flex flex-col-reverse items-center justify-between gap-4 border-t border-border px-6 py-4 md:flex-row md:gap-0">
+			<div
+				class="flex flex-col-reverse items-center justify-between gap-4 border-t border-border px-6 py-4 md:flex-row md:gap-0"
+			>
 				<div class="text-xs text-muted-foreground">
 					Menampilkan <span class="font-semibold text-foreground"
 						>{(currentPage - 1) * limit + 1}</span
@@ -331,7 +354,9 @@
 						>{Math.min(currentPage * limit, komunityQuery.current.pagination.totalItems)}</span
 					>
 					dari
-					<span class="font-semibold text-foreground">{komunityQuery.current.pagination.totalItems}</span> data
+					<span class="font-semibold text-foreground"
+						>{komunityQuery.current.pagination.totalItems}</span
+					> data
 				</div>
 				<div class="flex items-center gap-2">
 					<Button
@@ -339,7 +364,7 @@
 						size="sm"
 						onclick={() => goToPage(currentPage - 1)}
 						disabled={currentPage <= 1}
-						class="h-8 gap-1 px-2 text-xs border-2"
+						class="h-8 gap-1 border-2 px-2 text-xs"
 					>
 						<ChevronLeft class="h-3 w-3" />
 						Sebelumnya
@@ -361,7 +386,7 @@
 						size="sm"
 						onclick={() => goToPage(currentPage + 1)}
 						disabled={currentPage >= komunityQuery.current.pagination.totalPages}
-						class="h-8 gap-1 px-2 text-xs border-2"
+						class="h-8 gap-1 border-2 px-2 text-xs"
 					>
 						Selanjutnya
 						<ChevronRight class="h-3 w-3" />

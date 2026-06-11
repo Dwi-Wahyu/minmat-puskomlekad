@@ -17,6 +17,7 @@ migration-manual.sql
 
 .DS_Store
 Thumbs.db
+static/guidebook-minmat.pdf
 
 # Env
 .env

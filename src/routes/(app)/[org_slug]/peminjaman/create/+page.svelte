@@ -13,19 +13,62 @@
 	import { getAvailableEquipment } from '../peminjaman.remote';
 	import { untrack } from 'svelte';
 	import * as Select from '$lib/components/ui/select';
+	import { superForm } from 'sveltekit-superforms';
+	import { yup } from 'sveltekit-superforms/adapters';
+	import { lendingMutationSchema } from '$lib/schemas/lending-mutation-schema';
+	import { lendingPurposeLabel } from '$lib/enums/lending-enum';
+	import { equipmentConditionLabel, equipmentStatusLabel } from '@/enums/equipment-enum';
 
 	let { data }: { data: PageData } = $props();
 
-	// State form
-	let unit = $state('');
-	let purpose = $state('OPERASI');
-	let startDate = $state('');
-	let endDate = $state('');
-	let selectedTargetOrgId = $state('');
+	const {
+		form,
+		errors,
+		enhance: superEnhance,
+		delayed
+	} = superForm(
+		untrack(() => data.form),
+		{
+			validators: yup(lendingMutationSchema),
+			onUpdated: ({ form }) => {
+				if (form.message) {
+					notificationMsg = form.message;
+					notificationType = form.valid ? 'success' : 'error';
+					notificationTitle = form.valid ? 'Berhasil!' : 'Gagal!';
+					notificationOpen = true;
+				}
+			}
+		}
+	);
 
 	$effect(() => {
-		selectedTargetOrgId = data.targetOrg?.id || '';
+		$form.targetOrgId = data.targetOrg?.id || '';
 	});
+
+	// Transform datetime strings back to local format for inputs
+	let localStartDate = $state('');
+	let localEndDate = $state('');
+
+	$effect(() => {
+		if ($form.startDate) {
+			localStartDate = $form.startDate.slice(0, 16);
+		}
+		if ($form.endDate) {
+			localEndDate = $form.endDate.slice(0, 16);
+		}
+	});
+
+	function updateStartDate(e: Event) {
+		const target = e.target as HTMLInputElement;
+		localStartDate = target.value;
+		$form.startDate = target.value ? new Date(target.value).toISOString() : '';
+	}
+
+	function updateEndDate(e: Event) {
+		const target = e.target as HTMLInputElement;
+		localEndDate = target.value;
+		$form.endDate = target.value ? new Date(target.value).toISOString() : '';
+	}
 
 	// State untuk items yang dipilih
 	let selectedItems = $state<
@@ -46,10 +89,10 @@
 	let expandedGroups = $state<Record<string, boolean>>({});
 
 	// State untuk notifikasi
-	let showNotification = $state(false);
+	let notificationOpen = $state(false);
 	let notificationType: 'success' | 'error' | 'info' = $state('success');
 	let notificationTitle = $state('');
-	let notificationDescription = $state('');
+	let notificationMsg = $state('');
 	let notificationActionLabel = $state('OK');
 
 	// State pencarian alat & paginasi remote
@@ -194,21 +237,16 @@
 	}
 
 	function handleNotificationAction() {
-		showNotification = false;
+		notificationOpen = false;
 		if (notificationType === 'success') {
 			window.location.href = `/${page.params.org_slug}/peminjaman`;
 		}
 	}
 
-	async function handleTargetOrgChange(e: Event) {
-		const target = e.target as HTMLSelectElement;
-		const orgId = target.value;
-		if (orgId) {
-			await goto(`?targetOrgId=${orgId}`, { keepFocus: true, noScroll: true });
-		} else {
-			await goto(`?`, { keepFocus: true, noScroll: true });
-		}
-	}
+	const purposeOptions = Object.entries(lendingPurposeLabel).map(([value, label]) => ({
+		value,
+		label
+	}));
 </script>
 
 <svelte:head>
@@ -224,121 +262,89 @@
 		<p class="text-muted-foreground">Silakan pilih daftar alat yang ingin dipinjam.</p>
 	</div>
 
-	<!-- <div class="mb-6 rounded-lg border bg-card p-6 shadow-sm">
-		<div class="space-y-2">
-			<Label for="targetOrg">Pilih Satuan Tujuan Peminjaman</Label>
-			<select
-				id="targetOrg"
-				bind:value={selectedTargetOrgId}
-				onchange={handleTargetOrgChange}
-				disabled={data.organizations.length === 1}
-				class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-			>
-				{#if data.organizations.length > 1}
-					<option value="">-- Pilih Satuan --</option>
-				{/if}
-				{#each data.organizations as org (org.id)}
-					<option value={org.id}>{org.name}</option>
-				{/each}
-			</select>
-			<p class="text-xs text-muted-foreground italic">
-				{#if data.organizations.length === 1}
-					* Peminjaman dilakukan kepada Satuan Induk ({data.organizations[0].name}).
-				{:else}
-					* Pilih satuan jajaran tujuan peminjaman.
-				{/if}
-			</p>
-		</div>
-	</div> -->
-
 	{#if data.targetOrg}
-		<form
-			method="POST"
-			enctype="multipart/form-data"
-			use:enhance={() => {
-				return async ({ result }) => {
-					if (result?.type === 'success') {
-						notificationType = 'success';
-						notificationTitle = 'Berhasil!';
-						notificationDescription =
-							(result?.data as any)?.message || 'Pengajuan peminjaman telah dikirim.';
-						showNotification = true;
-					} else if (result?.type === 'failure') {
-						notificationType = 'error';
-						notificationTitle = 'Gagal!';
-						notificationDescription =
-							(result?.data as any)?.message || 'Terjadi kesalahan saat memproses data.';
-						showNotification = true;
-					}
-				};
-			}}
-			class="space-y-6"
-		>
+		<form method="POST" enctype="multipart/form-data" use:superEnhance class="space-y-6">
 			<!-- Target Organization ID (Hidden) -->
-			<input type="hidden" name="targetOrgId" value={data.targetOrg.id} />
+			<input type="hidden" name="targetOrgId" bind:value={$form.targetOrgId} />
 
 			<!-- Informasi Peminjaman -->
 			<div class="rounded-lg border bg-card p-6 shadow-sm">
 				<h2 class="mb-4 pb-2 text-lg font-semibold">Informasi Operasional</h2>
 				<div class="grid gap-6 md:grid-cols-2">
 					<div class="space-y-2">
-						<Label for="unit">Unit/Satuan Peminjam</Label>
+						<Label for="unit">Unit <span class="text-red-500"> * </span></Label>
 						<Input
 							id="unit"
 							name="unit"
-							bind:value={unit}
+							bind:value={$form.unit}
 							placeholder="Contoh: Yonif 201, Hubdam, dll."
-							required
 						/>
+						{#if $errors.unit}
+							<p class="text-sm text-destructive">{$errors.unit}</p>
+						{/if}
 					</div>
 
 					<div class="space-y-2">
-						<Label for="purpose">Tujuan Penggunaan</Label>
-						<Select.Root type="single" name="purpose" bind:value={purpose}>
+						<Label for="purpose">Tujuan Penggunaan <span class="text-red-500"> * </span></Label>
+						<Select.Root type="single" name="purpose" bind:value={$form.purpose}>
 							<Select.Trigger class="w-full">
-								{purpose === 'OPERASI'
-									? 'Operasi'
-									: purpose === 'LATIHAN'
-										? 'Latihan'
-										: purpose === 'PERINTAH_LANGSUNG'
-											? 'Perintah Langsung'
-											: 'Pilih Tujuan'}
+								{lendingPurposeLabel[$form.purpose] || 'Pilih Tujuan'}
 							</Select.Trigger>
 							<Select.Content>
-								<Select.Item value="OPERASI">Operasi</Select.Item>
-								<Select.Item value="LATIHAN">Latihan</Select.Item>
-								<Select.Item value="PERINTAH_LANGSUNG">Perintah Langsung</Select.Item>
+								{#each purposeOptions as opt (opt.value)}
+									<Select.Item value={opt.value}>{opt.label}</Select.Item>
+								{/each}
 							</Select.Content>
 						</Select.Root>
+						{#if $errors.purpose}
+							<p class="text-sm text-destructive">{$errors.purpose}</p>
+						{/if}
 					</div>
 
-					{#if purpose === 'PERINTAH_LANGSUNG'}
+					{#if $form.purpose === 'PERINTAH_LANGSUNG'}
 						<div class="col-span-2 space-y-2">
 							<Label for="overrideReason">Keterangan Perintah Langsung</Label>
 							<Input
 								id="overrideReason"
 								name="overrideReason"
+								bind:value={$form.overrideReason}
 								placeholder="Contoh: Operasi mendesak atas perintah pimpinan..."
 								class="border-primary/20 focus-visible:ring-primary"
-								required
 							/>
+							{#if $errors.overrideReason}
+								<p class="text-sm text-destructive">{$errors.overrideReason}</p>
+							{/if}
 						</div>
 					{/if}
 
 					<div class="space-y-2">
-						<Label for="startDate">Rencana Tanggal Mulai</Label>
+						<Label for="startDate">
+							Rencana Tanggal Mulai <span class="text-red-500"> * </span>
+						</Label>
 						<Input
 							id="startDate"
 							name="startDate"
 							type="datetime-local"
-							bind:value={startDate}
-							required
+							value={localStartDate}
+							oninput={updateStartDate}
 						/>
+						{#if $errors.startDate}
+							<p class="text-sm text-destructive">{$errors.startDate}</p>
+						{/if}
 					</div>
 
 					<div class="space-y-2">
 						<Label for="endDate">Rencana Tanggal Selesai</Label>
-						<Input id="endDate" name="endDate" type="datetime-local" bind:value={endDate} />
+						<Input
+							id="endDate"
+							name="endDate"
+							type="datetime-local"
+							value={localEndDate}
+							oninput={updateEndDate}
+						/>
+						{#if $errors.endDate}
+							<p class="text-sm text-destructive">{$errors.endDate}</p>
+						{/if}
 					</div>
 
 					<div class="col-span-2 space-y-2">
@@ -361,9 +367,7 @@
 
 			<!-- Pemilihan Equipment -->
 			<div class="rounded-lg border bg-card p-6 shadow-sm">
-				<div
-					class="mb-4 flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between"
-				>
+				<div class="mb-4 flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
 						<h2 class="text-lg font-semibold">Daftar Alat</h2>
 						<p class="text-xs text-muted-foreground">Pilih alat yang akan dipinjam</p>
@@ -396,7 +400,7 @@
 
 				{#if isLoading}
 					<div class="grid gap-3">
-						{#each Array(3) as _}
+						{#each [1, 2, 3] as i (i)}
 							<div
 								class="flex animate-pulse flex-col overflow-hidden rounded-lg border border-border bg-card p-4"
 							>
@@ -416,7 +420,9 @@
 					</div>
 				{:else if totalItems === 0}
 					<div class="rounded-lg p-10 text-center">
-						<p class="text-muted-foreground italic">Tidak ada alat berstatus READY.</p>
+						<p class="text-muted-foreground italic">
+							Tidak ada alat berstatus {equipmentStatusLabel['READY']}.
+						</p>
 					</div>
 				{:else}
 					<div class="grid gap-3">
@@ -504,7 +510,7 @@
 											Pilih Unit Spesifik
 										</p>
 										<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-2">
-											{#each group.equipments as eq}
+											{#each group.equipments as eq (eq.id)}
 												<button
 													type="button"
 													class="flex flex-col gap-2 rounded border bg-card p-3 text-left transition-colors hover:border-primary/50 {selectedItems[
@@ -523,17 +529,11 @@
 														{/if}
 													</div>
 													<div class="flex flex-wrap gap-2">
-														<Badge
-															variant="outline"
-															class="h-4 px-1 py-0 text-[10px] {getConditionColor(eq.condition)}"
-														>
-															{eq.condition}
+														<Badge variant="outline" class=" {getConditionColor(eq.condition)}">
+															{equipmentConditionLabel[eq.condition]}
 														</Badge>
-														<Badge
-															variant="outline"
-															class="h-4 border-primary/20 bg-primary/10 px-1 py-0 text-[10px] text-primary"
-														>
-															{eq.status}
+														<Badge variant="outline">
+															{equipmentStatusLabel[eq.status]}
 														</Badge>
 													</div>
 												</button>
@@ -552,7 +552,7 @@
 
 					<!-- Paginasi -->
 					{#if totalPages > 1}
-						<div class="mt-6 flex items-center justify-between pt-4">
+						<div class="flex items-center justify-between pt-4">
 							<span class="text-sm text-muted-foreground">
 								Menampilkan {groupedEquipment.length} dari {totalItems} alat
 							</span>
@@ -601,9 +601,10 @@
 			{/each}
 
 			<div class="flex justify-end gap-3 pt-4">
-				<Button variant="ghost" href={`/${page.params.org_slug}/peminjaman`}>Batal</Button>
-				<Button type="submit" size="lg" disabled={selectedCount === 0}>
-					Kirim Pengajuan Peminjaman
+				<Button variant="ghost" size="lg" href={`/${page.params.org_slug}/peminjaman`}>Batal</Button
+				>
+				<Button type="submit" size="lg" disabled={$delayed || selectedCount === 0}>
+					Kirim Pengajuan
 				</Button>
 			</div>
 		</form>
@@ -617,10 +618,10 @@
 
 	<!-- Notification Dialog -->
 	<NotificationDialog
-		bind:open={showNotification}
+		bind:open={notificationOpen}
 		type={notificationType}
 		title={notificationTitle}
-		description={notificationDescription}
+		description={notificationMsg}
 		actionLabel={notificationActionLabel}
 		onAction={handleNotificationAction}
 	/>

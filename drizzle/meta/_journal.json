@@ -22,6 +22,48 @@
       "when": 1781008782365,
       "tag": "0002_loud_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1781075699948,
+      "tag": "0003_curved_golden_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1781077343995,
+      "tag": "0004_milky_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1781082845670,
+      "tag": "0005_colossal_mandroid",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1781083399730,
+      "tag": "0006_ambitious_reaper",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1781107968895,
+      "tag": "0007_flowery_gamora",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1781117128521,
+      "tag": "0008_bored_misty_knight",
+      "breakpoints": true
     }
   ]
 }

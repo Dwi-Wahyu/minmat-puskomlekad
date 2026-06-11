@@ -3,8 +3,10 @@ import { db } from '$lib/server/db';
 import { maintenance, organization, equipment } from '$lib/server/db/schema';
 import { eq, desc, inArray } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
+import { requirePermission } from '$lib/server/auth.utils';
 
-export const load: PageServerLoad = async ({ params, url }) => {
+export const load: PageServerLoad = async ({ params, url, locals }) => {
+	requirePermission('maintenance', 'view', locals);
 	const { org_slug } = params;
 	const equipmentIds = url.searchParams.get('equipmentIds')?.split(',').filter(Boolean) || [];
 
@@ -53,7 +55,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 };
 
 export const actions: Actions = {
-	delete: async ({ request }) => {
+	delete: async ({ request, locals }) => {
 		const formData = await request.formData();
 		const id = formData.get('id')?.toString();
 
@@ -64,15 +66,22 @@ export const actions: Actions = {
 		try {
 			// Cek apakah data ada sebelum dihapus
 			const existing = await db.query.maintenance.findFirst({
-				where: eq(maintenance.id, id)
+				where: eq(maintenance.id, id),
+				with: {
+					equipment: true
+				}
 			});
 
 			if (!existing) {
 				return fail(404, { message: 'Data pemeliharaan tidak ditemukan' });
 			}
 
+			// Cek izin hapus dengan targetOrgId dari alat yang dipelihara
+			requirePermission('maintenance', 'delete', locals, existing.equipment?.organizationId);
+
 			await db.delete(maintenance).where(eq(maintenance.id, id));
-		} catch (err) {
+		} catch (err: any) {
+			if (err.status === 403) throw err;
 			console.error('Error deleting maintenance:', err);
 			return fail(500, { message: 'Kesalahan server internal saat menghapus data' });
 		}

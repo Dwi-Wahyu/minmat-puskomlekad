@@ -2,7 +2,7 @@ import { query } from '$app/server';
 import { db } from '$lib/server/db';
 import { item, equipment } from '$lib/server/db/schema';
 import { organization } from '$lib/server/db/auth.schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import { getOrSetCache, CacheTTL } from '$lib/server/redis';
 import * as v from 'valibot';
@@ -48,6 +48,13 @@ export const getPernikaLekData = query(pernikaSchema, async (args): Promise<Pern
 	const allGrouped = await getOrSetCache(
 		cacheKey,
 		async () => {
+			const conditions = [eq(item.equipmentType, 'PERNIKA_LEK')];
+			
+			// Jika user berasal dari sub-organisasi, hanya tampilkan data organisasinya sendiri
+			if (user.organization.parentId) {
+				conditions.push(eq(equipment.organizationId, user.organization.id));
+			}
+
 			const rawData = await db
 				.select({
 					orgName: organization.name,
@@ -63,7 +70,7 @@ export const getPernikaLekData = query(pernikaSchema, async (args): Promise<Pern
 				.from(equipment)
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.innerJoin(organization, eq(equipment.organizationId, organization.id))
-				.where(eq(item.equipmentType, 'PERNIKA_LEK'))
+				.where(and(...conditions))
 				.groupBy(organization.id, item.name, equipment.brand, item.baseUnit)
 				.orderBy(organization.name, item.name);
 

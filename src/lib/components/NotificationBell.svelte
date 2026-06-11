@@ -45,7 +45,8 @@
 		return 'Baru saja';
 	}
 
-	async function markAsRead(id: string) {
+	async function markAsRead(e: MouseEvent, id: string) {
+		e.stopPropagation();
 		const res = await fetch('/api/notifications', {
 			method: 'PATCH',
 			body: JSON.stringify({ id }),
@@ -56,7 +57,8 @@
 		}
 	}
 
-	async function clearNotification(id: string) {
+	async function clearNotification(e: MouseEvent, id: string) {
+		e.stopPropagation();
 		const res = await fetch('/api/notifications', {
 			method: 'DELETE',
 			body: JSON.stringify({ id }),
@@ -67,7 +69,8 @@
 		}
 	}
 
-	async function clearAll() {
+	async function clearAll(e: MouseEvent) {
+		e.stopPropagation();
 		const res = await fetch('/api/notifications', {
 			method: 'DELETE',
 			body: JSON.stringify({ clearAll: true, organizationId }),
@@ -102,7 +105,7 @@
 					variant="ghost"
 					size="sm"
 					class="h-auto p-0 text-xs text-primary hover:bg-transparent"
-					onclick={clearAll}
+					onclick={(e) => clearAll(e)}
 				>
 					Hapus Semua
 				</Button>
@@ -152,7 +155,7 @@
 									<button
 										class="rounded-full p-1 text-primary transition-colors hover:bg-primary/10"
 										title="Tandai sudah baca"
-										onclick={() => markAsRead(notif.id)}
+										onclick={(e) => markAsRead(e, notif.id)}
 									>
 										<Check class="h-3.5 w-3.5" />
 									</button>
@@ -160,7 +163,7 @@
 								<button
 									class="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted"
 									title="Hapus"
-									onclick={() => clearNotification(notif.id)}
+									onclick={(e) => clearNotification(e, notif.id)}
 								>
 									<X class="h-3.5 w-3.5" />
 								</button>
@@ -174,7 +177,7 @@
 							<a
 								href={notif.action.webPath}
 								class="mt-2 text-xs font-medium text-primary hover:underline"
-								onclick={() => !notif.read && markAsRead(notif.id)}
+								onclick={(e) => !notif.read && markAsRead(e, notif.id)}
 							>
 								Lihat Detail
 							</a>

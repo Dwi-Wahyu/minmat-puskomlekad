@@ -187,6 +187,12 @@ export const actions: Actions = {
 
 			if (!currentEquipment) return fail(404, { message: 'Alat tidak ditemukan' });
 
+			// Fetch last movement for state validation
+			const lastMovementCheck = await db.query.movement.findFirst({
+				where: eq(movement.equipmentId, id),
+				orderBy: (movement, { desc }) => [desc(movement.createdAt)]
+			});
+
 			// Validasi state machine
 			const validTransitions: Record<string, string[]> = {
 				TRANSIT: ['TRANSFER_IN', 'ISSUE'],
@@ -198,9 +204,12 @@ export const actions: Actions = {
 			const allowed = validTransitions[currentStatus] ?? [];
 
 			if (!allowed.includes(eventType)) {
-				return fail(400, {
-					message: `Mutasi "${eventType}" tidak valid untuk alat dengan status "${currentStatus}".`
-				});
+				return fail(400, { message: `Mutasi "${eventType}" tidak valid untuk alat dengan status "${currentStatus}".` });
+			}
+
+			// Validasi tambahan: jika sudah RECEIVE, tidak boleh RECEIVE lagi secara berturut-turut
+			if (eventType === 'RECEIVE' && lastMovementCheck?.eventType === 'RECEIVE') {
+				return fail(400, { message: 'Alat ini sudah diterima sebelumnya (tidak perlu RECEIVE lagi).' });
 			}
 
 			let newMovementId = '';

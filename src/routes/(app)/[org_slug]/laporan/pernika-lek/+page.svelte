@@ -8,8 +8,11 @@
 	import * as Select from '$lib/components/ui/select';
 	import { getPernikaLekData } from './pernika-lek.remote';
 
+	let { data } = $props();
+
 	const limit = $derived(Number(page.url.searchParams.get('limit')) || 50);
 	const currentPage = $derived(Number(page.url.searchParams.get('page')) || 1);
+	const isParentOrg = $derived(data.isParentOrg);
 
 	const pernikaQuery = $derived(
 		getPernikaLekData({
@@ -37,7 +40,7 @@
 
 		const headers = [
 			'NO',
-			'SATKER',
+			...(isParentOrg ? ['SATKER'] : []),
 			'NAMA MATERIIL',
 			'MEREK / TYPE',
 			'SATUAN',
@@ -48,27 +51,23 @@
 			'KET'
 		];
 
-		// FIX: Definisikan tipe data eksplisit untuk menghindari error TS7034
 		const csvRows: string[] = [];
 
 		pernikaQuery.current.groupedReports.forEach((org: any) => {
 			org.items.forEach((item: any) => {
-				csvRows.push(
-					[
-						item.index,
-						org.orgName,
-						item.itemName,
-						item.brand || '-',
-						item.unit,
-						item.total,
-						item.baik || 0,
-						item.rr || 0,
-						item.rb || 0,
-						item.ket || '-'
-					]
-						.map((val) => `"${val}"`)
-						.join(',')
-				);
+				const rowData = [
+					item.index,
+					...(isParentOrg ? [org.orgName] : []),
+					item.itemName,
+					item.brand || '-',
+					item.unit,
+					item.total,
+					item.baik || 0,
+					item.rr || 0,
+					item.rb || 0,
+					item.ket || '-'
+				];
+				csvRows.push(rowData.map((val) => `"${val}"`).join(','));
 			});
 		});
 
@@ -127,13 +126,15 @@
 						{pernikaQuery.loading ? 'Memproses...' : 'Muat Ulang Data'}
 					</button>
 				</form>
-				<button
+
+				<Button
 					onclick={exportCSV}
+					variant="secondary"
 					disabled={pernikaQuery.loading || !pernikaQuery.current?.groupedReports.length}
-					class="rounded-md bg-secondary px-6 py-2 text-xs font-bold tracking-wider whitespace-nowrap text-secondary-foreground uppercase shadow transition hover:bg-secondary/90 disabled:opacity-50"
+					class="rounded px-4 py-2 text-sm whitespace-nowrap shadow-sm transition-opacity"
 				>
-					Ekspor (.CSV)
-				</button>
+					Ekspor CSV
+				</Button>
 			</div>
 		</div>
 	</div>
@@ -143,7 +144,9 @@
 			<thead>
 				<tr class="bg-muted font-bold uppercase">
 					<th class="w-10 border border-border px-1 py-3" rowspan="2">No</th>
-					<th class="border border-border px-4 py-3" rowspan="2">Satker</th>
+					{#if isParentOrg}
+						<th class="border border-border px-4 py-3" rowspan="2">Satuan</th>
+					{/if}
 					<th class="border border-border px-4 py-3 text-left" rowspan="2"
 						>Nama Materiil / Jenis Alkom</th
 					>
@@ -166,7 +169,9 @@
 							<td class="border border-border p-2 text-center"
 								><Skeleton class="mx-auto h-3 w-4" /></td
 							>
-							<td class="border border-border p-2 px-4"><Skeleton class="mx-auto h-3 w-20" /></td>
+							{#if isParentOrg}
+								<td class="border border-border p-2 px-4"><Skeleton class="mx-auto h-3 w-20" /></td>
+							{/if}
 							<td class="border border-border p-2 px-4"><Skeleton class="h-3 w-32" /></td>
 							<td class="border border-border p-2 px-4 text-center"
 								><Skeleton class="mx-auto h-3 w-20" /></td
@@ -197,13 +202,15 @@
 									{row.index}
 								</td>
 
-								{#if i === 0}
-									<td
-										class="border border-border bg-muted/50 p-2 px-4 text-center font-bold"
-										rowspan={org.items.length}
-									>
-										{org.orgName}
-									</td>
+								{#if isParentOrg}
+									{#if i === 0}
+										<td
+											class="border border-border bg-muted/50 p-2 px-4 text-center font-bold"
+											rowspan={org.items.length}
+										>
+											{org.orgName}
+										</td>
+									{/if}
 								{/if}
 
 								<td class="border border-border p-2 px-4 text-left font-semibold">{row.itemName}</td
@@ -236,7 +243,7 @@
 				{:else}
 					<tr>
 						<td
-							colspan="10"
+							colspan={isParentOrg ? 10 : 9}
 							class="border border-border bg-muted/20 p-16 text-center text-muted-foreground italic"
 						>
 							Data tidak tersedia.

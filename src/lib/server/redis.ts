@@ -9,8 +9,8 @@ const isBuildTime =
 
 // Konfigurasi Redis yang lebih aman untuk production
 export const redis = new Redis(redisUrl, {
-	maxRetriesPerRequest: 1,
-	enableOfflineQueue: false, // Jangan antre perintah jika koneksi mati agar tidak membuat request HTTP menggantung
+	maxRetriesPerRequest: 3, // Beri toleransi retry sedikit untuk mencegah error saat network blip
+	enableOfflineQueue: true, // Izinkan antrean agar perintah pertama saat startup (lazyConnect) tidak langsung gagal
 	connectTimeout: isBuildTime ? 500 : 5000,
 	lazyConnect: true,
 	reconnectOnError: (err) => {

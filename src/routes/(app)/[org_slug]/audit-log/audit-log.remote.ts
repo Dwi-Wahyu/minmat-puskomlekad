@@ -1,8 +1,8 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { auditLog, user } from '$lib/server/db/schema';
+import { auditLog, user, type AuditLog } from '$lib/server/db/schema';
 import { desc, eq, and, gte, lte, or, ilike } from 'drizzle-orm';
-import { requireAuth, requirePermission } from '$lib/server/auth.utils';
+import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
 import { error } from '@sveltejs/kit';
 
@@ -13,7 +13,7 @@ const auditLogSchema = v.object({
 });
 
 export type AuditLogListData = {
-	logs: any[];
+	logs: AuditLog[];
 };
 
 export const getAuditLogData = query(auditLogSchema, async (args): Promise<AuditLogListData> => {

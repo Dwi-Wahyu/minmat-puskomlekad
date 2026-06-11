@@ -1,26 +1,28 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { BookOpen } from '@lucide/svelte';
+	import { Download } from '@lucide/svelte';
+	import { Button } from '$lib/components/ui/button';
 </script>
 
-<div class="flex min-h-[80vh] flex-col items-center justify-center p-6 text-center">
-	<Card.Root class="pt-6">
-		<Card.Content class="space-y-6">
-			<div class="relative mx-auto flex h-24 w-24 items-center justify-center">
-				<div class="absolute inset-0 animate-ping rounded-full bg-primary/10 opacity-75"></div>
-				<div
-					class="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary"
-				>
-					<BookOpen class="size-10" />
-				</div>
+<div class="flex h-[calc(100vh-4rem)] flex-col gap-4 p-6">
+	<div class="flex items-center justify-between">
+		<div class="flex items-center gap-3">
+			<div>
+				<h1 class="text-2xl font-bold tracking-tight">Buku Panduan</h1>
+				<p class="text-sm text-muted-foreground">Panduan penggunaan sistem MINMAT.</p>
 			</div>
+		</div>
+		<Button href="/guidebook-minmat.pdf" download="guidebook-minmat.pdf" variant="default">
+			<Download />
+			Unduh PDF
+		</Button>
+	</div>
 
-			<div class="space-y-2">
-				<h1 class="text-2xl font-bold tracking-tight">Guide Book</h1>
-				<p class="text-sm text-muted-foreground">
-					Panduan penggunaan sistem MINMAT sedang dalam tahap penyusunan.
-				</p>
-			</div>
-		</Card.Content>
+	<Card.Root class="flex-1 overflow-hidden">
+		<iframe
+			src="/guidebook-minmat.pdf"
+			class="h-full w-full border-none"
+			title="Buku Panduan MINMAT"
+		></iframe>
 	</Card.Root>
 </div>

@@ -72,7 +72,9 @@
 	}
 
 	let selectedOrgName = $derived(
-		transitoQuery.current?.organizations.find((o: any) => o.id === transitoQuery.current?.selectedOrgId)?.name || 'Pilih Kesatuan'
+		transitoQuery.current?.organizations.find(
+			(o: any) => o.id === transitoQuery.current?.selectedOrgId
+		)?.name || 'Pilih Kesatuan'
 	);
 
 	const typeOptions = [
@@ -118,7 +120,7 @@
 						value={transitoQuery.current.selectedOrgId}
 						onValueChange={handleOrgChange}
 					>
-						<SearchableSelect.Trigger class="w-[200px] border-2">
+						<SearchableSelect.Trigger class="w-50 border-2">
 							<Building2 class="mr-2 h-4 w-4 opacity-50" />
 							{selectedOrgName}
 						</SearchableSelect.Trigger>
@@ -136,7 +138,7 @@
 			<div class="flex flex-col gap-1.5">
 				<Label for="type-filter">Jenis</Label>
 				<Select.Root type="single" bind:value={typeFilter} onValueChange={updateFilters}>
-					<Select.Trigger class="w-[180px] border-2">
+					<Select.Trigger class="w-45 border-2">
 						{typeOptions.find((o: any) => o.value === typeFilter)?.label || 'Semua Jenis'}
 					</Select.Trigger>
 					<Select.Content>
@@ -150,8 +152,9 @@
 			<div class="flex flex-col gap-1.5">
 				<Label for="category-filter">Kategori Alat</Label>
 				<Select.Root type="single" bind:value={categoryFilter} onValueChange={updateFilters}>
-					<Select.Trigger class="w-[180px] border-2">
-						{categoryOptions.find((o: any) => o.value === categoryFilter)?.label || 'Semua Kategori'}
+					<Select.Trigger class="w-45 border-2">
+						{categoryOptions.find((o: any) => o.value === categoryFilter)?.label ||
+							'Semua Kategori'}
 					</Select.Trigger>
 					<Select.Content>
 						{#each categoryOptions as opt}
@@ -184,15 +187,15 @@
 						id="search"
 						type="text"
 						placeholder="Cari nama atau SN..."
-						class="w-[250px] border-2 pl-10"
+						class="w-62.5 border-2 pl-10"
 						bind:value={searchQuery}
 						onkeydown={(e) => e.key === 'Enter' && updateFilters()}
 					/>
 				</div>
 			</div>
 
-			<Button variant="secondary" size="icon" onclick={updateFilters} title="Refresh Filter">
-				<Filter class="size-4" />
+			<Button variant="secondary" onclick={updateFilters} title="Refresh Filter">
+				Terapkan Filter
 			</Button>
 		</div>
 	</div>
@@ -295,7 +298,9 @@
 					>{Math.min(currentPage * limit, transitoQuery.current.pagination.totalItems)}</span
 				>
 				dari
-				<span class="font-semibold text-foreground">{transitoQuery.current.pagination.totalItems}</span> data
+				<span class="font-semibold text-foreground"
+					>{transitoQuery.current.pagination.totalItems}</span
+				> data
 			</div>
 			<div class="flex items-center gap-2">
 				<Button
@@ -303,7 +308,7 @@
 					size="sm"
 					onclick={() => goToPage(currentPage - 1)}
 					disabled={currentPage <= 1}
-					class="h-8 gap-1 px-2 text-xs border-2"
+					class="h-8 gap-1 border-2 px-2 text-xs"
 				>
 					<ChevronLeft class="h-3 w-3" />
 					Sebelumnya
@@ -325,7 +330,7 @@
 					size="sm"
 					onclick={() => goToPage(currentPage + 1)}
 					disabled={currentPage >= transitoQuery.current.pagination.totalPages}
-					class="h-8 gap-1 px-2 text-xs border-2"
+					class="h-8 gap-1 border-2 px-2 text-xs"
 				>
 					Selanjutnya
 					<ChevronRight class="h-3 w-3" />

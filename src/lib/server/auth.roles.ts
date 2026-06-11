@@ -55,29 +55,28 @@ export const kakomlek = accessControl.newRole({
 	maintenance: ['view'],
 	distribution: ['view', 'approve'],
 	infrastructure: ['view'],
-	organization: ['view'],
-	auditLog: ['view']
+	organization: ['view']
 });
 
 export const operatorPusatDanDaerah = accessControl.newRole({
-	inventory: ['view'],
+	inventory: ['create', 'update', 'delete', 'view'],
 	warehouse: ['view'],
 	movement: ['create', 'view'],
 	report: ['view'],
 	lending: ['view'],
-	maintenance: ['view'],
+	maintenance: ['view', 'create', 'update', 'delete'],
 	distribution: ['view', 'receive'],
 	infrastructure: ['view'],
 	organization: ['view']
 });
 
 export const operatorBinmatDanBekharrah = accessControl.newRole({
-	inventory: ['view'],
+	inventory: ['create', 'update', 'delete', 'view'],
 	warehouse: ['view'],
 	movement: ['create', 'view'],
 	report: ['view'],
 	lending: ['view'],
-	maintenance: ['view'],
+	maintenance: ['view', 'create', 'update', 'delete'],
 	distribution: ['view', 'validate', 'ship', 'receive'],
 	infrastructure: ['view'],
 	organization: ['view']

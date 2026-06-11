@@ -238,8 +238,8 @@
 				</div>
 			</div>
 
-			<Button variant="secondary" size="icon" onclick={updateFilters} title="Refresh Filter">
-				<Filter class="size-4" />
+			<Button variant="secondary" onclick={updateFilters} title="Refresh Filter">
+				Terapkan Filter
 			</Button>
 		</div>
 	</div>
@@ -350,7 +350,9 @@
 					>{Math.min(currentPage * limit, balkirQuery.current.pagination.totalItems)}</span
 				>
 				dari
-				<span class="font-semibold text-foreground">{balkirQuery.current.pagination.totalItems}</span> data
+				<span class="font-semibold text-foreground"
+					>{balkirQuery.current.pagination.totalItems}</span
+				> data
 			</div>
 			<div class="flex items-center gap-2">
 				<Button
@@ -358,7 +360,7 @@
 					size="sm"
 					onclick={() => goToPage(currentPage - 1)}
 					disabled={currentPage <= 1}
-					class="h-8 gap-1 px-2 text-xs border-2"
+					class="h-8 gap-1 border-2 px-2 text-xs"
 				>
 					<ChevronLeft class="h-3 w-3" />
 					Sebelumnya
@@ -380,7 +382,7 @@
 					size="sm"
 					onclick={() => goToPage(currentPage + 1)}
 					disabled={currentPage >= balkirQuery.current.pagination.totalPages}
-					class="h-8 gap-1 px-2 text-xs border-2"
+					class="h-8 gap-1 border-2 px-2 text-xs"
 				>
 					Selanjutnya
 					<ChevronRight class="h-3 w-3" />

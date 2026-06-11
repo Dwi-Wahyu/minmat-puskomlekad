@@ -163,7 +163,7 @@
 			children: [
 				{ name: 'Pemeliharaan', path: getPath('/pemeliharaan') },
 				{ name: 'Peminjaman', path: getPath('/peminjaman') },
-				{ name: 'Distribusi', path: getPath('/distribusi'), role: ['parent'] }
+				{ name: 'Distribusi', path: getPath('/distribusi') }
 			]
 		},
 		{

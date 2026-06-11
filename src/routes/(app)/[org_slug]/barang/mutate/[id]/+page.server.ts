@@ -9,7 +9,7 @@ import {
 	member
 } from '$lib/server/db/schema';
 import { eq, and, ne, inArray } from 'drizzle-orm';
-import { error, fail } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { superValidate, message } from 'sveltekit-superforms';
 import { yup } from 'sveltekit-superforms/adapters';
@@ -147,7 +147,7 @@ export const actions: Actions = {
 		const form = await superValidate(formData, yup(barangMutationSchema));
 
 		if (!form.valid) {
-			return fail(400, { form });
+			return message(form, 'Mohon periksa kembali formulir Anda', { status: 400 });
 		}
 
 		try {
@@ -171,9 +171,14 @@ export const actions: Actions = {
 			// If it's ADJUSTMENT, we treat it as an increase/decrease based on UI (here it's always positive)
 			// For TRANSFER_OUT, we also increase stock in toWarehouseId if provided
 
-			const deltaSource = type === 'ISSUE' || type === 'TRANSFER_OUT' ? -qty : (type === 'ADJUSTMENT' || type === 'RECEIVE' || type === 'TRANSFER_IN' ? qty : 0);
+			const deltaSource =
+				type === 'ISSUE' || type === 'TRANSFER_OUT'
+					? -qty
+					: type === 'ADJUSTMENT' || type === 'RECEIVE' || type === 'TRANSFER_IN'
+						? qty
+						: 0;
 
-			let newMovementId = crypto.randomUUID();
+			const newMovementId = crypto.randomUUID();
 
 			await db.transaction(async (tx) => {
 				// 1. Record movement
@@ -191,9 +196,9 @@ export const actions: Actions = {
 					toWarehouseId:
 						type === 'TRANSFER_OUT'
 							? toWarehouseId
-							: (type === 'RECEIVE' || type === 'TRANSFER_IN' || type === 'ADJUSTMENT'
+							: type === 'RECEIVE' || type === 'TRANSFER_IN' || type === 'ADJUSTMENT'
 								? warehouseId
-								: null),
+								: null,
 					notes: notes || 'Mutasi manual',
 					picId: user?.id,
 					createdAt: new Date()
@@ -260,11 +265,16 @@ export const actions: Actions = {
 				itemId: itemId
 			}).catch((err) => console.error('[Notifikasi Mutasi Barang] Gagal mengirim:', err));
 
-			if (org) await invalidateOrgInventoryCache(org.id);
+			// Invalidasi cache (non-blocking) agar tidak menghambat response jika Redis lambat
+			if (org) {
+				invalidateOrgInventoryCache(org.id).catch((err) => {
+					console.error('[Mutasi Barang] Gagal invalidasi cache:', err);
+				});
+			}
 
 			return message(form, 'Mutasi berhasil dicatat');
 		} catch (err) {
-			console.error('Error in mutate barang:', err);
+			console.error('[Mutasi Barang] Error:', err);
 			const errorMessage = err instanceof Error ? err.message : 'Gagal mencatat mutasi';
 			return message(form, errorMessage, { status: 500 });
 		}

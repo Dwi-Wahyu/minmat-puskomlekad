@@ -11,7 +11,124 @@ import {
 	decimal
 } from 'drizzle-orm/mysql-core';
 import { relations, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
-import { organization, user } from './auth.schema';
+
+// --- Auth Tables (Formerly auth.schema.ts) ---
+
+export const user = mysqlTable('user', {
+	id: varchar('id', { length: 36 }).primaryKey(),
+	name: varchar('name', { length: 255 }).notNull(),
+	username: varchar('username', { length: 255 }).notNull().unique(),
+	displayUsername: varchar('display_username', { length: 255 }),
+	email: varchar('email', { length: 255 }).notNull().unique(),
+	emailVerified: boolean('email_verified').default(false).notNull(),
+	image: text('image'),
+	createdAt: timestamp('created_at', { fsp: 3 }).defaultNow().notNull(),
+	updatedAt: timestamp('updated_at', { fsp: 3 })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull()
+});
+
+export const session = mysqlTable(
+	'session',
+	{
+		id: varchar('id', { length: 36 }).primaryKey(),
+		expiresAt: timestamp('expires_at', { fsp: 3 }).notNull(),
+		token: varchar('token', { length: 255 }).notNull().unique(),
+		createdAt: timestamp('created_at', { fsp: 3 }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { fsp: 3 })
+			.$onUpdate(() => new Date())
+			.notNull(),
+		ipAddress: text('ip_address'),
+		userAgent: text('user_agent'),
+		userId: varchar('user_id', { length: 36 })
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' })
+	},
+	(table) => [index('session_userId_idx').on(table.userId)]
+);
+
+export const apiKey = mysqlTable(
+	'api_key',
+	{
+		id: varchar('id', { length: 36 }).primaryKey(),
+		key: varchar('key', { length: 255 }).notNull().unique(),
+		name: text('name'),
+		userId: varchar('user_id', { length: 36 })
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', { fsp: 3 }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { fsp: 3 })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+		expiresAt: timestamp('expires_at', { fsp: 3 }),
+		lastUsedAt: timestamp('last_used_at', { fsp: 3 })
+	},
+	(table) => [index('api_key_userId_idx').on(table.userId)]
+);
+
+export const account = mysqlTable(
+	'account',
+	{
+		id: varchar('id', { length: 36 }).primaryKey(),
+		accountId: text('account_id').notNull(),
+		providerId: text('provider_id').notNull(),
+		userId: varchar('user_id', { length: 36 })
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		accessToken: text('access_token'),
+		refreshToken: text('refresh_token'),
+		idToken: text('id_token'),
+		accessTokenExpiresAt: timestamp('access_token_expires_at', { fsp: 3 }),
+		refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { fsp: 3 }),
+		scope: text('scope'),
+		password: text('password'),
+		createdAt: timestamp('created_at', { fsp: 3 }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { fsp: 3 })
+			.$onUpdate(() => new Date())
+			.notNull()
+	},
+	(table) => [index('account_userId_idx').on(table.userId)]
+);
+
+export const verification = mysqlTable(
+	'verification',
+	{
+		id: varchar('id', { length: 36 }).primaryKey(),
+		identifier: varchar('identifier', { length: 255 }).notNull(),
+		value: text('value').notNull(),
+		expiresAt: timestamp('expires_at', { fsp: 3 }).notNull(),
+		createdAt: timestamp('created_at', { fsp: 3 }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { fsp: 3 })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull()
+	},
+	(table) => [index('verification_identifier_idx').on(table.identifier)]
+);
+
+export const organization = mysqlTable('organization', {
+	id: varchar('id', { length: 36 }).primaryKey(),
+	name: text('name').notNull(),
+	slug: varchar('slug', { length: 255 }).unique(),
+	logo: text('logo'),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	metadata: text('metadata'),
+	parentId: varchar('parent_id', { length: 36 })
+});
+
+export const member = mysqlTable('member', {
+	id: varchar('id', { length: 36 }).primaryKey(),
+	organizationId: varchar('organization_id', { length: 36 }).references(() => organization.id, {
+		onDelete: 'cascade'
+	}),
+	userId: varchar('user_id', { length: 36 }).references(() => user.id, { onDelete: 'cascade' }),
+	role: varchar('role', { length: 50 }).notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// --- App Tables (Formerly schema.ts) ---
 
 export const warehouse = mysqlTable('warehouse', {
 	id: varchar('id', { length: 36 }).primaryKey(),
@@ -29,54 +146,40 @@ export const equipment = mysqlTable(
 		id: varchar('id', { length: 36 }).primaryKey(),
 		serialNumber: varchar('serial_number', { length: 100 }).unique(),
 		brand: varchar('brand', { length: 100 }),
-
 		warehouseId: varchar('warehouse_id', { length: 36 }).references(() => warehouse.id),
-
 		organizationId: varchar('organization_id', { length: 36 }).references(() => organization.id),
-
 		itemId: varchar('item_id', { length: 36 })
 			.notNull()
-			.references(() => item.id), // Ensure item.type = 'ASSET'
-
+			.references(() => item.id),
 		condition: mysqlEnum('condition', ['BAIK', 'RUSAK_RINGAN', 'RUSAK_BERAT'])
 			.default('BAIK')
 			.notNull(),
-
 		status: mysqlEnum('status', ['READY', 'IN_USE', 'TRANSIT', 'MAINTENANCE']).default('READY'),
-
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at').onUpdateNow()
 	},
 	(table) => [
 		index('equipment_condition_idx').on(table.condition),
-		index('equipment_item_id_idx').on(table.itemId) // Add index for itemId
+		index('equipment_item_id_idx').on(table.itemId)
 	]
 );
 
 export const item = mysqlTable('item', {
 	id: varchar('id', { length: 36 }).primaryKey(),
-
 	name: varchar('name', { length: 255 }).notNull(),
-
-	type: mysqlEnum('type', ['ASSET', 'CONSUMABLE']).notNull(), // ASSET = individual, CONSUMABLE = quantity-based
-
-	// Only applicable if type is ASSET
+	type: mysqlEnum('type', ['ASSET', 'CONSUMABLE']).notNull(),
 	equipmentType: mysqlEnum('equipment_type', ['ALKOMLEK', 'PERNIKA_LEK']),
-
 	baseUnit: varchar('base_unit', { length: 21 })
 		.notNull()
-		.references(() => unit.id), // Reference to unit table
-
+		.references(() => unit.id),
 	description: text('description'),
-
 	imagePath: text('image_path'),
-
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
 export const unit = mysqlTable('unit', {
 	id: varchar('id', { length: 21 }).primaryKey(),
-	name: varchar('name', { length: 20 }).notNull().unique(), // PCS, BOX, etc
+	name: varchar('name', { length: 20 }).notNull().unique(),
 	description: text('description'),
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
@@ -85,17 +188,14 @@ export const itemUnitConversion = mysqlTable(
 	'item_unit_conversion',
 	{
 		id: varchar('id', { length: 36 }).primaryKey(),
-
 		itemId: varchar('item_id', { length: 36 }).references(() => item.id, { onDelete: 'cascade' }),
-
-		fromUnit: varchar('from_unit', { length: 20 }).notNull(), // BOX
-		toUnit: varchar('to_unit', { length: 20 }).notNull(), // PCS (Harus selalu merujuk ke item.baseUnit)
-
-		multiplier: decimal('multiplier', { precision: 12, scale: 4 }).notNull() // 10.0000
+		fromUnit: varchar('from_unit', { length: 20 }).notNull(),
+		toUnit: varchar('to_unit', { length: 20 }).notNull(),
+		multiplier: decimal('multiplier', { precision: 12, scale: 4 }).notNull()
 	},
 	(table) => [
 		index('item_unit_conv_item_idx').on(table.itemId),
-		unique().on(table.itemId, table.fromUnit) // Mencegah duplikasi rasio untuk satuan yang sama
+		unique().on(table.itemId, table.fromUnit)
 	]
 );
 
@@ -103,18 +203,13 @@ export const stock = mysqlTable(
 	'stock',
 	{
 		id: varchar('id', { length: 36 }).primaryKey(),
-
 		itemId: varchar('item_id', { length: 36 }).references(() => item.id, { onDelete: 'cascade' }),
-
 		warehouseId: varchar('warehouse_id', { length: 36 }).references(() => warehouse.id, {
 			onDelete: 'cascade'
 		}),
-
 		qty: decimal('qty', { precision: 12, scale: 4 }).default('0.0000').notNull(),
-
 		updatedAt: timestamp('updated_at').defaultNow().onUpdateNow()
 	},
-
 	(table) => [
 		index('stock_item_idx').on(table.itemId),
 		uniqueIndex('stock_unique_idx').on(table.itemId, table.warehouseId)
@@ -122,23 +217,23 @@ export const stock = mysqlTable(
 );
 
 export const movementEventTypeEnum = mysqlEnum('movement_event_type', [
-	'RECEIVE', // Incoming stock/equipment (IN, MASUK)
-	'ISSUE', // Outgoing stock/equipment (OUT, KELUAR)
-	'ADJUSTMENT', // Stock adjustment
-	'TRANSFER_OUT', // Transfer out of a warehouse/org
-	'TRANSFER_IN', // Transfer into a warehouse/org
-	'LOAN_OUT', // Equipment loaned out (PINJAM)
-	'LOAN_RETURN', // Equipment returned from loan (KEMBALI)
-	'DISTRIBUTE_OUT', // Equipment/Item distributed out
-	'DISTRIBUTE_IN', // Equipment/Item received from distribution
-	'MAINTENANCE_IN', // Equipment sent for maintenance
-	'MAINTENANCE_OUT' // Equipment returned from maintenance
+	'RECEIVE',
+	'ISSUE',
+	'ADJUSTMENT',
+	'TRANSFER_OUT',
+	'TRANSFER_IN',
+	'LOAN_OUT',
+	'LOAN_RETURN',
+	'DISTRIBUTE_OUT',
+	'DISTRIBUTE_IN',
+	'MAINTENANCE_IN',
+	'MAINTENANCE_OUT'
 ]);
 
 export const movementClassificationEnum = mysqlEnum('movement_classification', [
-	'BALKIR', // Barang Terkirim (dalam pengiriman/ekspedisi)
-	'KOMUNITY', // Masuk ke komunitas/satuan pemakai (serah terima)
-	'TRANSITO' // Gudang Transit / Penyimpanan Sementara
+	'BALKIR',
+	'KOMUNITY',
+	'TRANSITO'
 ]);
 
 export const movementReferenceTypeEnum = mysqlEnum('movement_reference_type', [
@@ -153,43 +248,20 @@ export const movement = mysqlTable(
 		id: varchar('id', { length: 36 })
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
-
-		// Link to either item (for consumables) or equipment (for assets)
 		itemId: varchar('item_id', { length: 36 }).references(() => item.id),
 		equipmentId: varchar('equipment_id', { length: 36 }).references(() => equipment.id),
-
-		// Type of movement event
 		eventType: movementEventTypeEnum.notNull(),
-
-		// Quantity for consumable items (default 1 for assets)
 		qty: decimal('qty', { precision: 12, scale: 4 }).notNull().default('1.0000'),
-
-		// Unit for consumable items (e.g., "PCS", "BOX")
 		unit: varchar('unit', { length: 20 }),
-
-		// Classification for asset movements (BALKIR, KOMUNITY, TRANSITO)
 		classification: movementClassificationEnum,
-
-		// Specific location name (e.g., "Truk Ekspedisi A", "Yonif 201")
 		specificLocationName: varchar('specific_location_name', { length: 255 }),
-
-		// Source and Destination warehouses for transfers/movements
 		fromWarehouseId: varchar('from_warehouse_id', { length: 36 }).references(() => warehouse.id),
 		toWarehouseId: varchar('to_warehouse_id', { length: 36 }).references(() => warehouse.id),
-
-		// Organization initiating or affected by the movement
 		organizationId: varchar('organization_id', { length: 36 }).references(() => organization.id),
-
-		notes: text('notes'), // Combines description/keterangan/note
-
-		conditionAtArrival: mysqlEnum('condition_at_arrival', ['BAIK', 'RUSAK_RINGAN', 'RUSAK_BERAT']),
-
-		picId: varchar('pic_id', { length: 36 }).references(() => user.id), // Person in Charge (createdBy, penanggungJawab)
-
-		// Reference to other transactions
+		notes: text('notes'),
+		picId: varchar('pic_id', { length: 36 }).references(() => user.id),
 		referenceType: movementReferenceTypeEnum,
 		referenceId: varchar('reference_id', { length: 36 }),
-
 		createdAt: timestamp('created_at').defaultNow().notNull()
 	},
 	(table) => [
@@ -204,44 +276,44 @@ export const movement = mysqlTable(
 
 export const distribution = mysqlTable('distribution', {
 	id: varchar('id', { length: 36 }).primaryKey(),
-
 	fromOrganizationId: varchar('from_org_id', { length: 36 }).references(() => organization.id),
-
 	toOrganizationId: varchar('to_org_id', { length: 36 }).references(() => organization.id),
-
 	status: mysqlEnum('status', ['DRAFT', 'VALIDATED', 'APPROVED', 'SHIPPED', 'RECEIVED']).default(
 		'DRAFT'
 	),
-
 	requestedBy: varchar('requested_by', { length: 36 }).references(() => user.id),
-
 	approvedBy: varchar('approved_by', { length: 36 }).references(() => user.id),
-
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-export const distributionItem = mysqlTable('distribution_item', {
+export const distributionEquipment = mysqlTable('distribution_equipment', {
 	id: varchar('id', { length: 36 })
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
-
 	distributionId: varchar('distribution_id', { length: 36 })
 		.notNull()
 		.references(() => distribution.id, { onDelete: 'cascade' }),
-
-	// Jika yang dikirim adalah ALAT
-	equipmentId: varchar('equipment_id', { length: 36 }).references(() => equipment.id),
-
-	// Jika yang dikirim adalah BAHAN
-	itemId: varchar('item_id', { length: 36 }).references(() => item.id),
-
-	// Kuantitas & Satuan (Penting untuk Consumable)
-	quantity: decimal('quantity', { precision: 12, scale: 4 }).notNull().default('1.0000'),
-	unit: varchar('unit', { length: 20 }), // misal: "PCS", "BOX", "UNIT"
-
-	// Catatan kondisi spesifik barang saat akan dikirim
+	equipmentId: varchar('equipment_id', { length: 36 })
+		.notNull()
+		.references(() => equipment.id),
 	note: text('note'),
+	createdAt: timestamp('created_at').defaultNow().notNull()
+});
 
+export const distributionConsumable = mysqlTable('distribution_consumable', {
+	id: varchar('id', { length: 36 })
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	distributionId: varchar('distribution_id', { length: 36 })
+		.notNull()
+		.references(() => distribution.id, { onDelete: 'cascade' }),
+	itemId: varchar('item_id', { length: 36 })
+		.notNull()
+		.references(() => item.id),
+	fromWarehouseId: varchar('from_warehouse_id', { length: 36 }).references(() => warehouse.id),
+	quantity: decimal('quantity', { precision: 12, scale: 4 }).notNull().default('1.0000'),
+	unit: varchar('unit', { length: 20 }),
+	note: text('note'),
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -250,92 +322,68 @@ export const maintenance = mysqlTable('maintenance', {
 	equipmentId: varchar('equipment_id', { length: 36 }).references(() => equipment.id, {
 		onDelete: 'cascade'
 	}),
-
 	maintenanceType: mysqlEnum('maintenance_type', ['PERAWATAN', 'PERBAIKAN']).notNull(),
-	description: text('description').notNull(),
+	description: text('description'),
 	scheduledDate: timestamp('scheduled_date').notNull(),
 	completionDate: timestamp('completion_date'),
-
 	status: mysqlEnum('status', ['PENDING', 'IN_PROGRESS', 'COMPLETED']).default('PENDING').notNull(),
 	technicianId: varchar('technician_id', { length: 36 }).references(() => user.id),
-
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
 export const lending = mysqlTable('lending', {
 	id: varchar('id', { length: 36 }).primaryKey(),
-
 	unit: varchar('unit', { length: 100 }).notNull(),
 	purpose: mysqlEnum('purpose', ['OPERASI', 'LATIHAN', 'PERINTAH_LANGSUNG']).notNull(),
-
 	status: mysqlEnum('status', [
 		'DRAFT',
 		'APPROVED',
 		'REJECTED',
 		'PERINTAH_LANGSUNG',
 		'DIPINJAM',
-		'KEMBALI'
+		'KEMBALI',
+		'DALAM_PENGIRIMAN',
+		'DIKIRIM_KEMBALI'
 	]).default('DRAFT'),
 	rejectedReason: text('rejected_reason'),
-
 	overrideReason: text('override_reason'),
 	overrideBy: varchar('override_by', { length: 36 }).references(() => user.id),
-
 	requestedBy: varchar('requested_by', { length: 36 }).references(() => user.id),
 	organizationId: varchar('organization_id', { length: 36 }).references(() => organization.id),
-
 	approvedBy: varchar('approved_by', { length: 36 }).references(() => user.id),
-
 	attachmentPath: text('attachment_path'),
 	attachmentName: varchar('attachment_name', { length: 255 }),
-
 	startDate: timestamp('start_date').notNull(),
 	endDate: timestamp('end_date'),
-
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
 export const lendingItem = mysqlTable('lending_item', {
 	id: varchar('id', { length: 36 }).primaryKey(),
-
 	lendingId: varchar('lending_id', { length: 36 }).references(() => lending.id, {
 		onDelete: 'cascade'
 	}),
-
-	equipmentId: varchar('equipment_id', { length: 36 }).references(() => equipment.id),
-
-	qty: decimal('qty', { precision: 12, scale: 4 }).default('1.0000')
+	equipmentId: varchar('equipment_id', { length: 36 }).references(() => equipment.id)
 });
 
 export const approval = mysqlTable('approval', {
 	id: varchar('id', { length: 36 }).primaryKey(),
-
 	referenceType: mysqlEnum('reference_type', ['LENDING', 'DISTRIBUTION', 'MAINTENANCE']),
-
 	referenceId: varchar('reference_id', { length: 36 }),
-
 	approvedBy: varchar('approved_by', { length: 36 }).references(() => user.id),
-
 	status: mysqlEnum('status', ['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'),
-
 	note: text('note'),
-
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
 export const auditLog = mysqlTable('audit_log', {
 	id: varchar('id', { length: 36 }).primaryKey(),
-
 	userId: varchar('user_id', { length: 36 }).references(() => user.id),
-
 	action: varchar('action', { length: 50 }),
 	tableName: varchar('table_name', { length: 50 }),
-
 	recordId: varchar('record_id', { length: 36 }),
-
 	oldValue: text('old_value'),
 	newValue: text('new_value'),
-
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -357,19 +405,14 @@ export const importLog = mysqlTable('import_log', {
 
 export const reportBtk16 = mysqlTable('report_btk16', {
 	id: varchar('id', { length: 36 }).primaryKey(),
-
 	organizationId: varchar('organization_id', { length: 36 }).references(() => organization.id),
-
 	periodStart: timestamp('period_start'),
 	periodEnd: timestamp('period_end'),
-
 	itemName: varchar('item_name', { length: 255 }),
-
 	openingBalance: decimal('opening_balance', { precision: 12, scale: 4 }),
 	incoming: decimal('incoming', { precision: 12, scale: 4 }),
 	outgoing: decimal('outgoing', { precision: 12, scale: 4 }),
 	closingBalance: decimal('closing_balance', { precision: 12, scale: 4 }),
-
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -380,9 +423,9 @@ export const land = mysqlTable('land', {
 	}),
 	certificateNumber: varchar('certificate_number', { length: 255 }).notNull(),
 	location: text('location').notNull(),
-	area: decimal('area', { precision: 12, scale: 2 }).notNull(), // m2
+	area: decimal('area', { precision: 12, scale: 2 }).notNull(),
 	status: mysqlEnum('status', ['MILIK_TNI', 'LAINNYA']).notNull(),
-	usage: varchar('usage', { length: 255 }).notNull(), // kantor, asmen, dll
+	usage: varchar('usage', { length: 255 }).notNull(),
 	latitude: decimal('latitude', { precision: 10, scale: 8 }),
 	longitude: decimal('longitude', { precision: 11, scale: 8 }),
 	photoPath: text('photo_path'),
@@ -399,8 +442,8 @@ export const building = mysqlTable('building', {
 	code: varchar('code', { length: 100 }).notNull(),
 	name: varchar('name', { length: 255 }).notNull(),
 	location: text('location').notNull(),
-	type: varchar('type', { length: 255 }).notNull(), // kantor, asmen, dll
-	area: decimal('area', { precision: 12, scale: 2 }).notNull(), // m2
+	type: varchar('type', { length: 255 }).notNull(),
+	area: decimal('area', { precision: 12, scale: 2 }).notNull(),
 	condition: mysqlEnum('condition', ['BAIK', 'RUSAK']).notNull(),
 	status: mysqlEnum('status', ['MILIK_TNI', 'LAINNYA']).notNull(),
 	latitude: decimal('latitude', { precision: 10, scale: 8 }),
@@ -421,24 +464,15 @@ export const notification = mysqlTable(
 	'notification',
 	{
 		id: varchar('id', { length: 36 }).primaryKey(),
-
-		// Target: can be specific user OR specific organization
 		userId: varchar('user_id', { length: 36 }).references(() => user.id, { onDelete: 'cascade' }),
 		organizationId: varchar('organization_id', { length: 36 }).references(() => organization.id, {
 			onDelete: 'cascade'
 		}),
-
 		title: varchar('title', { length: 255 }).notNull(),
 		body: text('body').notNull(),
-
 		priority: notificationPriorityEnum.default('MEDIUM').notNull(),
-
 		read: boolean('read').default(false).notNull(),
-
-		// Action metadata (JSON)
-		// Example: { "type": "PEMINJAMAN_DETAIL", "resourceId": "...", "webPath": "...", "mobilePath": "..." }
 		action: text('action'),
-
 		createdAt: timestamp('created_at').defaultNow().notNull()
 	},
 	(table) => [
@@ -447,6 +481,60 @@ export const notification = mysqlTable(
 		index('notification_read_idx').on(table.read)
 	]
 );
+
+// --- Relations ---
+
+export const organizationRelations = relations(organization, ({ many, one }) => ({
+	warehouses: many(warehouse),
+	parent: one(organization, {
+		fields: [organization.parentId],
+		references: [organization.id],
+		relationName: 'organization_to_children'
+	}),
+	children: many(organization, {
+		relationName: 'organization_to_children'
+	}),
+	members: many(member)
+}));
+
+export const userRelations = relations(user, ({ many }) => ({
+	sessions: many(session),
+	accounts: many(account),
+	members: many(member),
+	apiKeys: many(apiKey)
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+	user: one(user, {
+		fields: [session.userId],
+		references: [user.id]
+	})
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+	user: one(user, {
+		fields: [account.userId],
+		references: [user.id]
+	})
+}));
+
+export const memberRelations = relations(member, ({ one }) => ({
+	user: one(user, {
+		fields: [member.userId],
+		references: [user.id]
+	}),
+	organization: one(organization, {
+		fields: [member.organizationId],
+		references: [organization.id]
+	})
+}));
+
+export const apiKeyRelations = relations(apiKey, ({ one }) => ({
+	user: one(user, {
+		fields: [apiKey.userId],
+		references: [user.id]
+	})
+}));
 
 export const warehouseRelations = relations(warehouse, ({ many, one }) => ({
 	equipments: many(equipment),
@@ -509,7 +597,8 @@ export const approvalRelations = relations(approval, ({ one }) => ({
 }));
 
 export const distributionRelations = relations(distribution, ({ many, one }) => ({
-	items: many(distributionItem),
+	equipmentItems: many(distributionEquipment),
+	consumableItems: many(distributionConsumable),
 	fromOrganization: one(organization, {
 		fields: [distribution.fromOrganizationId],
 		references: [organization.id]
@@ -528,18 +617,29 @@ export const distributionRelations = relations(distribution, ({ many, one }) => 
 	})
 }));
 
-export const distributionItemRelations = relations(distributionItem, ({ one }) => ({
+export const distributionEquipmentRelations = relations(distributionEquipment, ({ one }) => ({
 	distribution: one(distribution, {
-		fields: [distributionItem.distributionId],
+		fields: [distributionEquipment.distributionId],
 		references: [distribution.id]
 	}),
 	equipment: one(equipment, {
-		fields: [distributionItem.equipmentId],
+		fields: [distributionEquipment.equipmentId],
 		references: [equipment.id]
+	})
+}));
+
+export const distributionConsumableRelations = relations(distributionConsumable, ({ one }) => ({
+	distribution: one(distribution, {
+		fields: [distributionConsumable.distributionId],
+		references: [distribution.id]
 	}),
 	item: one(item, {
-		fields: [distributionItem.itemId],
+		fields: [distributionConsumable.itemId],
 		references: [item.id]
+	}),
+	fromWarehouse: one(warehouse, {
+		fields: [distributionConsumable.fromWarehouseId],
+		references: [warehouse.id]
 	})
 }));
 
@@ -655,61 +755,57 @@ export const importLogRelations = relations(importLog, ({ one }) => ({
 }));
 
 // Types
+export type User = InferSelectModel<typeof user>;
+export type NewUser = InferInsertModel<typeof user>;
+export type Session = InferSelectModel<typeof session>;
+export type NewSession = InferInsertModel<typeof session>;
+export type ApiKey = InferSelectModel<typeof apiKey>;
+export type NewApiKey = InferInsertModel<typeof apiKey>;
+export type Account = InferSelectModel<typeof account>;
+export type NewAccount = InferInsertModel<typeof account>;
+export type Verification = InferSelectModel<typeof verification>;
+export type NewVerification = InferInsertModel<typeof verification>;
+export type Organization = InferSelectModel<typeof organization>;
+export type NewOrganization = InferInsertModel<typeof organization>;
+export type Member = InferSelectModel<typeof member>;
+export type NewMember = InferInsertModel<typeof member>;
 export type Warehouse = InferSelectModel<typeof warehouse>;
 export type NewWarehouse = InferInsertModel<typeof warehouse>;
-
 export type Equipment = InferSelectModel<typeof equipment>;
 export type NewEquipment = InferInsertModel<typeof equipment>;
-
 export type Item = InferSelectModel<typeof item>;
 export type NewItem = InferInsertModel<typeof item>;
-
 export type Unit = InferSelectModel<typeof unit>;
 export type NewUnit = InferInsertModel<typeof unit>;
-
 export type ItemUnitConversion = InferSelectModel<typeof itemUnitConversion>;
 export type NewItemUnitConversion = InferInsertModel<typeof itemUnitConversion>;
-
 export type Stock = InferSelectModel<typeof stock>;
 export type NewStock = InferInsertModel<typeof stock>;
-
 export type Movement = InferSelectModel<typeof movement>;
 export type NewMovement = InferInsertModel<typeof movement>;
-
 export type Distribution = InferSelectModel<typeof distribution>;
 export type NewDistribution = InferInsertModel<typeof distribution>;
-
-export type DistributionItem = InferSelectModel<typeof distributionItem>;
-export type NewDistributionItem = InferInsertModel<typeof distributionItem>;
-
+export type DistributionEquipment = InferSelectModel<typeof distributionEquipment>;
+export type NewDistributionEquipment = InferInsertModel<typeof distributionEquipment>;
+export type DistributionConsumable = InferSelectModel<typeof distributionConsumable>;
+export type NewDistributionConsumable = InferInsertModel<typeof distributionConsumable>;
 export type Maintenance = InferSelectModel<typeof maintenance>;
 export type NewMaintenance = InferInsertModel<typeof maintenance>;
-
 export type Lending = InferSelectModel<typeof lending>;
 export type NewLending = InferInsertModel<typeof lending>;
-
 export type LendingItem = InferSelectModel<typeof lendingItem>;
 export type NewLendingItem = InferInsertModel<typeof lendingItem>;
-
 export type Approval = InferSelectModel<typeof approval>;
 export type NewApproval = InferInsertModel<typeof approval>;
-
 export type AuditLog = InferSelectModel<typeof auditLog>;
 export type NewAuditLog = InferInsertModel<typeof auditLog>;
-
 export type ImportLog = InferSelectModel<typeof importLog>;
 export type NewImportLog = InferInsertModel<typeof importLog>;
-
 export type ReportBtk16 = InferSelectModel<typeof reportBtk16>;
 export type NewReportBtk16 = InferInsertModel<typeof reportBtk16>;
-
 export type Land = InferSelectModel<typeof land>;
 export type NewLand = InferInsertModel<typeof land>;
-
 export type Building = InferSelectModel<typeof building>;
 export type NewBuilding = InferInsertModel<typeof building>;
-
 export type Notification = InferSelectModel<typeof notification>;
 export type NewNotification = InferInsertModel<typeof notification>;
-
-export * from './auth.schema';

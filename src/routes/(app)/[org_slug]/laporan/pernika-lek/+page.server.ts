@@ -6,8 +6,12 @@ import { eq, sql } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { getOrSetCache, invalidateCache } from '$lib/server/redis';
 
-export const load: PageServerLoad = async () => {
-	return {};
+export const load: PageServerLoad = async ({ locals }) => {
+	const user = locals.user;
+	
+	return {
+		isParentOrg: user?.organization?.parentId === null
+	};
 };
 
 export const actions: Actions = {

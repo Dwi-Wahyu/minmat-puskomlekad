@@ -30,7 +30,7 @@ export const auth = betterAuth({
 		username(),
 		organization({
 			ac: accessControl,
-			roles: operatorRoles as any
+			roles: operatorRoles
 		})
 	]
 });
@@ -115,7 +115,7 @@ async function main() {
 						body: {
 							organizationId: org.id,
 							userId: signUpRes.user.id,
-							role: roleName as any
+							role: roleName as 'operatorPusatDanDaerah' | 'operatorBinmatDanBekharrah'
 						}
 					});
 					console.log(`Operator created: ${usernameValue} [${roleName}]`);
