@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ locals, url, fetch }) => {
 	const startDate = url.searchParams.get('start_date') || '';
 	const endDate = url.searchParams.get('end_date') || '';
 	const page = parseInt(url.searchParams.get('page') || '1');
-	const limit = parseInt(url.searchParams.get('limit') || '20');
+	const limit = parseInt(url.searchParams.get('limit') || '10');
 
 	return {
 		filters: {

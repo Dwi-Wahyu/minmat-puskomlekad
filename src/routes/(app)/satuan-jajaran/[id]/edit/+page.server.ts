@@ -31,8 +31,11 @@ export const actions: Actions = {
 		const formData = await request.formData();
 
 		const name = formData.get('name') as string;
+		const displayName = formData.get('displayName') as string | null;
 		const slug = formData.get('slug') as string;
 		const logo = formData.get('logo') as File | null;
+
+		const finalDisplayName = displayName && displayName.trim() !== '' ? displayName.trim() : null;
 
 		if (!name || !slug) {
 			return fail(400, { message: 'Nama dan Slug wajib diisi' });
@@ -75,6 +78,7 @@ export const actions: Actions = {
 				.update(organization)
 				.set({
 					name,
+					displayName: finalDisplayName,
 					slug,
 					logo: newLogoPath
 				})

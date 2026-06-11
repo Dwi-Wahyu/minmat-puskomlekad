@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { session, auditLog, account } from '$lib/server/db/schema';
+import { session, auditLog, account, user } from '$lib/server/db/schema';
 import { eq, and, desc, count } from 'drizzle-orm';
 import { error, redirect, fail } from '@sveltejs/kit';
 import { auth } from '$lib/server/auth';
@@ -125,41 +125,107 @@ export const actions: Actions = {
 		}
 	},
 
-	changePassword: async ({ request, locals }) => {
+	updateProfile: async ({ request, locals }) => {
 		const currentUser = locals.user;
 		if (!currentUser) return fail(401, { message: 'Unauthorized' });
 
 		const formData = await request.formData();
+		const nameVal = formData.get('name')?.toString()?.trim();
+		const usernameVal = formData.get('username')?.toString()?.trim();
+		const emailVal = formData.get('email')?.toString()?.trim();
 		const currentPassword = formData.get('currentPassword')?.toString();
 		const newPassword = formData.get('newPassword')?.toString();
 		const confirmPassword = formData.get('confirmPassword')?.toString();
 
-		if (!currentPassword || currentPassword.length < 3) {
-			return fail(400, { message: 'Password minimal 3 karakter' });
+		// 1. Validate Name
+		if (!nameVal || nameVal.length < 2) {
+			return fail(400, { message: 'Nama minimal 2 karakter' });
 		}
 
-		if (!newPassword || newPassword.length < 3) {
-			return fail(400, { message: 'Password minimal 3 karakter' });
+		// 2. Validate Username
+		if (!usernameVal || usernameVal.length < 3) {
+			return fail(400, { message: 'Username minimal 3 karakter' });
+		}
+		const usernameRegex = /^[a-zA-Z0-9._-]+$/;
+		if (!usernameRegex.test(usernameVal)) {
+			return fail(400, {
+				message: 'Username hanya boleh mengandung huruf, angka, titik, tanda hubung (-), dan garis bawah (_)'
+			});
 		}
 
-		if (newPassword !== confirmPassword) {
-			return fail(400, { message: 'Konfirmasi password tidak cocok' });
+		// 3. Validate Email
+		if (!emailVal || !emailVal.includes('@')) {
+			return fail(400, { message: 'Email tidak valid' });
 		}
 
 		try {
-			await auth.api.changePassword({
-				body: {
-					currentPassword,
-					newPassword,
-					revokeOtherSessions: true
-				},
-				headers: request.headers
+			// Check if username is already taken
+			const existingUserByUsername = await db.query.user.findFirst({
+				where: (u, { eq, and, ne }) => and(eq(u.username, usernameVal), ne(u.id, currentUser.id))
+			});
+			if (existingUserByUsername) {
+				return fail(400, { message: 'Username sudah digunakan oleh pengguna lain' });
+			}
+
+			// Check if email is already taken
+			const existingUserByEmail = await db.query.user.findFirst({
+				where: (u, { eq, and, ne }) => and(eq(u.email, emailVal), ne(u.id, currentUser.id))
+			});
+			if (existingUserByEmail) {
+				return fail(400, { message: 'Email sudah digunakan oleh pengguna lain' });
+			}
+
+			// 4. Handle Password Change if requested
+			let passwordChanged = false;
+			if (newPassword && newPassword.length > 0) {
+				if (!currentPassword) {
+					return fail(400, { message: 'Password saat ini wajib diisi untuk mengubah password' });
+				}
+				if (newPassword.length < 3) {
+					return fail(400, { message: 'Password baru minimal 3 karakter' });
+				}
+				if (newPassword !== confirmPassword) {
+					return fail(400, { message: 'Konfirmasi password baru tidak cocok' });
+				}
+
+				// Update password using Better Auth API
+				await auth.api.changePassword({
+					body: {
+						currentPassword,
+						newPassword,
+						revokeOtherSessions: true
+					},
+					headers: request.headers
+				});
+				passwordChanged = true;
+			}
+
+			// 5. Update name, username and email in db
+			const oldData = { name: currentUser.name, username: currentUser.username, email: currentUser.email };
+			await db.update(user)
+				.set({ name: nameVal, username: usernameVal, email: emailVal })
+				.where(eq(user.id, currentUser.id));
+
+			// 6. Log in audit log
+			await db.insert(auditLog).values({
+				id: crypto.randomUUID(),
+				userId: currentUser.id,
+				action: 'UPDATE_PROFILE',
+				tableName: 'user',
+				recordId: currentUser.id,
+				oldValue: JSON.stringify(oldData),
+				newValue: JSON.stringify({ name: nameVal, username: usernameVal, email: emailVal, passwordChanged }),
+				createdAt: new Date()
 			});
 
-			return { success: true, message: 'Password berhasil diubah. Sesi lain telah dihapus.' };
+			const msg = passwordChanged 
+				? 'Profil dan password berhasil diperbarui. Sesi lain telah dihapus.' 
+				: 'Profil berhasil diperbarui. Silakan refresh halaman jika data pada sidebar belum berubah.';
+
+			return { success: true, message: msg };
 		} catch (err: any) {
-			console.error(err);
-			return fail(400, { message: err.message || 'Gagal mengubah password' });
+			console.error('Error updating profile:', err);
+			return fail(400, { message: err.message || 'Gagal memperbarui profil' });
 		}
 	}
 };

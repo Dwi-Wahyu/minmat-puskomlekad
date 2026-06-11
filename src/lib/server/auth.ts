@@ -21,7 +21,7 @@ export const auth = betterAuth({
 	baseURL: env.ORIGIN,
 	secret: env.BETTER_AUTH_SECRET,
 	database: drizzleAdapter(db, { provider: 'mysql', schema }),
-	emailAndPassword: { enabled: true },
+	emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128 },
 	session: {
 		expiresIn: 60 * 60 * 24 * 7, // 7 days
 		updateAge: 60 * 60 * 24 // 1 day (every 1 day the session expiration is updated)
@@ -51,7 +51,10 @@ export const auth = betterAuth({
 	},
 	plugins: [
 		admin(),
-		username(),
+		username({
+			minUsernameLength: 5,
+			maxUsernameLength: 20
+		}),
 		bearer(),
 		apiKey(),
 		organization({
@@ -87,6 +90,7 @@ export const auth = betterAuth({
 								parentId: firstMember.organization.parentId,
 								slug: firstMember.organization.slug,
 								name: firstMember.organization.name,
+								displayName: firstMember.organization.displayName ?? null,
 								logo: firstMember.organization.logo ?? ''
 							}
 						: null

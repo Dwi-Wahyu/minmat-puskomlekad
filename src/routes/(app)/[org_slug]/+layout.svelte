@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { LayoutData } from './$types';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import NotificationBell from '$lib/components/NotificationBell.svelte';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
@@ -12,7 +13,7 @@
 	import { BookText } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 
-	let { data, children } = $props();
+	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 	const sidebar = setSidebarState();
 
 	let isLogoutDialogOpen = $state(false);
@@ -28,6 +29,11 @@
 	});
 
 	const toTitleCase = (str: string) => {
+		// Langsung kembalikan nama jika ada display name
+		if (data.user.organization.displayName) {
+			return data.user.organization.displayName;
+		}
+
 		return str
 			.toLowerCase()
 			.split(' ')
@@ -35,7 +41,7 @@
 			.join(' ');
 	};
 
-	const orgName = $derived(data.user.organization.name ?? '');
+	const orgName = $derived(data.user.organization.displayName || data.user.organization.name || '');
 
 	function handleLogout() {
 		goto(resolve('/logout'));

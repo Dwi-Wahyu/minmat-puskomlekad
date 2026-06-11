@@ -111,6 +111,7 @@ export const verification = mysqlTable(
 export const organization = mysqlTable('organization', {
 	id: varchar('id', { length: 36 }).primaryKey(),
 	name: text('name').notNull(),
+	displayName: varchar('display_name', { length: 255 }),
 	slug: varchar('slug', { length: 255 }).unique(),
 	logo: text('logo'),
 	createdAt: timestamp('created_at').defaultNow().notNull(),

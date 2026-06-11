@@ -1,0 +1,1 @@
+ALTER TABLE `organization` ADD `display_name` varchar(255);

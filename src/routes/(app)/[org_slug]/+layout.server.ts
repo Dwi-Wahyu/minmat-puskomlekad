@@ -1,3 +1,4 @@
+import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { notification } from '$lib/server/db/schema';
 import { and, desc, eq, or, count } from 'drizzle-orm';
@@ -5,7 +6,9 @@ import type { LayoutServerLoad } from './$types';
 import { getOrSetCache, CacheKeys, CacheTTL } from '$lib/server/redis';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
-	if (!locals.user) return {};
+	if (!locals.user) {
+		return redirect(302, '/');
+	}
 
 	const userId = locals.user.id;
 	const orgId = locals.user.organization.id;

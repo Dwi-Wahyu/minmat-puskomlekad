@@ -13,6 +13,7 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let name = $state(untrack(() => data.targetOrg.name));
+	let displayName = $state(untrack(() => data.targetOrg.displayName ?? ''));
 	let slug = $state(untrack(() => data.targetOrg.slug));
 	let loading = $state(false);
 
@@ -39,11 +40,7 @@
 
 <div class="mx-auto flex w-full max-w-2xl flex-col gap-6 p-6">
 	<div class="flex items-center gap-4">
-		<Button
-			variant="outline"
-			size="icon"
-			href="/{page.params.org_slug}/satuan-jajaran/{data.targetOrg.id}"
-		>
+		<Button variant="outline" size="icon" href="/satuan-jajaran/{data.targetOrg.id}">
 			<ChevronLeft class="size-4" />
 		</Button>
 		<div>
@@ -91,6 +88,19 @@
 						placeholder="Contoh: Batalyon Infanteri 1"
 						required
 					/>
+				</div>
+
+				<div class="space-y-2">
+					<Label for="displayName">Nama Tampilan (Display Name)</Label>
+					<Input
+						id="displayName"
+						name="displayName"
+						bind:value={displayName}
+						placeholder="Contoh: Yonif 1"
+					/>
+					<p class="text-[10px] text-muted-foreground">
+						Nama alternatif/singkat yang akan ditampilkan pada layout/navigasi. (Opsional)
+					</p>
 				</div>
 
 				<div class="space-y-2">

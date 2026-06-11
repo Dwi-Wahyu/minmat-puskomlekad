@@ -2,25 +2,15 @@
 	import { ArrowLeft, ChevronRight, Info } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { browser } from '$app/environment';
 
 	let { data } = $props();
-
-	function handleBack() {
-		if (browser && history.length > 1) {
-			history.back(); // or history.go(-1)
-		} else {
-			// Fallback if no history exists (e.g., direct bookmark access)
-			window.location.href = '/';
-		}
-	}
 
 	const defaultLogo = '/logo-tni-ad.png';
 </script>
 
 <div class="flex flex-col gap-6 p-6 text-foreground">
 	<header class="flex items-center gap-4">
-		<Button size="icon" onclick={handleBack} variant="outline">
+		<Button size="icon" href="/" variant="outline">
 			<ArrowLeft />
 		</Button>
 

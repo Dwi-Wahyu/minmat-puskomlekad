@@ -13,6 +13,7 @@ declare global {
 					logo: string;
 					slug: string;
 					name: string;
+					displayName: string | null;
 				};
 			};
 			session?: Session;

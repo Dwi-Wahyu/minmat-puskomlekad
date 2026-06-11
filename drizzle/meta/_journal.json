@@ -64,6 +64,13 @@
       "when": 1781117128521,
       "tag": "0008_bored_misty_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1781177554714,
+      "tag": "0009_noisy_legion",
+      "breakpoints": true
     }
   ]
 }

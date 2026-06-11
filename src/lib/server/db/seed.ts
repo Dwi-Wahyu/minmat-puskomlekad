@@ -118,7 +118,7 @@ async function main() {
 		'BUKIT BRSN',
 		'SRIWIJAYA',
 		'SILIWANGI',
-		'DIPENOGORO',
+		'DIPONEGORO',
 		'BRAWIJAYA',
 		'MULAWARMAN',
 		'UDAYANA',

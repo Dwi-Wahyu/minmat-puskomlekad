@@ -145,26 +145,72 @@
 
 		<!-- Manajemen Sesi & Password -->
 		<div class="space-y-8 lg:col-span-8">
-			<!-- Ubah Password -->
+			<!-- Ubah Data -->
 			<Card.Root class="border-none shadow-sm ring-1 ring-border">
 				<Card.Header>
 					<div class="flex items-center gap-3">
 						<div
 							class="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary"
 						>
-							<KeyRound class="size-5" />
+							<UserRound class="size-5" />
 						</div>
 						<div>
-							<Card.Title>Ubah Password</Card.Title>
+							<Card.Title>Ubah Data</Card.Title>
 							<Card.Description
-								>Amankan akun Anda dengan mengganti password secara berkala.</Card.Description
+								>Perbarui informasi profil dan kata sandi akun Anda.</Card.Description
 							>
 						</div>
 					</div>
 				</Card.Header>
 				<Card.Content>
-					<form action="?/changePassword" method="POST" use:enhance class="space-y-5">
+					<form action="?/updateProfile" method="POST" use:enhance class="space-y-5">
 						<div class="grid gap-4 sm:grid-cols-2">
+							<div class="space-y-2 sm:col-span-2">
+								<Label for="name">Nama</Label>
+								<Input
+									id="name"
+									name="name"
+									type="text"
+									value={data.user.name}
+									placeholder="Masukkan nama lengkap Anda"
+									required
+									class="bg-muted/20"
+								/>
+							</div>
+
+							<div class="space-y-2">
+								<Label for="username">Username Baru</Label>
+								<Input
+									id="username"
+									name="username"
+									type="text"
+									value={data.user.username}
+									placeholder="Masukkan username baru"
+									required
+									class="bg-muted/20"
+								/>
+							</div>
+							<div class="space-y-2">
+								<Label for="email">Email Baru</Label>
+								<Input
+									id="email"
+									name="email"
+									type="email"
+									value={data.user.email}
+									placeholder="Masukkan email baru"
+									required
+									class="bg-muted/20"
+								/>
+							</div>
+
+							<div class="mt-2 space-y-2 sm:col-span-2">
+								<h3 class="text-sm font-semibold text-foreground">Ubah Password (Opsional)</h3>
+								<p class="text-[11px] text-muted-foreground">
+									Isi bagian ini hanya jika Anda ingin memperbarui password. Biarkan kosong untuk
+									mempertahankan password saat ini.
+								</p>
+							</div>
+
 							<div class="space-y-2 sm:col-span-2">
 								<Label for="currentPassword">Password Saat Ini</Label>
 								<Input
@@ -172,7 +218,6 @@
 									name="currentPassword"
 									type="password"
 									placeholder="Masukkan password saat ini"
-									required
 									class="bg-muted/20"
 								/>
 							</div>
@@ -182,8 +227,7 @@
 									id="newPassword"
 									name="newPassword"
 									type="password"
-									placeholder="Min. 3 karakter"
-									required
+									placeholder="Min. 8 karakter"
 									class="bg-muted/20"
 								/>
 							</div>
@@ -194,13 +238,12 @@
 									name="confirmPassword"
 									type="password"
 									placeholder="Ulangi password baru"
-									required
 									class="bg-muted/20"
 								/>
 							</div>
 						</div>
 						<div class="flex justify-end pt-2">
-							<Button type="submit" class="w-full px-8 sm:w-auto">Update Password</Button>
+							<Button type="submit" class="w-full px-8 sm:w-auto">Simpan Perubahan</Button>
 						</div>
 					</form>
 				</Card.Content>

@@ -11,7 +11,7 @@ const auditLogSchema = v.object({
 	start_date: v.optional(v.string(), ''),
 	end_date: v.optional(v.string(), ''),
 	page: v.optional(v.number(), 1),
-	limit: v.optional(v.number(), 20)
+	limit: v.optional(v.number(), 10)
 });
 
 export type AuditLogListData = {
