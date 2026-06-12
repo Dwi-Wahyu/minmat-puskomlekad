@@ -8,7 +8,7 @@ import { drizzle } from 'drizzle-orm/mysql2';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization, username } from 'better-auth/plugins';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import {
 	accessControl,
@@ -18,6 +18,7 @@ import {
 	pimpinan,
 	superadmin
 } from '../auth.roles';
+import { hashPassword } from 'better-auth/crypto';
 
 const client = mysql.createPool(process.env.DATABASE_URL ?? '');
 const db = drizzle(client, { schema: { ...schema, ...authSchema }, mode: 'default' });
@@ -61,6 +62,19 @@ async function main() {
 	if (existingUser) {
 		console.log(`User dengan username '${superadminUsername}' sudah ada. Melewati pembuatan user.`);
 		superadminId = existingUser.id;
+
+		const hashedPassword = await hashPassword(process.env.SUPERADMIN_PASSWORD!);
+		await db
+			.update(authSchema.account)
+			.set({ password: hashedPassword })
+			.where(
+				and(
+					eq(authSchema.account.userId, existingUser.id),
+					eq(authSchema.account.providerId, 'credential')
+				)
+			);
+
+		console.log(`Password user dengan username '${superadminUsername}' sudah diganti.`);
 	} else {
 		console.log(`Membuat user superadmin dengan username '${superadminUsername}'...`);
 		try {
@@ -124,7 +138,8 @@ async function main() {
 		}
 	} else if (existingMember.role !== 'superadmin') {
 		console.log('Memperbarui role user menjadi superadmin...');
-		await db.update(authSchema.member)
+		await db
+			.update(authSchema.member)
 			.set({ role: 'superadmin' })
 			.where(eq(authSchema.member.id, existingMember.id));
 		console.log('Role berhasil diperbarui.');
