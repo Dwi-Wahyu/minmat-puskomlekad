@@ -96,8 +96,22 @@
 		method="POST"
 		enctype="multipart/form-data"
 		use:enhance
-		class="grid gap-8 rounded-lg border bg-card p-8 shadow-sm"
+		class="grid gap-8 rounded-lg border bg-card p-6 shadow-sm"
 	>
+		{#if data.equipment.item.imagePath}
+			<div class="space-y-2">
+				<Label for="image">Gambar</Label>
+
+				<div class="aspect-video h-40 w-40 overflow-hidden rounded-xl border bg-muted shadow-sm">
+					<img
+						src="/uploads/item/{data.equipment.item.imagePath}"
+						alt={data.equipment.item.name}
+						class="size-full object-cover"
+					/>
+				</div>
+			</div>
+		{/if}
+
 		<div class="grid gap-6 md:grid-cols-2">
 			<div class="space-y-2">
 				<Label for="itemName" class={$errors.itemName ? 'text-destructive' : ''}>Nama Alat</Label>
@@ -110,8 +124,6 @@
 				/>
 				{#if $errors.itemName}
 					<p class="text-xs font-medium text-destructive">{$errors.itemName}</p>
-				{:else}
-					<p class="text-xs text-muted-foreground">Nama spesifik atau model peralatan.</p>
 				{/if}
 			</div>
 
@@ -180,7 +192,7 @@
 				<input type="hidden" name="condition" value={$form.condition} />
 			</div>
 
-			<div class="space-y-2">
+			<!-- <div class="space-y-2">
 				<Label for="status">Status Aset</Label>
 				<Select.Root
 					type="single"
@@ -199,20 +211,11 @@
 					</Select.Content>
 				</Select.Root>
 				<input type="hidden" name="status" value={$form.status} />
-			</div>
+			</div> -->
 
-			<div class="space-y-2 md:col-span-2">
-				<Label for="image">Gambar Peralatan</Label>
+			<div class="space-y-2">
+				<Label for="image">Gambar Baru</Label>
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
-					<div
-						class="flex size-32 items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-muted"
-					>
-						{#if imagePreview}
-							<img src={imagePreview} alt="Preview" class="size-full object-cover" />
-						{:else}
-							<div class="text-center text-xs text-muted-foreground">No Image</div>
-						{/if}
-					</div>
 					<div class="flex-1 space-y-2">
 						<Input
 							type="file"
@@ -221,15 +224,13 @@
 							accept="image/png, image/jpeg, image/jpg"
 							onchange={handleImageChange}
 						/>
-						<p class="text-xs text-muted-foreground">
-							Maksimal 5MB. Format: PNG, JPG, JPEG. (Kosongkan jika tidak ingin mengubah)
-						</p>
+						<p class="text-xs text-muted-foreground">Max 5MB. Format: PNG, JPG, JPEG.</p>
 					</div>
 				</div>
 			</div>
 		</div>
 
-		<div class="flex justify-end gap-3 border-t pt-6">
+		<div class="flex justify-end gap-3">
 			<Button variant="outline" href="/{page.params.org_slug}/alat/{data.type}" disabled={$delayed}>
 				Batal
 			</Button>

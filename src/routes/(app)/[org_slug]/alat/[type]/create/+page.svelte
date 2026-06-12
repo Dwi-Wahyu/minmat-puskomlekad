@@ -88,7 +88,7 @@
 		method="POST"
 		enctype="multipart/form-data"
 		use:enhance
-		class="grid gap-8 rounded-lg border bg-card p-8 shadow-sm"
+		class="grid gap-8 rounded-lg border bg-card p-6 shadow-sm"
 	>
 		<div class="grid gap-6 md:grid-cols-2">
 			<div class="space-y-2">
@@ -231,7 +231,7 @@
 					accept="image/png, image/jpeg, image/jpg"
 					class="cursor-pointer"
 				/>
-				<p class="text-xs text-muted-foreground">Maksimal 5MB. Format: PNG, JPG, JPEG.</p>
+				<p class="text-xs text-muted-foreground">Max 5MB. Format: PNG, JPG, JPEG.</p>
 			</div>
 		</div>
 

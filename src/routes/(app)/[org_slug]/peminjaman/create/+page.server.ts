@@ -250,6 +250,11 @@ export const actions: Actions = {
 				}
 			});
 
+			// Ambil detail organisasi parent untuk slug notifikasi
+			const parentOrg = await db.query.organization.findFirst({
+				where: eq(organization.id, user.organization.parentId || '')
+			});
+
 			// Kirim notifikasi ke organisasi target (pemberi pinjaman)
 			await createNotification({
 				organizationId: targetOrgId,
@@ -261,7 +266,7 @@ export const actions: Actions = {
 				action: {
 					type: 'LENDING_DETAIL',
 					resourceId: lendingId,
-					webPath: `/${user.organization.slug}/peminjaman/${lendingId}`
+					webPath: `/${parentOrg?.slug || user.organization.slug}/peminjaman/${lendingId}`
 				}
 			});
 

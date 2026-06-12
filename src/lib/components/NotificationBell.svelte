@@ -31,6 +31,8 @@
 		orgSlug = ''
 	} = $props();
 
+	let dropdownOpen = $state(false);
+
 	function formatRelativeTime(date: Date | string | number) {
 		const now = new Date().getTime();
 		const diff = now - new Date(date).getTime();
@@ -83,21 +85,25 @@
 	}
 
 	async function handleNotificationClick(notif: Notification) {
-		if (notif.action?.webPath) {
-			if (!notif.read) {
-				await fetch('/api/notifications', {
-					method: 'PATCH',
-					body: JSON.stringify({ id: notif.id }),
-					headers: { 'Content-Type': 'application/json' }
-				});
-			}
-			goto(notif.action.webPath);
+		if (!notif.action?.webPath) return;
+
+		// Tutup dropdown terlebih dahulu agar tidak berlomba dengan goto()
+		dropdownOpen = false;
+
+		if (!notif.read) {
+			await fetch('/api/notifications', {
+				method: 'PATCH',
+				body: JSON.stringify({ id: notif.id }),
+				headers: { 'Content-Type': 'application/json' }
+			});
 			invalidateAll();
 		}
+
+		goto(notif.action.webPath);
 	}
 </script>
 
-<DropdownMenu.Root>
+<DropdownMenu.Root bind:open={dropdownOpen}>
 	<DropdownMenu.Trigger>
 		{#snippet child({ props })}
 			<Button variant="ghost" size="icon" class="relative h-10 w-10 rounded-full" {...props}>
@@ -128,7 +134,7 @@
 		</div>
 
 		<div
-			class="max-h-100 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+			class="max-h-100 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 		>
 			{#if notifications.length === 0}
 				<div class="flex flex-col items-center justify-center px-4 py-10 text-center">
@@ -143,6 +149,7 @@
 			{:else}
 				{#each notifications as notif (notif.id)}
 					<DropdownMenu.Item
+						closeOnSelect={false}
 						class={cn(
 							'relative flex cursor-pointer flex-col items-start gap-1 rounded-none border-b p-4 transition-colors last:border-0 focus:bg-muted/50 data-[highlighted]:bg-muted/50',
 							!notif.read && 'bg-primary/5'

@@ -131,7 +131,7 @@
 	const currentStatus = $derived(statusConfig[data.lending.status as keyof typeof statusConfig]);
 
 	const steps = $derived([
-		{ status: 'DRAFT', label: 'Draft', icon: Clock },
+		{ status: 'DRAFT', label: 'Pending', icon: Clock },
 		{
 			status: data.lending.status === 'PERINTAH_LANGSUNG' ? 'PERINTAH_LANGSUNG' : 'APPROVED',
 			label: data.lending.status === 'PERINTAH_LANGSUNG' ? 'Perintah' : 'Disetujui',

@@ -74,6 +74,14 @@
 		</div>
 	</div>
 
+	<Alert>
+		<Info class="size-4" />
+		<AlertDescription>
+			Pastikan semua alat telah masuk kembali ke gudang fisik sebelum menekan tombol di bawah.
+			Status alat akan kembali menjadi <strong>{equipmentStatusLabel['READY']}</strong>.
+		</AlertDescription>
+	</Alert>
+
 	<div class="grid gap-6 lg:grid-cols-3">
 		<!-- Alat List -->
 		<div class="space-y-4 lg:col-span-2">
@@ -227,16 +235,6 @@
 							rows={4}
 						/>
 					</div>
-
-					<Alert>
-						<Info class="size-4" />
-						<AlertDescription>
-							Pastikan semua alat telah masuk kembali ke gudang fisik sebelum menekan tombol di
-							bawah. Status alat akan kembali menjadi <strong
-								>{equipmentStatusLabel['READY']}</strong
-							>.
-						</AlertDescription>
-					</Alert>
 				</Card.Content>
 				<Card.Footer>
 					<form

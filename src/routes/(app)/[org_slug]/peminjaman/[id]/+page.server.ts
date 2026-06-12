@@ -6,12 +6,22 @@ import {
 	approval,
 	equipment,
 	movement,
-	auditLog
+	auditLog,
+	organization,
+	user as userTable
 } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, or, inArray, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { createNotification } from '$lib/server/notification';
 import { v4 as uuidv4 } from 'uuid';
+
+async function getOrganizationSlug(tx_or_db: any, organizationId: string): Promise<string> {
+	const org = await tx_or_db.query.organization.findFirst({
+		where: eq(organization.id, organizationId),
+		columns: { slug: true }
+	});
+	return org?.slug ?? organizationId;
+}
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const { id, org_slug } = params;
@@ -141,6 +151,12 @@ export const actions: Actions = {
 			});
 
 			if (lendingData?.requestedBy) {
+				const requesterUser = await db.query.user.findFirst({
+					where: eq(userTable.id, lendingData.requestedBy!),
+					with: { members: { with: { organization: true } } }
+				});
+				const requesterOrgSlug = requesterUser?.members?.[0]?.organization?.slug ?? org_slug;
+
 				await createNotification({
 					userId: lendingData.requestedBy,
 					title: 'Peminjaman: Perintah Langsung',
@@ -149,7 +165,7 @@ export const actions: Actions = {
 					action: {
 						type: 'LENDING_DETAIL',
 						resourceId: id,
-						webPath: `/${org_slug}/peminjaman/${id}`
+						webPath: `/${requesterOrgSlug}/peminjaman/${id}`
 					}
 				});
 			}
@@ -209,6 +225,12 @@ export const actions: Actions = {
 			});
 
 			if (lendingData?.requestedBy) {
+				const requesterUser = await db.query.user.findFirst({
+					where: eq(userTable.id, lendingData.requestedBy!),
+					with: { members: { with: { organization: true } } }
+				});
+				const requesterOrgSlug = requesterUser?.members?.[0]?.organization?.slug ?? org_slug;
+
 				await createNotification({
 					userId: lendingData.requestedBy,
 					title: 'Peminjaman Disetujui',
@@ -217,7 +239,7 @@ export const actions: Actions = {
 					action: {
 						type: 'LENDING_DETAIL',
 						resourceId: id,
-						webPath: `/${org_slug}/peminjaman/${id}`
+						webPath: `/${requesterOrgSlug}/peminjaman/${id}`
 					}
 				});
 			}
@@ -245,6 +267,8 @@ export const actions: Actions = {
 				where: eq(lending.id, id),
 				columns: { requestedBy: true, unit: true, status: true }
 			});
+
+			if (!lendingData) return fail(400, { message: 'Data peminjaman tidak ditemukan' });
 
 			await db.transaction(async (tx) => {
 				await tx
@@ -277,6 +301,15 @@ export const actions: Actions = {
 				});
 			});
 
+			const requesterUser = await db.query.user.findFirst({
+				where: eq(userTable.id, lendingData?.requestedBy!),
+				with: { members: { with: { organization: true } } }
+			});
+
+			// Cari org peminjam (bukan org pemberi)
+			const requesterOrgId = requesterUser?.members?.[0]?.organizationId;
+			const requesterOrgSlug = requesterUser?.members?.[0]?.organization?.slug ?? org_slug;
+
 			if (lendingData?.requestedBy) {
 				await createNotification({
 					userId: lendingData.requestedBy,
@@ -286,7 +319,7 @@ export const actions: Actions = {
 					action: {
 						type: 'LENDING_DETAIL',
 						resourceId: id,
-						webPath: `/${org_slug}/peminjaman/${id}`
+						webPath: `/${requesterOrgSlug}/peminjaman/${id}`
 					}
 				});
 			}
@@ -391,12 +424,13 @@ export const actions: Actions = {
 			// Notifikasi ke operator peminjam (organisasi peminjam)
 			// Ambil organisasi peminjam dari requestedBy user
 			const requesterUser = await db.query.user.findFirst({
-				where: eq(user.id, lendingData.requestedBy!),
+				where: eq(userTable.id, lendingData.requestedBy!),
 				with: { members: { with: { organization: true } } }
 			});
 
 			// Cari org peminjam (bukan org pemberi)
 			const requesterOrgId = requesterUser?.members?.[0]?.organizationId;
+			const requesterOrgSlug = requesterUser?.members?.[0]?.organization?.slug ?? org_slug;
 
 			if (requesterOrgId) {
 				// Kirim notifikasi ke semua operator di org peminjam
@@ -408,7 +442,7 @@ export const actions: Actions = {
 					action: {
 						type: 'LENDING_DETAIL',
 						resourceId: id,
-						webPath: `/${org_slug}/peminjaman/${id}`
+						webPath: `/${requesterOrgSlug}/peminjaman/${id}`
 					}
 				});
 			}
@@ -423,7 +457,7 @@ export const actions: Actions = {
 					action: {
 						type: 'LENDING_DETAIL',
 						resourceId: id,
-						webPath: `/${org_slug}/peminjaman/${id}`
+						webPath: `/${requesterOrgSlug}/peminjaman/${id}`
 					}
 				});
 			}
@@ -541,18 +575,72 @@ export const actions: Actions = {
 				});
 			});
 
-			// Notifikasi ke operator gudang (org pemberi / Puskomlekad)
-			await createNotification({
-				organizationId: lendingData.organizationId!,
-				title: 'Alat Dikirim Kembali — Perlu Konfirmasi',
-				body: `Unit ${lendingData.unit} telah mengirimkan kembali alat. Konfirmasi penerimaan di gudang diperlukan.`,
-				priority: 'HIGH',
-				action: {
-					type: 'LENDING_DETAIL',
-					resourceId: id,
-					webPath: `/${org_slug}/peminjaman/${id}`
+			const lenderOrgSlug = await getOrganizationSlug(db, lendingData.organizationId!);
+
+			// 1. Notifikasi ke Operator Peminjam (Borrower) - Sebagai Konfirmasi
+			if (lendingData.requestedBy) {
+				const requesterUser = await db.query.user.findFirst({
+					where: eq(userTable.id, lendingData.requestedBy!),
+					with: { members: { with: { organization: true } } }
+				});
+				const requesterOrgSlug = requesterUser?.members?.[0]?.organization?.slug ?? org_slug;
+				await createNotification({
+					userId: lendingData.requestedBy,
+					title: 'Alat Dikirim Kembali — Perlu Konfirmasi',
+					body: `Unit ${lendingData.unit} telah mengirimkan kembali alat. Konfirmasi penerimaan di gudang diperlukan.`,
+					priority: 'MEDIUM',
+					action: {
+						type: 'LENDING_DETAIL',
+						resourceId: id,
+						webPath: `/${requesterOrgSlug}/peminjaman/${id}`
+					}
+				});
+			}
+
+			// 2. Notifikasi ke Operator & Pimpinan Puskomlekad (Lender)
+			const lenderStaff = await db.query.user.findMany({
+				where: (u, { inArray }) =>
+					inArray(u.role, [
+						'pimpinan',
+						'kakomlek',
+						'operatorPusatDanDaerah',
+						'operatorBinmatDanBekharrah'
+					]),
+				with: {
+					members: {
+						where: (m, { eq }) => eq(m.organizationId, lendingData.organizationId!)
+					}
 				}
 			});
+
+			for (const staff of lenderStaff) {
+				if (!staff.members || staff.members.length === 0) continue;
+
+				let title = '';
+				let body = '';
+				let priority: 'HIGH' | 'MEDIUM' = 'MEDIUM';
+
+				if (staff.role === 'pimpinan' || staff.role === 'kakomlek') {
+					title = 'Pemberitahuan Pengembalian Alat';
+					body = `Unit ${lendingData.unit} telah mengirimkan kembali alat peminjaman. Menunggu konfirmasi gudang.`;
+				} else {
+					title = 'Alat Dikirim Kembali — Perlu Konfirmasi';
+					body = `Unit ${lendingData.unit} telah mengirimkan kembali alat. Mohon konfirmasi penerimaan di gudang.`;
+					priority = 'HIGH';
+				}
+
+				await createNotification({
+					userId: staff.id,
+					title,
+					body,
+					priority,
+					action: {
+						type: 'LENDING_DETAIL',
+						resourceId: id,
+						webPath: `/${lenderOrgSlug}/peminjaman/${id}`
+					}
+				});
+			}
 
 			return { success: true, message: 'Alat berhasil dikirim kembali' };
 		} catch (err) {
@@ -612,7 +700,10 @@ export const actions: Actions = {
 					// Kembalikan status ke READY
 					await tx
 						.update(equipment)
-						.set({ status: 'READY', condition: finalCondition })
+						.set({
+							status: 'READY',
+							condition: finalCondition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT'
+						})
 						.where(eq(equipment.id, item.equipmentId!));
 
 					// Catat LOAN_RETURN — gudang tujuan adalah warehouseId asal equipment
@@ -657,6 +748,12 @@ export const actions: Actions = {
 			});
 
 			if (lendingData.requestedBy) {
+				const requesterUser = await db.query.user.findFirst({
+					where: eq(userTable.id, lendingData.requestedBy!),
+					with: { members: { with: { organization: true } } }
+				});
+				const requesterOrgSlug = requesterUser?.members?.[0]?.organization?.slug ?? org_slug;
+
 				await createNotification({
 					userId: lendingData.requestedBy,
 					title: 'Peminjaman Selesai',
@@ -665,7 +762,7 @@ export const actions: Actions = {
 					action: {
 						type: 'LENDING_DETAIL',
 						resourceId: id,
-						webPath: `/${org_slug}/peminjaman/${id}`
+						webPath: `/${requesterOrgSlug}/peminjaman/${id}`
 					}
 				});
 			}

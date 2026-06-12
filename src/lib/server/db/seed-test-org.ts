@@ -62,16 +62,27 @@ async function main() {
 	const orgName = 'SIM LAB TEST';
 	const orgSlug = 'sim-lab-test';
 
-	// Delete existing if any to allow re-runs
+	// Update parentId and exit if already exists
 	const existingOrg = await db.query.organization.findFirst({
 		where: eq(authSchema.organization.slug, orgSlug)
 	});
 
 	if (existingOrg) {
-		console.log('Cleaning up existing Test Organization...');
-		await db.delete(schema.warehouse).where(eq(schema.warehouse.organizationId, existingOrg.id));
-		await db.delete(authSchema.member).where(eq(authSchema.member.organizationId, existingOrg.id));
-		await db.delete(authSchema.organization).where(eq(authSchema.organization.id, existingOrg.id));
+		console.log('Test Organization already exists. Updating parentId to PUSKOMLEKAD...');
+		const puskomlekad = await db.query.organization.findFirst({
+			where: eq(authSchema.organization.slug, 'puskomlekad')
+		});
+
+		if (puskomlekad) {
+			await db
+				.update(authSchema.organization)
+				.set({ parentId: puskomlekad.id })
+				.where(eq(authSchema.organization.id, existingOrg.id));
+			console.log('parentId updated successfully.');
+		} else {
+			console.warn('Warning: PUSKOMLEKAD organization not found. parentId not updated.');
+		}
+		process.exit(0);
 	}
 
 	const testOrg = await auth.api.createOrganization({
@@ -88,6 +99,19 @@ async function main() {
 	}
 
 	console.log(`Organization created: ${testOrg.name}`);
+
+	// Set parentId to PUSKOMLEKAD
+	const puskomlekad = await db.query.organization.findFirst({
+		where: eq(authSchema.organization.slug, 'puskomlekad')
+	});
+
+	if (puskomlekad) {
+		await db
+			.update(authSchema.organization)
+			.set({ parentId: puskomlekad.id })
+			.where(eq(authSchema.organization.id, testOrg.id));
+		console.log('Set parentId to PUSKOMLEKAD.');
+	}
 
 	// Create Warehouse
 	const warehouseId = uuidv4();

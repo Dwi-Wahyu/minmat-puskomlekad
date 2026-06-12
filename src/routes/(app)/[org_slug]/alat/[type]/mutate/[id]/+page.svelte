@@ -220,9 +220,8 @@
 		>
 			<Info class="mt-0.5 size-4 shrink-0" />
 			<p>
-				Alat sedang dalam <strong>{equipmentStatusLabel['MAIMAINTENANCENTENCANC']}</strong>. Mutasi
-				manual tidak dapat dilakukan. Selesaikan proses pemeliharaan terlebih dahulu melalui modul
-				Pemeliharaan.
+				Alat sedang <strong>{equipmentStatusLabel['MAINTENANCE']}</strong>. Mutasi manual tidak
+				dapat dilakukan. Selesaikan proses pemeliharaan terlebih dahulu melalui modul Pemeliharaan.
 			</p>
 		</div>
 	{/if}
@@ -292,205 +291,207 @@
 
 		<!-- Form Mutasi -->
 		<div class="md:col-span-2">
-			{#if data.equipment.status !== 'MAINTENANCE'}
-				<Card.Root>
-					<form
-						method="POST"
-						use:enhance={() => {
-							loading = true;
-							return async ({ update }) => {
-								loading = false;
-								await update();
-							};
-						}}
-					>
-						<Card.Content class="space-y-6">
-							<div>
-								<Card.Title>Informasi Mutasi</Card.Title>
-								<Card.Description>Lengkapi data perpindahan di bawah ini.</Card.Description>
-							</div>
+			<Card.Root>
+				<form
+					method="POST"
+					use:enhance={() => {
+						loading = true;
+						return async ({ update }) => {
+							loading = false;
+							await update();
+						};
+					}}
+				>
+					<Card.Content class="space-y-6">
+						<div>
+							<Card.Title>Informasi Mutasi</Card.Title>
+							<Card.Description>Lengkapi data perpindahan di bawah ini.</Card.Description>
+						</div>
 
-							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-								<div class="space-y-2">
-									<Label for="eventType">Jenis Kejadian</Label>
-									<Select.Root type="single" name="eventType" bind:value={eventType}>
-										<Select.Trigger class="w-full">
-											{allowedEventTypes.find((t) => t.value === eventType)?.label || 'Pilih Jenis'}
-										</Select.Trigger>
-										<Select.Content>
-											{#each allowedEventTypes as type (type.value)}
-												<Select.Item value={type.value}>{type.label}</Select.Item>
-											{/each}
-										</Select.Content>
-									</Select.Root>
-								</div>
-
-								<div class="space-y-2">
-									<Label for="classification">Klasifikasi</Label>
-									{#if eventType === 'ISSUE'}
-										<div
-											class="flex h-9 w-full items-center rounded-full border border-input bg-muted/40 px-3 text-sm"
-										>
-											<span class="font-medium">Balkir (Otomatis)</span>
-										</div>
-										<input type="hidden" name="classification" value="BALKIR" />
-									{:else}
-										<Select.Root type="single" name="classification" bind:value={classification}>
-											<Select.Trigger class="w-full">
-												{allowedClassifications.find((c) => c.value === classification)?.label ||
-													'Pilih Klasifikasi'}
-											</Select.Trigger>
-											<Select.Content>
-												{#each allowedClassifications as cl (cl.value)}
-													<Select.Item value={cl.value}>{cl.label}</Select.Item>
-												{/each}
-											</Select.Content>
-										</Select.Root>
-									{/if}
-								</div>
-							</div>
-
-							{#if selectedEventDescription}
-								<div
-									class="-mt-1 flex items-start gap-3 rounded-lg border bg-blue-50/50 p-3 text-sm text-blue-900 dark:bg-blue-900/20 dark:text-blue-200"
-								>
-									<Info class="mt-0.5 size-4 shrink-0" />
-									<p>{selectedEventDescription}</p>
-								</div>
-							{/if}
-
-							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-								<div class="space-y-2">
-									<Label>Asal</Label>
-									<div
-										class="flex h-9 w-full items-center rounded-full border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
-									>
-										{#if showFromWarehouse}
-											{data.equipment.warehouse?.name || 'Pusat/Luar Sistem'}
-										{:else}
-											<span class="text-xs italic">(Penerimaan dari luar sistem)</span>
-										{/if}
-									</div>
-								</div>
-
-								{#if needsToWarehouse}
-									<div class="space-y-2">
-										<Label for="toWarehouseId">Tujuan</Label>
-										<Select.Root
-											type="single"
-											name="toWarehouseId"
-											bind:value={toWarehouseId}
-											disabled={isToWhDisabled}
-										>
-											<Select.Trigger class="w-full">
-												{data.warehouses.find((w) => w.id === toWarehouseId)?.name ||
-													'-- Pilih Gudang Tujuan --'}
-											</Select.Trigger>
-											<Select.Content>
-												{#each data.warehouses as wh (wh.id)}
-													<Select.Item value={wh.id}>{wh.name}</Select.Item>
-												{/each}
-											</Select.Content>
-										</Select.Root>
-										{#if isToWhDisabled}
-											<input type="hidden" name="toWarehouseId" value={toWarehouseId} />
-											<p class="text-[10px] text-muted-foreground italic">
-												Tujuan dikunci sesuai rencana transfer sebelumnya.
-											</p>
-										{/if}
-									</div>
-								{:else}
-									<div class="space-y-2">
-										<Label>Gudang Tujuan</Label>
-										<div
-											class="flex h-9 w-full items-center rounded-full border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
-										>
-											Keluar dari sistem (Permanen)
-										</div>
-									</div>
-								{/if}
-							</div>
-
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div class="space-y-2">
-								<Label for="status">Status Peralatan (Baru)</Label>
-								<Select.Root type="single" name="status" bind:value={status}>
+								<Label for="eventType">Jenis Kejadian</Label>
+								<Select.Root type="single" name="eventType" bind:value={eventType}>
 									<Select.Trigger class="w-full">
-										{equipmentStatusLabel[status] || 'Pilih Status'}
+										{allowedEventTypes.find((t) => t.value === eventType)?.label || 'Pilih Jenis'}
 									</Select.Trigger>
 									<Select.Content>
-										{#each Object.entries(equipmentStatusLabel) as [value, label] (value)}
-											<Select.Item {value}>{label}</Select.Item>
+										{#each allowedEventTypes as type (type.value)}
+											<Select.Item value={type.value}>{type.label}</Select.Item>
 										{/each}
 									</Select.Content>
 								</Select.Root>
-								<p class="text-xs text-muted-foreground">
-									Status otomatis disesuaikan berdasarkan Jenis Kejadian, namun dapat diubah manual.
-								</p>
 							</div>
 
-							{#if eventType === 'TRANSFER_IN'}
-								<div class="space-y-2">
-									<Label for="conditionAtArrival">Kondisi Saat Tiba</Label>
-									<Select.Root type="single" bind:value={conditionAtArrival}>
+							<div class="space-y-2">
+								<Label for="classification">Klasifikasi</Label>
+								{#if eventType === 'ISSUE'}
+									<div
+										class="flex h-9 w-full items-center rounded-full border border-input bg-muted/40 px-3 text-sm"
+									>
+										<span class="font-medium">Balkir (Otomatis)</span>
+									</div>
+									<input type="hidden" name="classification" value="BALKIR" />
+								{:else}
+									<Select.Root type="single" name="classification" bind:value={classification}>
 										<Select.Trigger class="w-full">
-											{selectedConditionLabel}
+											{allowedClassifications.find((c) => c.value === classification)?.label ||
+												'Pilih Klasifikasi'}
 										</Select.Trigger>
 										<Select.Content>
-											<Select.Item value="" label="-- Tidak Ada Laporan Kerusakan --"
-												>-- Tidak Ada Laporan Kerusakan --</Select.Item
-											>
-											{#each conditionOptions as opt (opt.value)}
-												<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
+											{#each allowedClassifications as cl (cl.value)}
+												<Select.Item value={cl.value}>{cl.label}</Select.Item>
 											{/each}
 										</Select.Content>
 									</Select.Root>
-									<input type="hidden" name="conditionAtArrival" value={conditionAtArrival} />
-									<p class="text-xs text-muted-foreground">
-										Isi jika kondisi alat saat tiba berbeda dari kondisi saat dikirim.
-									</p>
+								{/if}
+							</div>
+						</div>
+
+						{#if selectedEventDescription}
+							<div
+								class="-mt-1 flex items-start gap-3 rounded-lg border bg-blue-50/50 p-3 text-sm text-blue-900 dark:bg-blue-900/20 dark:text-blue-200"
+							>
+								<Info class="mt-0.5 size-4 shrink-0" />
+								<p>{selectedEventDescription}</p>
+							</div>
+						{/if}
+
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+							<div class="space-y-2">
+								<Label>Asal</Label>
+								<div
+									class="flex h-9 w-full items-center rounded-full border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
+								>
+									{#if showFromWarehouse}
+										{data.equipment.warehouse?.name || 'Pusat/Luar Sistem'}
+									{:else}
+										<span class="text-xs italic">(Penerimaan dari luar sistem)</span>
+									{/if}
+								</div>
+							</div>
+
+							{#if needsToWarehouse}
+								<div class="space-y-2">
+									<Label for="toWarehouseId">Tujuan</Label>
+									<Select.Root
+										type="single"
+										name="toWarehouseId"
+										bind:value={toWarehouseId}
+										disabled={isToWhDisabled}
+									>
+										<Select.Trigger class="w-full">
+											{data.warehouses.find((w) => w.id === toWarehouseId)?.name ||
+												'-- Pilih Gudang Tujuan --'}
+										</Select.Trigger>
+										<Select.Content>
+											{#each data.warehouses as wh (wh.id)}
+												<Select.Item value={wh.id}>{wh.name}</Select.Item>
+											{/each}
+										</Select.Content>
+									</Select.Root>
+									{#if isToWhDisabled}
+										<input type="hidden" name="toWarehouseId" value={toWarehouseId} />
+										<p class="text-[10px] text-muted-foreground italic">
+											Tujuan dikunci sesuai rencana transfer sebelumnya.
+										</p>
+									{/if}
+								</div>
+							{:else}
+								<div class="space-y-2">
+									<Label>Gudang Tujuan</Label>
+									<div
+										class="flex h-9 w-full items-center rounded-full border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
+									>
+										Keluar dari sistem (Permanen)
+									</div>
 								</div>
 							{/if}
+						</div>
 
+						<!-- <div class="space-y-2">
+							<Label for="status">Status Peralatan (Baru)</Label>
+							<Select.Root type="single" name="status" bind:value={status}>
+								<Select.Trigger class="w-full">
+									{equipmentStatusLabel[status] || 'Pilih Status'}
+								</Select.Trigger>
+								<Select.Content>
+									{#each Object.entries(equipmentStatusLabel) as [value, label] (value)}
+										<Select.Item {value}>{label}</Select.Item>
+									{/each}
+								</Select.Content>
+							</Select.Root>
+							<p class="text-xs text-muted-foreground">
+								Status otomatis disesuaikan berdasarkan Jenis Kejadian, namun dapat diubah manual.
+							</p>
+						</div> -->
+
+						{#if eventType === 'TRANSFER_IN'}
 							<div class="space-y-2">
-								<Label for="specificLocationName">Lokasi Spesifik</Label>
-								<Input
-									id="specificLocationName"
-									name="specificLocationName"
-									placeholder="Contoh: Yonif 201, Kapal X, Truk A, dll"
-									bind:value={specificLocationName}
-								/>
+								<Label for="conditionAtArrival">Kondisi Saat Tiba</Label>
+								<Select.Root type="single" bind:value={conditionAtArrival}>
+									<Select.Trigger class="w-full">
+										{selectedConditionLabel}
+									</Select.Trigger>
+									<Select.Content>
+										<Select.Item value="" label="-- Tidak Ada Laporan Kerusakan --"
+											>-- Tidak Ada Laporan Kerusakan --</Select.Item
+										>
+										{#each conditionOptions as opt (opt.value)}
+											<Select.Item value={opt.value} label={opt.label}>{opt.label}</Select.Item>
+										{/each}
+									</Select.Content>
+								</Select.Root>
+								<input type="hidden" name="conditionAtArrival" value={conditionAtArrival} />
+								<p class="text-xs text-muted-foreground">
+									Isi jika kondisi alat saat tiba berbeda dari kondisi saat dikirim.
+								</p>
 							</div>
+						{/if}
 
-							<div class="space-y-2">
-								<Label for="notes">Catatan Tambahan</Label>
-								<Textarea
-									id="notes"
-									name="notes"
-									placeholder="Tambahkan keterangan mutasi jika diperlukan..."
-									class="min-h-20"
-									bind:value={notes}
-								/>
-							</div>
+						<div class="space-y-2">
+							<Label for="specificLocationName">Lokasi Spesifik</Label>
+							<Input
+								id="specificLocationName"
+								name="specificLocationName"
+								placeholder="Contoh: Yonif 201, Kapal X, Truk A, dll"
+								bind:value={specificLocationName}
+							/>
+						</div>
 
-							<div class="flex justify-end gap-3">
-								<Button variant="outline" type="button" onclick={handleBack} disabled={loading}>
-									Batal
-								</Button>
-								<Button type="submit" class="gap-2" disabled={loading}>
-									{#if loading}
-										<div
-											class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-										></div>
-									{:else}
-										<ArrowRightLeft class="size-4" />
-									{/if}
-									Catat Mutasi
-								</Button>
-							</div>
-						</Card.Content>
-					</form>
-				</Card.Root>
-			{/if}
+						<div class="space-y-2">
+							<Label for="notes">Catatan Tambahan</Label>
+							<Textarea
+								id="notes"
+								name="notes"
+								placeholder="Tambahkan keterangan mutasi jika diperlukan..."
+								class="min-h-20"
+								bind:value={notes}
+							/>
+						</div>
+
+						<div class="flex justify-end gap-3">
+							<Button variant="outline" type="button" onclick={handleBack} disabled={loading}>
+								Batal
+							</Button>
+							<Button
+								type="submit"
+								class="gap-2"
+								disabled={loading || data.equipment.status === 'MAINTENANCE'}
+							>
+								{#if loading}
+									<div
+										class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+									></div>
+								{:else}
+									<ArrowRightLeft class="size-4" />
+								{/if}
+								Catat Mutasi
+							</Button>
+						</div>
+					</Card.Content>
+				</form>
+			</Card.Root>
 		</div>
 	</div>
 </div>

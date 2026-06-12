@@ -176,7 +176,7 @@
 									accept="image/png, image/jpeg, image/jpg"
 									onchange={handleImageChange}
 								/>
-								<p class="text-xs text-muted-foreground">Maksimal 5MB. Format: PNG, JPG, JPEG.</p>
+								<p class="text-xs text-muted-foreground">Max 5MB. Format: PNG, JPG, JPEG.</p>
 							</div>
 						</div>
 					</div>

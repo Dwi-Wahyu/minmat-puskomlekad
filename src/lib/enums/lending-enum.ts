@@ -7,7 +7,7 @@ export const lendingPurposeLabel: Record<string, string> = {
 };
 
 export const lendingStatusLabel: Record<string, string> = {
-	DRAFT: 'Draf',
+	DRAFT: 'Pending',
 	APPROVED: 'Disetujui',
 	REJECTED: 'Ditolak',
 	PERINTAH_LANGSUNG: 'Perintah Langsung',

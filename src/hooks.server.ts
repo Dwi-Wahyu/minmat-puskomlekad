@@ -65,6 +65,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 			const isAllowedOperatorWrite =
 				path.includes('/mutate/') ||
 				path.includes('/batch-mutate') ||
+				path.includes('/alat') ||
+				path.includes('/barang') ||
 				path.includes('/distribusi/') ||
 				path.includes('/profil') ||
 				path.includes('/peminjaman') ||

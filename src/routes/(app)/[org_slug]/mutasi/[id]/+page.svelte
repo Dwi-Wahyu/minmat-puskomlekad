@@ -65,7 +65,7 @@
 	);
 </script>
 
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 md:gap-6 md:p-6">
+<div class=" flex w-full flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
@@ -236,8 +236,6 @@
 			<Card.Root>
 				<Card.Header class="border-b">
 					<Card.Title class="flex items-center gap-2 text-base font-bold">
-						<Package class="size-4 text-primary" />
-
 						{#if movement.equipment}
 							Alat Terkait
 						{:else}
@@ -267,8 +265,8 @@
 
 						<div class="space-y-3 pt-2">
 							<div>
-								<Label class="mb-1">Nama Peralatan</Label>
-								<p class="text-sm leading-snug font-semibold">
+								<Label class="mb-1">Nama</Label>
+								<p class="text-sm text-muted-foreground">
 									{movement.equipment.item?.name || '-'}
 								</p>
 							</div>
@@ -280,7 +278,7 @@
 								</p>
 							</div>
 
-							<div>
+							<!-- <div>
 								<Label class="mb-1">Merek / Brand</Label>
 								<p class="text-sm text-muted-foreground">{movement.equipment.brand || '-'}</p>
 							</div>
@@ -311,7 +309,7 @@
 										</Badge>
 									</div>
 								</div>
-							</div>
+							</div> -->
 						</div>
 					{:else if movement.item}
 						<!-- Consumable Item -->
