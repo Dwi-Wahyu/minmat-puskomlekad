@@ -178,7 +178,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 
 	const cacheKey = `dashboard:${orgId}:${period}:${equipmentType}`;
 
-	return getOrSetCache(
+	const dashboardDataPromise = getOrSetCache(
 		cacheKey,
 		async () => {
 			// Hitung date range berdasarkan period
@@ -212,7 +212,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.select({ count: count() })
 				.from(equipment)
 				.innerJoin(item, eq(equipment.itemId, item.id))
-				.where(and(eq(equipment.organizationId, orgId), equipmentTypeFilter));
+				.where(and(and(eq(equipment.organizationId, orgId), equipmentTypeFilter)));
 
 			const [warehouseStockSum] = await db
 				.select({ total: sum(stock.qty) })
@@ -226,9 +226,11 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
-						sql`${equipment.condition} != 'BAIK'`,
-						equipmentTypeFilter
+						and(
+							eq(equipment.organizationId, orgId),
+							sql`${equipment.condition} != 'BAIK'`,
+							equipmentTypeFilter
+						)
 					)
 				);
 
@@ -268,9 +270,11 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
-						eq(equipment.status, 'TRANSIT'),
-						equipmentTypeFilter
+						and(
+							eq(equipment.organizationId, orgId),
+							eq(equipment.status, 'TRANSIT'),
+							equipmentTypeFilter
+						)
 					)
 				);
 
@@ -281,9 +285,11 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
-						eq(equipment.status, 'IN_USE'),
-						equipmentTypeFilter
+						and(
+							eq(equipment.organizationId, orgId),
+							eq(equipment.status, 'IN_USE'),
+							equipmentTypeFilter
+						)
 					)
 				);
 
@@ -305,10 +311,12 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
-						eq(equipment.status, 'IN_USE'),
-						sql`${equipment.condition} != 'BAIK'`,
-						equipmentTypeFilter
+						and(
+							eq(equipment.organizationId, orgId),
+							eq(equipment.status, 'IN_USE'),
+							sql`${equipment.condition} != 'BAIK'`,
+							equipmentTypeFilter
+						)
 					)
 				);
 
@@ -319,9 +327,11 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
-						eq(equipment.status, 'READY'),
-						equipmentTypeFilter
+						and(
+							eq(equipment.organizationId, orgId),
+							eq(equipment.status, 'READY'),
+							equipmentTypeFilter
+						)
 					)
 				);
 
@@ -331,10 +341,12 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
-						eq(equipment.status, 'READY'),
-						eq(equipment.condition, 'BAIK'),
-						equipmentTypeFilter
+						and(
+							eq(equipment.organizationId, orgId),
+							eq(equipment.status, 'READY'),
+							eq(equipment.condition, 'BAIK'),
+							equipmentTypeFilter
+						)
 					)
 				);
 
@@ -344,10 +356,12 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
-						eq(equipment.status, 'READY'),
-						sql`${equipment.condition} != 'BAIK'`,
-						equipmentTypeFilter
+						and(
+							eq(equipment.organizationId, orgId),
+							eq(equipment.status, 'READY'),
+							sql`${equipment.condition} != 'BAIK'`,
+							equipmentTypeFilter
+						)
 					)
 				);
 
@@ -383,7 +397,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				})
 				.from(equipment)
 				.innerJoin(item, eq(equipment.itemId, item.id))
-				.where(and(eq(equipment.organizationId, orgId), equipmentTypeFilter))
+				.where(and(and(eq(equipment.organizationId, orgId), equipmentTypeFilter)))
 				.limit(5)
 				.orderBy(desc(equipment.createdAt));
 
@@ -430,4 +444,13 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		},
 		CacheTTL.DASHBOARD
 	);
+
+	return {
+		org_slug: params.org_slug,
+		activeFilters: {
+			period,
+			equipmentType
+		},
+		dashboardDataPromise
+	};
 };

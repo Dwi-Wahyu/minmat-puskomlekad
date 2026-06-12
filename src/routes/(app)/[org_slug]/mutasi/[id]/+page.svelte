@@ -65,7 +65,7 @@
 	);
 </script>
 
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
+<div class="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
@@ -87,9 +87,9 @@
 				<Card.Content class="space-y-6">
 					<!-- Source & Destination flow -->
 					<div>
-						<div class="flex flex-col items-center justify-between gap-6 sm:flex-row">
+						<div class="flex flex-col justify-between gap-6 sm:flex-row md:items-center">
 							<!-- From Warehouse -->
-							<div class="flex-1 space-y-2 text-center sm:text-left">
+							<div class="flex-1 space-y-2 md:text-left">
 								<Label>Asal</Label>
 								<div class="mt-1">
 									<p class="text-base font-semibold">
@@ -105,14 +105,14 @@
 
 							<!-- Connection icon -->
 							<div
-								class="flex shrink-0 items-center justify-center rounded-full bg-primary/10 p-3 text-primary"
+								class="hidden shrink-0 items-center justify-center rounded-full bg-primary/10 p-3 text-primary md:flex"
 							>
 								<ArrowRightToLine class="size-6" />
 							</div>
 
 							<!-- To Warehouse -->
 							<div class="flex-1 space-y-2 md:text-right">
-								<Label class="flex justify-end">Tujuan</Label>
+								<Label class="flex md:justify-end">Tujuan</Label>
 								<div class="mt-1">
 									<p class="text-base font-semibold">
 										{movement.toWarehouse?.name || '(Keluar Sistem / Permanen)'}

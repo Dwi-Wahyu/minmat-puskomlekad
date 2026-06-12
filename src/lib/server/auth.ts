@@ -53,7 +53,7 @@ export const auth = betterAuth({
 		admin(),
 		username({
 			minUsernameLength: 5,
-			maxUsernameLength: 20
+			maxUsernameLength: 30
 		}),
 		bearer(),
 		apiKey(),

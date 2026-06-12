@@ -182,7 +182,7 @@
 	const showFromWarehouse = $derived(['ISSUE', 'TRANSFER_OUT', 'TRANSFER_IN'].includes(eventType));
 </script>
 
-<div class="flex flex-col gap-6 p-6">
+<div class="flex flex-col gap-4 p-4 pb-10 md:gap-6 md:p-6">
 	<div class="flex flex-col items-center justify-between gap-4 md:flex-row md:gap-0">
 		<div class="flex items-center gap-4">
 			<Button variant="outline" size="icon" onclick={handleBack}>
@@ -411,22 +411,22 @@
 								{/if}
 							</div>
 
-								<div class="space-y-2">
-									<Label for="status">Status Peralatan (Baru)</Label>
-									<Select.Root type="single" name="status" bind:value={status}>
-										<Select.Trigger class="w-full">
-											{equipmentStatusLabel[status] || 'Pilih Status'}
-										</Select.Trigger>
-										<Select.Content>
-											{#each Object.entries(equipmentStatusLabel) as [value, label] (value)}
-												<Select.Item {value}>{label}</Select.Item>
-											{/each}
-										</Select.Content>
-									</Select.Root>
-									<p class="text-xs text-muted-foreground">
-										Status otomatis disesuaikan berdasarkan Jenis Kejadian, namun dapat diubah manual.
-									</p>
-								</div>
+							<div class="space-y-2">
+								<Label for="status">Status Peralatan (Baru)</Label>
+								<Select.Root type="single" name="status" bind:value={status}>
+									<Select.Trigger class="w-full">
+										{equipmentStatusLabel[status] || 'Pilih Status'}
+									</Select.Trigger>
+									<Select.Content>
+										{#each Object.entries(equipmentStatusLabel) as [value, label] (value)}
+											<Select.Item {value}>{label}</Select.Item>
+										{/each}
+									</Select.Content>
+								</Select.Root>
+								<p class="text-xs text-muted-foreground">
+									Status otomatis disesuaikan berdasarkan Jenis Kejadian, namun dapat diubah manual.
+								</p>
+							</div>
 
 							{#if eventType === 'TRANSFER_IN'}
 								<div class="space-y-2">

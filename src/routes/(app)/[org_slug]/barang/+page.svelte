@@ -78,7 +78,7 @@
 	}
 </script>
 
-<div class="flex flex-col gap-6 p-6">
+<div class="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
@@ -173,7 +173,7 @@
 												id: item.id,
 												org_slug: data.org_slug
 											})}
-											class="font-semibold text-foreground hover:text-primary transition-colors"
+											class="font-semibold text-foreground transition-colors hover:text-primary"
 										>
 											{item.name}
 										</a>

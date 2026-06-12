@@ -1,18 +1,25 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
+	import { page } from '$app/state';
 	import { invalidateAll, goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { enhance, applyAction } from '$app/forms';
+	import { parseDate, type DateValue } from '@internationalized/date';
 	import { Button } from '$lib/components/ui/button';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import { toast } from '$lib/components/ui/toast';
 	import * as SearchableSelect from '$lib/components/ui/searchable-select';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { RangeCalendar } from '$lib/components/ui/range-calendar';
 	import {
 		Wrench,
 		Plus,
 		Search,
-		Calendar,
+		CalendarIcon,
+		X,
 		Trash2,
 		Edit,
 		Clock,
@@ -25,16 +32,25 @@
 	let { data }: { data: PageData } = $props();
 
 	// State untuk filter
-	let selectedEquipmentIds = $derived<string[]>([]);
+	let selectedEquipmentIds = $state<string[]>([]);
+	let dateRange = $state<{ start: DateValue | undefined; end: DateValue | undefined }>({
+		start: undefined,
+		end: undefined
+	});
 
 	$effect(() => {
-		selectedEquipmentIds = data.filters.equipmentIds;
+		untrack(() => {
+			selectedEquipmentIds = data.filters.equipmentIds;
+			if (data.filters.start) dateRange.start = parseDate(data.filters.start);
+			if (data.filters.end) dateRange.end = parseDate(data.filters.end);
+		});
 	});
 
 	$effect(() => {
 		const url = new URL(window.location.href);
-		const currentEqIds = url.searchParams.get('equipmentIds')?.split(',').filter(Boolean) || [];
+		let hasChanges = false;
 
+		const currentEqIds = url.searchParams.get('equipmentIds')?.split(',').filter(Boolean) || [];
 		if (
 			JSON.stringify(currentEqIds.sort()) !== JSON.stringify(selectedEquipmentIds.slice().sort())
 		) {
@@ -43,9 +59,32 @@
 			} else {
 				url.searchParams.delete('equipmentIds');
 			}
+			hasChanges = true;
+		}
+
+		if (dateRange.start && dateRange.end) {
+			const startStr = dateRange.start.toString();
+			const endStr = dateRange.end.toString();
+			if (startStr !== data.filters.start || endStr !== data.filters.end) {
+				url.searchParams.set('start', startStr);
+				url.searchParams.set('end', endStr);
+				hasChanges = true;
+			}
+		}
+
+		if (hasChanges) {
 			goto(url.toString(), { keepFocus: true, noScroll: true });
 		}
 	});
+
+	function resetDateFilter() {
+		dateRange.start = undefined;
+		dateRange.end = undefined;
+		const url = new URL(page.url);
+		url.searchParams.delete('start');
+		url.searchParams.delete('end');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
+	}
 
 	// State untuk dialog konfirmasi hapus
 	let showDeleteDialog = $state(false);
@@ -113,7 +152,7 @@
 	<title>Pemeliharaan Alat | MINMAT</title>
 </svelte:head>
 
-<div class="space-y-8 p-6">
+<div class="space-y-4 p-4 md:space-y-6 md:p-6">
 	<div class="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight text-foreground">Manajemen Pemeliharaan</h1>
@@ -121,176 +160,220 @@
 			<p class="text-muted-foreground">Kelola jadwal perawatan dan perbaikan peralatan matkomlek</p>
 		</div>
 
-		<Button href="/{data.org_slug}/pemeliharaan/create">
-			<Plus />
-			Tambah Pemeliharaan
-		</Button>
+		{#if data.isOperator}
+			<Button href="/{data.org_slug}/pemeliharaan/create" class="w-full md:w-fit">
+				<Plus />
+				Tambah Pemeliharaan
+			</Button>
+		{/if}
 	</div>
 
 	<div class="flex flex-col items-center justify-between gap-4 md:flex-row">
 		<div class="flex w-full flex-wrap gap-3 md:w-auto">
-			<div class="relative flex-1 md:w-64">
-				<Search class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" size={16} />
-				<input
-					type="text"
-					placeholder="Cari deskripsi..."
-					class="w-full rounded-xl border border-border bg-card py-2 pr-4 pl-10 text-sm transition-all outline-none focus:border-primary focus:ring-2 focus:ring-ring"
-				/>
-			</div>
-
 			<!-- Filter Peralatan Multi-select -->
 			<div class="w-full md:w-64">
-				<SearchableSelect.Root type="multiple" bind:value={selectedEquipmentIds}>
-					<SearchableSelect.Trigger
-						class="flex h-10 w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm transition-colors hover:bg-accent"
+				{#await data.dataPromise}
+					<div
+						class="flex h-10 w-full animate-pulse items-center justify-between rounded-xl border border-border bg-card px-3 py-2"
 					>
-						<div class="flex items-center gap-2 overflow-hidden">
-							<Filter size={16} class="shrink-0 text-muted-foreground" />
-							{#if selectedEquipmentIds.length === 0}
-								<span class="truncate text-muted-foreground">Filter Peralatan</span>
-							{:else}
-								<span class="truncate font-medium text-foreground"
-									>{selectedEquipmentIds.length} Alat</span
+						<div class="h-4 w-24 rounded bg-muted"></div>
+					</div>
+				{:then resolvedData}
+					<SearchableSelect.Root type="multiple" bind:value={selectedEquipmentIds}>
+						<SearchableSelect.Trigger class="w-full md:w-fit">
+							<div class="flex items-center gap-2 overflow-hidden">
+								<Filter size={16} class="shrink-0" />
+								{#if selectedEquipmentIds.length === 0}
+									<span class="truncate">Filter Peralatan</span>
+								{:else}
+									<span class="truncate">{selectedEquipmentIds.length} Alat</span>
+								{/if}
+							</div>
+						</SearchableSelect.Trigger>
+						<SearchableSelect.Content>
+							{#each resolvedData.equipment as eq (eq.id)}
+								<SearchableSelect.Item
+									value={eq.id}
+									label={`${eq.item?.name || 'Tanpa Nama'} ${eq.serialNumber ? `(${eq.serialNumber})` : ''}`}
 								>
-							{/if}
-						</div>
-					</SearchableSelect.Trigger>
-					<SearchableSelect.Content>
-						{#each data.equipment as eq (eq.id)}
-							<SearchableSelect.Item
-								value={eq.id}
-								label={`${eq.item?.name || 'Tanpa Nama'} ${eq.serialNumber ? `(${eq.serialNumber})` : ''}`}
-							>
-								<div class="flex flex-col">
-									<span class="text-xs font-medium">{eq.item?.name || 'Tanpa Nama'}</span>
-									{#if eq.serialNumber}
-										<span class="text-[10px] text-muted-foreground">SN: {eq.serialNumber}</span>
-									{/if}
-								</div>
-							</SearchableSelect.Item>
-						{/each}
-					</SearchableSelect.Content>
-				</SearchableSelect.Root>
+									<div class="flex flex-col">
+										<span class="text-xs font-medium">{eq.item?.name || 'Tanpa Nama'}</span>
+										{#if eq.serialNumber}
+											<span class="text-[10px] text-muted-foreground">SN: {eq.serialNumber}</span>
+										{/if}
+									</div>
+								</SearchableSelect.Item>
+							{/each}
+						</SearchableSelect.Content>
+					</SearchableSelect.Root>
+				{/await}
 			</div>
 
-			<button
-				class="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent"
-			>
-				<Calendar size={16} />
-				<span class="hidden sm:inline">Filter Tanggal</span>
-			</button>
+			<!-- Filter Tanggal -->
+			<div class="flex w-full items-center gap-2 md:w-fit">
+				{#if data.filters.start || data.filters.end}
+					<Button variant="outline" onclick={resetDateFilter}>Reset</Button>
+				{/if}
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger class="flex-1 md:flex-initial">
+						<Button
+							variant="outline"
+							class="flex w-full items-center justify-start gap-2 text-sm md:w-fit md:justify-center"
+						>
+							<CalendarIcon class="size-4" />
+							{#if data.filters.start && data.filters.end}
+								{data.filters.start} - {data.filters.end}
+							{:else}
+								Filter Tanggal
+							{/if}
+						</Button>
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content align="center" class="w-auto p-0">
+						<RangeCalendar bind:value={dateRange} class="rounded-md border-0" />
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+			</div>
 		</div>
 	</div>
 
-	<div class="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-		<Table.Root>
-			<Table.Header class="bg-muted/50">
-				<Table.Row>
-					<Table.Head class="w-75">Peralatan</Table.Head>
-					<Table.Head>Tipe</Table.Head>
-					<Table.Head>Jadwal</Table.Head>
-					<Table.Head>Status</Table.Head>
-					<Table.Head class="text-right">Aksi</Table.Head>
-				</Table.Row>
-			</Table.Header>
-			<Table.Body>
-				{#each data.maintenance as item (item.id)}
-					<Table.Row class="group transition-colors hover:bg-accent/50">
-						<Table.Cell>
-							<div class="flex max-w-75 items-center gap-3">
+	{#await data.dataPromise}
+		<!-- Skeleton -->
+		<div class="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+			<div class="space-y-2 p-4">
+				<div class="h-10 w-full animate-pulse rounded bg-muted/60"></div>
+				{#each Array(6) as _}
+					<div class="flex animate-pulse gap-3">
+						<div class="h-14 w-1/3 rounded bg-muted"></div>
+						<div class="h-14 w-1/5 rounded bg-muted"></div>
+						<div class="h-14 w-1/5 rounded bg-muted"></div>
+						<div class="h-14 w-1/6 rounded bg-muted"></div>
+						<div class="ml-auto h-14 w-16 rounded bg-muted"></div>
+					</div>
+				{/each}
+			</div>
+			<div class="border-t border-border bg-muted/30 p-4">
+				<div class="h-4 w-40 animate-pulse rounded bg-muted"></div>
+			</div>
+		</div>
+	{:then resolvedData}
+		<div class="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+			<Table.Root>
+				<Table.Header class="bg-muted/50">
+					<Table.Row>
+						<Table.Head class="w-75">Peralatan</Table.Head>
+						<Table.Head>Tipe</Table.Head>
+						<Table.Head>Jadwal</Table.Head>
+						<Table.Head>Status</Table.Head>
+						{#if data.isOperator}
+							<Table.Head class="text-right">Aksi</Table.Head>
+						{/if}
+					</Table.Row>
+				</Table.Header>
+				<Table.Body>
+					{#each resolvedData.maintenance as item (item.id)}
+						<Table.Row class="group transition-colors hover:bg-accent/50">
+							<Table.Cell>
+								<div class="flex max-w-75 items-center gap-3">
+									<div class="flex flex-col">
+										<span class="leading-tight font-bold text-wrap text-foreground">
+											{item.equipment?.item?.name ?? item.equipmentId}
+										</span>
+										<span class="mt-1 font-mono text-[10px] text-muted-foreground"
+											>SN: {item.equipment?.serialNumber || '-'}</span
+										>
+									</div>
+								</div>
+							</Table.Cell>
+							<Table.Cell>
+								<Badge variant="outline">
+									{maintenanceTypeLabel[item.maintenanceType]}
+								</Badge>
+							</Table.Cell>
+
+							<Table.Cell>
 								<div class="flex flex-col">
-									<span class="leading-tight font-bold text-wrap text-foreground">
-										{item.equipment?.item?.name ?? item.equipmentId}
-									</span>
-									<span class="mt-1 font-mono text-[10px] text-muted-foreground"
-										>SN: {item.equipment?.serialNumber || '-'}</span
+									<span class="text-sm font-medium text-foreground"
+										>{formatDate(item.scheduledDate)}</span
 									>
 								</div>
-							</div>
-						</Table.Cell>
-						<Table.Cell>
-							<Badge variant="outline">
-								{maintenanceTypeLabel[item.maintenanceType]}
-							</Badge>
-						</Table.Cell>
+							</Table.Cell>
+							<Table.Cell>
+								{@const StatusIcon = getStatusIcon(item.status)}
+								<Badge variant="outline" class={getStatusColor(item.status)}>
+									<StatusIcon />
+									{maintenanceStatusLabel[item.status]}
+								</Badge>
+							</Table.Cell>
+							{#if data.isOperator}
+								<Table.Cell class="text-right">
+									<div class="flex justify-end gap-1">
+										<Button
+											size="icon"
+											variant="ghost"
+											href="/{data.org_slug}/pemeliharaan/{item.id}/edit"
+										>
+											<Edit size={16} />
+										</Button>
 
-						<Table.Cell>
-							<div class="flex flex-col">
-								<span class="text-sm font-medium text-foreground"
-									>{formatDate(item.scheduledDate)}</span
-								>
-							</div>
-						</Table.Cell>
-						<Table.Cell>
-							{@const StatusIcon = getStatusIcon(item.status)}
-							<Badge variant="outline" class={getStatusColor(item.status)}>
-								<StatusIcon />
-								{maintenanceStatusLabel[item.status]}
-							</Badge>
-						</Table.Cell>
-						<Table.Cell class="text-right">
-							<div class="flex justify-end gap-1">
-								<Button
-									size="icon"
-									variant="ghost"
-									href="/{data.org_slug}/pemeliharaan/{item.id}/edit"
-									class="h-8 w-8 text-muted-foreground hover:text-primary"
-								>
-									<Edit size={16} />
-								</Button>
+										<!-- Form Delete -->
+										<form
+											method="POST"
+											action="?/delete"
+											use:enhance={() => {
+												return async ({ result }) => {
+													if (result?.type === 'success') {
+														toast.success('Berhasil', 'Pemeliharaan berhasil dihapus');
+														await invalidateAll();
+													} else if (result?.type === 'failure') {
+														toast.error(
+															'Gagal',
+															(result?.data as any)?.message || 'Gagal menghapus pemeliharaan'
+														);
+													}
+													await applyAction(result);
+												};
+											}}
+										>
+											<input type="hidden" name="id" value={item.id} />
+											<Button
+												size="icon"
+												variant="ghost"
+												type="button"
+												onclick={(e) => confirmDelete(item.id, e)}
+											>
+												<Trash2 size={16} />
+											</Button>
+										</form>
+									</div>
+								</Table.Cell>
+							{/if}
+						</Table.Row>
+					{:else}
+						<Table.Row>
+							<Table.Cell colspan={6} class="h-64 text-center">
+								<div class="flex flex-col items-center justify-center text-muted-foreground gap-3">
+									<Wrench size={48} strokeWidth={1} class="text-border" />
+									<p class="text-sm">Belum ada data pemeliharaan yang tercatat</p>
+								</div>
+							</Table.Cell>
+						</Table.Row>
+					{/each}
+				</Table.Body>
+			</Table.Root>
 
-								<!-- Form Delete -->
-								<form
-									method="POST"
-									action="?/delete"
-									use:enhance={() => {
-										return async ({ result }) => {
-											if (result?.type === 'success') {
-												toast.success('Berhasil', 'Pemeliharaan berhasil dihapus');
-												await invalidateAll();
-											} else if (result?.type === 'failure') {
-												toast.error(
-													'Gagal',
-													(result?.data as any)?.message || 'Gagal menghapus pemeliharaan'
-												);
-											}
-											await applyAction(result);
-										};
-									}}
-								>
-									<input type="hidden" name="id" value={item.id} />
-									<Button
-										size="icon"
-										variant="ghost"
-										type="button"
-										onclick={(e) => confirmDelete(item.id, e)}
-										class="h-8 w-8 text-muted-foreground hover:text-destructive"
-									>
-										<Trash2 size={16} />
-									</Button>
-								</form>
-							</div>
-						</Table.Cell>
-					</Table.Row>
-				{:else}
-					<Table.Row>
-						<Table.Cell colspan={6} class="h-64 text-center">
-							<div class="flex flex-col items-center justify-center text-muted-foreground gap-3">
-								<Wrench size={48} strokeWidth={1} class="text-border" />
-								<p class="text-sm">Belum ada data pemeliharaan yang tercatat</p>
-							</div>
-						</Table.Cell>
-					</Table.Row>
-				{/each}
-			</Table.Body>
-		</Table.Root>
-
-		<div
-			class="flex items-center justify-between border-t border-border bg-muted/30 p-4 text-xs font-medium text-muted-foreground"
-		>
-			<span>Total {data.maintenance.length} jadwal pemeliharaan</span>
+			<div
+				class="flex items-center justify-between border-t border-border bg-muted/30 p-4 text-xs font-medium text-muted-foreground"
+			>
+				<span>Total {resolvedData.maintenance.length} jadwal pemeliharaan</span>
+			</div>
 		</div>
-	</div>
+	{:catch err}
+		<div
+			class="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center text-sm text-destructive"
+		>
+			Gagal memuat data pemeliharaan: {err.message}
+		</div>
+	{/await}
 
 	<!-- Dialog Konfirmasi Hapus -->
 	<ConfirmationDialog

@@ -116,7 +116,7 @@
 	<title>Edit Pemeliharaan | MINMAT</title>
 </svelte:head>
 
-<div class="space-y-6 p-6">
+<div class="space-y-4 p-4 md:space-y-6 md:p-6">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">
 			<Button

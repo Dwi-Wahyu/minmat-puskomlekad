@@ -1,12 +1,16 @@
 import { db } from '$lib/server/db';
 import { equipment, item, warehouse, organization, movement } from '$lib/server/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, gte, lte } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, url }) => {
 	const { id } = params;
+
+	// Filters
+	const startDate = url.searchParams.get('start');
+	const endDate = url.searchParams.get('end');
 
 	// Use aliases for multiple joins to the same table if needed
 	const toWarehouse = alias(warehouse, 'to_warehouse');
@@ -40,6 +44,15 @@ export const load: PageServerLoad = async ({ params }) => {
 			: null
 	};
 
+	// Build history filters
+	const historyFilters = [eq(movement.equipmentId, id)];
+	if (startDate) historyFilters.push(gte(movement.createdAt, new Date(startDate)));
+	if (endDate) {
+		const end = new Date(endDate);
+		end.setHours(23, 59, 59, 999);
+		historyFilters.push(lte(movement.createdAt, end));
+	}
+
 	// Ambil riwayat pergerakan terakhir menggunakan join eksplisit
 	const historyResults = await db
 		.select({
@@ -52,9 +65,9 @@ export const load: PageServerLoad = async ({ params }) => {
 		.leftJoin(organization, eq(movement.organizationId, organization.id))
 		.leftJoin(warehouse, eq(movement.fromWarehouseId, warehouse.id))
 		.leftJoin(toWarehouse, eq(movement.toWarehouseId, toWarehouse.id))
-		.where(eq(movement.equipmentId, id))
+		.where(and(...historyFilters))
 		.orderBy(desc(movement.createdAt), desc(movement.id))
-		.limit(5);
+		.limit(20);
 
 	const history = historyResults.map((h) => ({
 		...h.movement,
@@ -66,6 +79,10 @@ export const load: PageServerLoad = async ({ params }) => {
 	return {
 		equipment: detail,
 		history,
-		org_slug: params.org_slug
+		org_slug: params.org_slug,
+		filters: {
+			start: startDate,
+			end: endDate
+		}
 	};
 };

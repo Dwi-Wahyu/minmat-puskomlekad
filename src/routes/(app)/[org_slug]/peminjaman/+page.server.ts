@@ -43,7 +43,8 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 		filters.push(like(lending.unit, `%${searchQuery}%`));
 	}
 
-	const data = await db.query.lending.findMany({
+	// PERUBAHAN: tidak di-await, dikembalikan sebagai Promise
+	const lendingListPromise = db.query.lending.findMany({
 		where: and(...filters),
 		with: {
 			organization: true,
@@ -55,8 +56,11 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 	});
 
 	return {
-		lendingList: data,
-		filters: { q: searchQuery, status: statusFilter },
+		lendingListPromise,
+		filters: {
+			q: searchQuery,
+			status: statusFilter
+		},
 		isInduk,
 		org_slug: params.org_slug
 	};

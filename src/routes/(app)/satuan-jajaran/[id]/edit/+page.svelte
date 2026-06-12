@@ -38,7 +38,7 @@
 	}
 </script>
 
-<div class="mx-auto flex w-full max-w-2xl flex-col gap-6 p-6">
+<div class="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<div class="flex items-center gap-4">
 		<Button variant="outline" size="icon" href="/satuan-jajaran/{data.targetOrg.id}">
 			<ChevronLeft class="size-4" />

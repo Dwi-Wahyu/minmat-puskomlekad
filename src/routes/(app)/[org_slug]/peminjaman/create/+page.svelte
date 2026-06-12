@@ -552,7 +552,7 @@
 
 					<!-- Paginasi -->
 					{#if totalPages > 1}
-						<div class="flex items-center justify-between pt-4">
+						<div class="flex flex-col items-center justify-between pt-4 md:flex-row">
 							<span class="text-sm text-muted-foreground">
 								Menampilkan {groupedEquipment.length} dari {totalItems} alat
 							</span>

@@ -108,7 +108,9 @@
 	function handleNotificationAction() {
 		showNotification = false;
 		if (form?.success && form?.distributionId) {
-			goto(`/${data.currentOrgId === data.parentOrg?.id ? data.organizations[0]?.slug : page.params.org_slug}/distribusi/${form.distributionId}`);
+			goto(
+				`/${data.currentOrgId === data.parentOrg?.id ? data.organizations[0]?.slug : page.params.org_slug}/distribusi/${form.distributionId}`
+			);
 		}
 	}
 
@@ -238,7 +240,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-6xl flex-col gap-6 p-6">
+<div class="mx-auto flex max-w-6xl flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<div class="flex items-center gap-4">
 		<Button
 			variant="outline"

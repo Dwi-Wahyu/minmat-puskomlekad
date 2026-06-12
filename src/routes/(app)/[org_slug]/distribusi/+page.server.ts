@@ -11,18 +11,17 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (!org) throw error(404, 'Kesatuan tidak ditemukan');
 
-	const distributions = await db.query.distribution.findMany({
-		where: (d, { or, eq }) => or(eq(d.fromOrganizationId, org.id), eq(d.toOrganizationId, org.id)),
-		with: {
-			fromOrganization: true,
-			toOrganization: true,
-			equipmentItems: true,
-			consumableItems: true
-		},
-		orderBy: [desc(distribution.createdAt)]
+	// PERUBAHAN: tidak di-await, dikembalikan sebagai Promise
+	const distributionsPromise = db.query.distribution.findMany({
+	  where: (d, { or, eq }) => or(eq(d.fromOrganizationId, org.id), eq(d.toOrganizationId, org.id)),
+	  with: {
+	    fromOrganization: true,
+	    toOrganization: true,
+	    equipmentItems: true,
+	    consumableItems: true
+	  },
+	  orderBy: [desc(distribution.createdAt)]
 	});
 
-	return {
-		distributions
-	};
+	return { distributionsPromise };
 };

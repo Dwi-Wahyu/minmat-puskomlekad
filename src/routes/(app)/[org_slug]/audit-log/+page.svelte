@@ -145,7 +145,7 @@
 	}
 </script>
 
-<div class="space-y-6 p-6">
+<div class="space-y-4 p-4 md:space-y-6 md:p-6">
 	<div class="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
 		<div>
 			<h1 class="flex items-center gap-3 text-2xl font-bold">Audit Log Sistem</h1>
@@ -385,7 +385,8 @@
 						<Label>Nilai Lama</Label>
 					</div>
 
-					<pre class="overflow-x-auto rounded-md border border-card bg-muted/30 p-3 font-mono text-[10px]">
+					<pre
+						class="overflow-x-auto rounded-md border border-card bg-muted/30 p-3 font-mono text-[10px]">
 						{formatJson(selectedLog.oldValue)}
 					</pre>
 				</div>
@@ -395,7 +396,8 @@
 						<Label>Nilai Baru</Label>
 					</div>
 
-					<pre class="overflow-x-auto rounded-md border border-card bg-muted/30 p-3 font-mono text-[10px]">
+					<pre
+						class="overflow-x-auto rounded-md border border-card bg-muted/30 p-3 font-mono text-[10px]">
 						{formatJson(selectedLog.newValue)}
 					</pre>
 				</div>

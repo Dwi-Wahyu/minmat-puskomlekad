@@ -104,7 +104,7 @@
 	});
 </script>
 
-<div class="flex flex-col gap-6 p-6">
+<div class="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<div class="flex flex-wrap items-end justify-between gap-4">
 		<header class="flex flex-col gap-1">
 			<h1 class="text-2xl font-bold tracking-tight">Gudang Transito</h1>
@@ -202,9 +202,9 @@
 
 	<div class="rounded-lg border bg-card shadow-sm">
 		<Table.Root>
-			<Table.Header>
+			<Table.Header class="bg-muted/50">
 				<Table.Row>
-					<Table.Head>Nama Item & Serial Number</Table.Head>
+					<Table.Head>Nama Item</Table.Head>
 					<Table.Head>Jenis & Kategori</Table.Head>
 					<Table.Head>Kuantitas</Table.Head>
 					<Table.Head>Asal</Table.Head>

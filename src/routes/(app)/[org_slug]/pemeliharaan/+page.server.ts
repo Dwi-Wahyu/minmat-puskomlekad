@@ -1,7 +1,7 @@
 import { fail, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { maintenance, organization, equipment } from '$lib/server/db/schema';
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, inArray, and, gte, lte } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/auth.utils';
 
@@ -9,6 +9,8 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	requirePermission('maintenance', 'view', locals);
 	const { org_slug } = params;
 	const equipmentIds = url.searchParams.get('equipmentIds')?.split(',').filter(Boolean) || [];
+	const startDate = url.searchParams.get('start');
+	const endDate = url.searchParams.get('end');
 
 	// Ambil ID organisasi berdasarkan slug dari URL
 	const org = await db.query.organization.findFirst({
@@ -19,38 +21,53 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		throw error(404, 'Organization not found');
 	}
 
-	const maintenanceList = await db.query.maintenance.findMany({
-		where: equipmentIds.length > 0 ? inArray(maintenance.equipmentId, equipmentIds) : undefined,
-		with: {
-			equipment: {
-				with: {
-					item: true
+	// Build query filters
+	const filters = [];
+	if (equipmentIds.length > 0) {
+		filters.push(inArray(maintenance.equipmentId, equipmentIds));
+	}
+	if (startDate) {
+		filters.push(gte(maintenance.scheduledDate, new Date(startDate)));
+	}
+	if (endDate) {
+		const end = new Date(endDate);
+		end.setHours(23, 59, 59, 999);
+		filters.push(lte(maintenance.scheduledDate, end));
+	}
+
+	// PERUBAHAN: dua query dijalankan paralel, tidak di-await, dikembalikan sebagai Promise
+	const dataPromise = Promise.all([
+		db.query.maintenance.findMany({
+			where: filters.length > 0 ? and(...filters) : undefined,
+			with: {
+				equipment: {
+					with: {
+						item: true
+					}
 				}
+			},
+			orderBy: [desc(maintenance.scheduledDate)]
+		}),
+		db.query.equipment.findMany({
+			where: eq(equipment.organizationId, org.id),
+			with: {
+				item: true
 			}
-		},
-		orderBy: [desc(maintenance.scheduledDate)]
-	});
+		})
+	]).then(([maintenanceList, equipmentList]) => ({
+		maintenance: maintenanceList.filter((m) => m.equipment?.organizationId === org.id),
+		equipment: equipmentList
+	}));
 
-	// Ambil daftar alat untuk filter
-	const equipmentList = await db.query.equipment.findMany({
-		where: eq(equipment.organizationId, org.id),
-		with: {
-			item: true
-		}
-	});
-
-	// Filter maintenanceList berdasarkan organizationId (jika equipment ada)
-	const filteredMaintenance = maintenanceList.filter(
-		(m) => m.equipment?.organizationId === org.id
-	);
-
-	return { 
-		maintenance: filteredMaintenance,
-		equipment: equipmentList,
+	return {
+		dataPromise,
 		org_slug: org_slug,
 		filters: {
-			equipmentIds
-		}
+			equipmentIds,
+			start: startDate,
+			end: endDate
+		},
+		isOperator: ['operatorBinmatDanBekharrah', 'operatorPusatDanDaerah'].includes(locals.user.role)
 	};
 };
 

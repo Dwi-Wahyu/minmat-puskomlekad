@@ -155,7 +155,7 @@
 	}
 </script>
 
-<div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6">
+<div class="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-4">

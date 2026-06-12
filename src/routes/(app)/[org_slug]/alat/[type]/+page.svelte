@@ -61,7 +61,7 @@
 	}
 </script>
 
-<div class="flex flex-col gap-6 p-6">
+<div class="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 		<div class="flex items-center gap-4">
 			<div>

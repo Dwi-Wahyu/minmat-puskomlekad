@@ -130,7 +130,7 @@
 	<title>Konversi Unit | MINMAT</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6 p-6">
+<div class="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<header class="flex flex-col justify-between gap-4 md:flex-row md:items-center">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight text-foreground uppercase">Konversi Unit</h1>
@@ -424,7 +424,11 @@
 				await invalidateAll();
 				handleNotification('Berhasil', 'Data konversi telah dihapus.', 'success');
 			} else if (result?.type === 'failure') {
-				handleNotification('Gagal', (result?.data as any)?.message || 'Gagal menghapus data.', 'error');
+				handleNotification(
+					'Gagal',
+					(result?.data as any)?.message || 'Gagal menghapus data.',
+					'error'
+				);
 			}
 		};
 	}}

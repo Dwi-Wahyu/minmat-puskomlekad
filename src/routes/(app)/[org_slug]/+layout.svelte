@@ -58,12 +58,12 @@
 	}
 </script>
 
-<div class="flex h-screen overflow-hidden bg-background">
+<div class="flex min-h-screen bg-background">
 	<Sidebar user={data.user} />
 
-	<main class="flex flex-1 flex-col overflow-hidden">
+	<main class="flex flex-1 flex-col">
 		<header
-			class="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/50 px-8 shadow transition-all duration-300"
+			class="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/50 px-4 shadow backdrop-blur-md transition-all duration-300 md:px-6"
 		>
 			<div class="flex items-center gap-4">
 				<button
@@ -121,8 +121,10 @@
 			</div>
 		</header>
 
-		<div class="flex-1 overflow-y-auto">
-			{@render children()}
+		<div class="flex-1">
+			<div class="mx-auto w-screen">
+				{@render children()}
+			</div>
 		</div>
 	</main>
 </div>

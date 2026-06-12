@@ -96,8 +96,8 @@
 	}
 </script>
 
-<div class="flex flex-col gap-6 p-6">
-	<div class="flex items-center justify-between">
+<div class="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
+	<div class="flex flex-col justify-between gap-4 md:flex-row md:items-center md:gap-0">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight text-foreground">
 				{data.isInduk ? 'Daftar Pengajuan Masuk' : 'Tracking Peminjaman'}
@@ -109,8 +109,8 @@
 			</p>
 		</div>
 		{#if !data.isInduk}
-			<Button href="/{page.params.org_slug}/peminjaman/create" class="gap-2">
-				<Plus class="size-4" />
+			<Button href="/{page.params.org_slug}/peminjaman/create">
+				<Plus />
 				Buat Pengajuan
 			</Button>
 		{/if}
@@ -128,13 +128,13 @@
 				/>
 			</form>
 		</div>
-		<div class="flex items-center gap-2">
+		<div class="flex w-full items-center gap-2 md:w-fit">
 			<Select.Root
 				type="single"
 				value={data.filters.status || 'ALL'}
 				onValueChange={handleStatusChange}
 			>
-				<Select.Trigger class="w-45">
+				<Select.Trigger class="w-full">
 					{statusOptions.find((o) => o.value === (data.filters.status || 'ALL'))?.label ||
 						'Semua Status'}
 				</Select.Trigger>
@@ -147,77 +147,103 @@
 		</div>
 	</div>
 
-	<div class="overflow-hidden rounded-lg border bg-card shadow-sm">
-		<Table.Root>
-			<Table.Header>
-				<Table.Row class="bg-muted/50">
-					<Table.Head>Unit Peminjam</Table.Head>
-					<Table.Head>Tujuan</Table.Head>
-					<Table.Head>Tanggal</Table.Head>
-					<Table.Head>Status</Table.Head>
-					<Table.Head class="text-right">Aksi</Table.Head>
-				</Table.Row>
-			</Table.Header>
-			<Table.Body>
-				{#each data.lendingList as item (item.id)}
-					{@const config = statusConfig[item.status as keyof typeof statusConfig]}
-					<Table.Row class="transition-colors hover:bg-muted/30">
-						<Table.Cell>
-							<div class="flex flex-col">
-								<span class="font-bold">{item.unit}</span>
-								<span class="text-xs text-muted-foreground">Oleh: {item.requestedByUser?.name}</span
-								>
-							</div>
-						</Table.Cell>
-						<Table.Cell>
-							<Badge variant="outline">{lendingPurposeLabel[item.purpose]}</Badge>
-						</Table.Cell>
-						<Table.Cell>
-							<div class="flex flex-col text-sm">
-								<span>{formatDate(item.startDate)}</span>
-								{#if item.endDate}
-									<span class="text-muted-foreground">s/d {formatDate(item.endDate as Date)}</span>
+	{#await data.lendingListPromise}
+		<!-- Skeleton -->
+		<div class="overflow-hidden rounded-lg border bg-card shadow-sm">
+			<div class="space-y-2 p-4">
+				<div class="h-10 w-full animate-pulse rounded bg-muted/60"></div>
+				{#each Array(6) as _}
+					<div class="flex animate-pulse gap-3">
+						<div class="h-12 w-1/4 rounded bg-muted"></div>
+						<div class="h-12 w-1/5 rounded bg-muted"></div>
+						<div class="h-12 w-1/5 rounded bg-muted"></div>
+						<div class="h-12 w-1/6 rounded bg-muted"></div>
+						<div class="ml-auto h-12 w-1/6 rounded bg-muted"></div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{:then lendingList}
+		<div class="overflow-hidden rounded-lg border bg-card shadow-sm">
+			<Table.Root>
+				<Table.Header>
+					<Table.Row class="bg-muted/50">
+						<Table.Head>Unit Peminjam</Table.Head>
+						<Table.Head>Tujuan</Table.Head>
+						<Table.Head>Tanggal</Table.Head>
+						<Table.Head>Status</Table.Head>
+						<Table.Head class="text-right">Aksi</Table.Head>
+					</Table.Row>
+				</Table.Header>
+				<Table.Body>
+					{#each lendingList as item (item.id)}
+						{@const config = statusConfig[item.status as keyof typeof statusConfig]}
+						<Table.Row class="transition-colors hover:bg-muted/30">
+							<Table.Cell>
+								<div class="flex flex-col">
+									<span class="font-bold">{item.unit}</span>
+									<span class="text-xs text-muted-foreground"
+										>Oleh: {item.requestedByUser?.name}</span
+									>
+								</div>
+							</Table.Cell>
+							<Table.Cell>
+								<Badge variant="outline">{lendingPurposeLabel[item.purpose]}</Badge>
+							</Table.Cell>
+							<Table.Cell>
+								<div class="flex flex-col text-sm">
+									<span>{formatDate(item.startDate)}</span>
+									{#if item.endDate}
+										<span class="text-muted-foreground">s/d {formatDate(item.endDate as Date)}</span
+										>
+									{/if}
+								</div>
+							</Table.Cell>
+							<Table.Cell>
+								<Badge variant="outline" class={config.color}>
+									<config.icon />
+									{lendingStatusLabel[item.status!]}
+								</Badge>
+							</Table.Cell>
+							<Table.Cell class="text-right">
+								{#if item.status === 'DRAFT' && item.requestedBy === data.user.id}
+									<Button
+										variant="ghost"
+										size="icon"
+										href={resolve('/(app)/[org_slug]/peminjaman/[id]/edit', {
+											org_slug: data.org_slug,
+											id: item.id
+										})}
+										title="Edit Pengajuan"
+									>
+										<Edit class="size-4" />
+									</Button>
 								{/if}
-							</div>
-						</Table.Cell>
-						<Table.Cell>
-							<Badge variant="outline" class={config.color}>
-								<config.icon />
-								{lendingStatusLabel[item.status!]}
-							</Badge>
-						</Table.Cell>
-						<Table.Cell class="text-right">
-							{#if item.status === 'DRAFT' && item.requestedBy === data.user.id}
 								<Button
 									variant="ghost"
 									size="icon"
-									href={resolve('/(app)/[org_slug]/peminjaman/[id]/edit', {
-										org_slug: data.org_slug,
-										id: item.id
-									})}
-									title="Edit Pengajuan"
+									href="/{page.params.org_slug}/peminjaman/{item.id}"
+									title="Detail Pengajuan"
 								>
-									<Edit class="size-4" />
+									<Eye class="size-4" />
 								</Button>
-							{/if}
-							<Button
-								variant="ghost"
-								size="icon"
-								href="/{page.params.org_slug}/peminjaman/{item.id}"
-								title="Detail Pengajuan"
-							>
-								<Eye class="size-4 " />
-							</Button>
-						</Table.Cell>
-					</Table.Row>
-				{:else}
-					<Table.Row>
-						<Table.Cell colspan={6} class="h-32 text-center text-muted-foreground">
-							Tidak ada data peminjaman yang ditemukan.
-						</Table.Cell>
-					</Table.Row>
-				{/each}
-			</Table.Body>
-		</Table.Root>
-	</div>
+							</Table.Cell>
+						</Table.Row>
+					{:else}
+						<Table.Row>
+							<Table.Cell colspan={6} class="h-32 text-center text-muted-foreground">
+								Tidak ada data peminjaman yang ditemukan.
+							</Table.Cell>
+						</Table.Row>
+					{/each}
+				</Table.Body>
+			</Table.Root>
+		</div>
+	{:catch err}
+		<div
+			class="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center text-sm text-destructive"
+		>
+			Gagal memuat data peminjaman: {err.message}
+		</div>
+	{/await}
 </div>

@@ -8,7 +8,7 @@
 	const defaultLogo = '/logo-tni-ad.png';
 </script>
 
-<div class="flex flex-col gap-6 p-6 text-foreground">
+<div class="flex flex-col gap-4 p-4 text-foreground md:gap-6 md:p-6">
 	<header class="flex items-center gap-4">
 		<Button size="icon" href="/" variant="outline">
 			<ArrowLeft />

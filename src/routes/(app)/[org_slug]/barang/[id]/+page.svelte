@@ -134,9 +134,9 @@
 	);
 </script>
 
-<div class="flex w-full flex-col gap-6 p-6">
+<div class="flex w-full flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<!-- Header -->
-	<div class="flex items-center justify-between">
+	<div class="flex flex-col justify-between gap-4 md:flex-row md:items-center md:gap-0">
 		<div class="flex items-center gap-4">
 			<Button variant="outline" size="icon" href="/{data.org_slug}/barang">
 				<ChevronLeft class="size-4" />
@@ -257,21 +257,21 @@
 		<!-- History Timeline -->
 		<Card.Root class="lg:col-span-2">
 			<Card.Header
-				class="flex flex-col gap-4 space-y-0 pb-7 sm:flex-row sm:items-center sm:justify-between"
+				class="flex flex-col gap-4 space-y-0 pb-7 md:flex-row md:items-center md:justify-between"
 			>
 				<Card.Title class="flex items-center gap-2">
 					<History class="size-5 text-purple-600" />
 					Riwayat Pergerakan Terakhir
 				</Card.Title>
-				<div class="flex items-center gap-2">
+				<div class="flex w-full items-center gap-2 md:w-fit">
 					{#if data.filters.start || data.filters.end}
 						<Button variant="ghost" size="sm" onclick={resetFilter} class="h-8 gap-1 px-2 text-xs">
 							<X class="size-3" /> Reset Filter
 						</Button>
 					{/if}
 					<DropdownMenu.Root>
-						<DropdownMenu.Trigger>
-							<Button variant="outline" size="sm" class="h-8 gap-2 text-xs">
+						<DropdownMenu.Trigger class="flex-1 md:flex-initial">
+							<Button variant="outline" size="sm" class="h-8 w-full gap-2 text-xs md:w-fit">
 								<CalendarIcon class="size-3.5" />
 								{#if data.filters.start && data.filters.end}
 									{data.filters.start} - {data.filters.end}
@@ -280,79 +280,81 @@
 								{/if}
 							</Button>
 						</DropdownMenu.Trigger>
-						<DropdownMenu.Content align="end" class="p-0">
+						<DropdownMenu.Content align="end" class="w-auto p-0">
 							<RangeCalendar bind:value={dateRange} class="rounded-md border-0" />
 						</DropdownMenu.Content>
 					</DropdownMenu.Root>
 				</div>
 			</Card.Header>
 			<Card.Content>
-				{#each data.history as log (log.id)}
-					{@const Icon = iconMap[movementEventTypeIcon[log.eventType]] || Package}
+				{#if data.history.length > 0}
 					<div
 						class="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:h-full before:w-0.5 before:bg-border md:before:left-1/2 md:before:ml-0"
 					>
-						<div
-							class="group relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse"
-						>
-							<!-- Icon/Dot -->
+						{#each data.history as log (log.id)}
+							{@const Icon = iconMap[movementEventTypeIcon[log.eventType]] || Package}
 							<div
-								class="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow md:absolute md:left-1/2 md:-translate-x-1/2"
+								class="group relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse"
 							>
-								<Icon class="size-5" />
-							</div>
+								<!-- Icon/Dot -->
+								<div
+									class="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow md:absolute md:left-1/2 md:-translate-x-1/2"
+								>
+									<Icon class="size-5" />
+								</div>
 
-							<!-- Content Card -->
-							<a
-								href={resolve('/(app)/[org_slug]/mutasi/[id]', {
-									org_slug: data.org_slug,
-									id: log.id
-								})}
-								class="group/card block w-[calc(100%-4rem)] rounded-lg border border-border bg-muted/30 p-4 shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted/60 md:w-[calc(50%-2.5rem)]"
-							>
-								<div class="mb-2 flex items-center justify-between space-x-2">
-									<div
-										class="font-bold text-foreground transition-colors group-hover/card:text-primary"
-									>
-										{movementEventTypeLabel[log.eventType]}
+								<!-- Content Card -->
+								<a
+									href={resolve('/(app)/[org_slug]/mutasi/[id]', {
+										org_slug: data.org_slug,
+										id: log.id
+									})}
+									class="group/card block w-[calc(100%-4rem)] rounded-lg border border-border bg-muted/30 p-4 shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted/60 md:w-[calc(50%-2.5rem)]"
+								>
+									<div class="mb-2 flex items-center justify-between space-x-2">
+										<div
+											class="font-bold text-foreground transition-colors group-hover/card:text-primary"
+										>
+											{movementEventTypeLabel[log.eventType]}
+										</div>
+										<time class="font-mono text-xs text-primary">
+											{new Date(log.createdAt).toLocaleString('id-ID', {
+												dateStyle: 'medium',
+												timeStyle: 'short'
+											})}
+										</time>
 									</div>
-									<time class="font-mono text-xs text-primary">
-										{new Date(log.createdAt).toLocaleString('id-ID', {
-											dateStyle: 'medium',
-											timeStyle: 'short'
-										})}
-									</time>
-								</div>
-								<div class="mb-2 flex items-center gap-2">
-									<Badge variant="secondary" class="font-mono text-[10px]">
-										{Math.abs(Number(log.qty))}
-										{log.unit || data.item.baseUnit}
-									</Badge>
-									<span class="text-xs text-muted-foreground"
-										>Oleh: {log.pic?.name || 'Sistem'}</span
-									>
-								</div>
-								<div class="text-sm text-muted-foreground">
-									{#if log.notes}
-										{log.notes}
-									{:else}
-										Pergerakan dari <span class="font-medium text-foreground"
-											>{log.fromWarehouse?.name || 'Sumber'}</span
+									<div class="mb-2 flex items-center gap-2">
+										<Badge variant="secondary" class="font-mono text-[10px]">
+											{Math.abs(Number(log.qty))}
+											{log.unit || data.item.baseUnit}
+										</Badge>
+										<span class="text-xs text-muted-foreground"
+											>Oleh: {log.pic?.name || 'Sistem'}</span
 										>
-										ke
-										<span class="font-medium text-foreground"
-											>{log.toWarehouse?.name || 'Tujuan'}</span
-										>
-									{/if}
-								</div>
-							</a>
-						</div>
+									</div>
+									<div class="text-sm text-muted-foreground">
+										{#if log.notes}
+											{log.notes}
+										{:else}
+											Pergerakan dari <span class="font-medium text-foreground"
+												>{log.fromWarehouse?.name || 'Sumber'}</span
+											>
+											ke
+											<span class="font-medium text-foreground"
+												>{log.toWarehouse?.name || 'Tujuan'}</span
+											>
+										{/if}
+									</div>
+								</a>
+							</div>
+						{/each}
 					</div>
 				{:else}
-					<div class="h-20 flex justify-center items-center">
+					<div class="flex h-20 items-center justify-center">
 						<p class="text-muted-foreground">Belum ada riwayat pergerakan untuk barang ini.</p>
 					</div>
-				{/each}
+				{/if}
 			</Card.Content>
 		</Card.Root>
 	</div>

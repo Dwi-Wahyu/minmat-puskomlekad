@@ -82,7 +82,7 @@
 	}
 </script>
 
-<div class="space-y-6 p-6">
+<div class="space-y-4 p-4 md:space-y-6 md:p-6">
 	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-xl font-bold uppercase underline">LAPORAN MATERIIL PERNIKA DAN LEK</h1>

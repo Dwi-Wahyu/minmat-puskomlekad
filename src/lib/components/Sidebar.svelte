@@ -78,9 +78,9 @@
 		});
 	});
 
-	// Close sidebar automatically on mobile when route changes or component mounts
+	// Close sidebar automatically on mobile when route changes
 	$effect(() => {
-		// const _ = page.url.pathname;
+		const _ = page.url.pathname;
 		untrack(() => {
 			if (typeof window !== 'undefined' && window.innerWidth < 768) {
 				sidebar.setOpen(false);

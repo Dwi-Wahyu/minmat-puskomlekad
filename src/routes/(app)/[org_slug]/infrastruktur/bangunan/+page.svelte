@@ -27,7 +27,7 @@
 	}
 </script>
 
-<div class="flex flex-col gap-6 p-6">
+<div class="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<div class="flex flex-col items-center justify-between gap-4 md:flex-row md:gap-0">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight text-foreground">Data Bangunan</h1>

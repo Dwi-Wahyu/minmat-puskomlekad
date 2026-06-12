@@ -104,7 +104,7 @@
 				// Baris 4 adalah deskripsi kolom (perlu di-skip)
 				// Baris 5 adalah data awal
 				const allRows = XLSX.utils.sheet_to_json(ws, { range: 2 });
-				
+
 				// Skip baris pertama dari hasil karena itu adalah baris deskripsi (baris ke-4 di Excel)
 				const dataRows = allRows.slice(1);
 
@@ -159,7 +159,7 @@
 	}
 </script>
 
-<div class="flex flex-col gap-6 p-6">
+<div class="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight">Import Inventaris</h1>
@@ -410,7 +410,7 @@
 	loading={isUploading}
 	onAction={() => {
 		const form = document.getElementById('import-form') as HTMLFormElement;
-		
+
 		// Create a DataTransfer to put the file back into the form
 		if (selectedFile) {
 			const fileInput = form.querySelector('input[type="file"]') as HTMLInputElement;
@@ -418,7 +418,7 @@
 			dataTransfer.items.add(selectedFile);
 			fileInput.files = dataTransfer.files;
 		}
-		
+
 		form.requestSubmit();
 	}}
 />
@@ -440,7 +440,9 @@
 				reset();
 				invalidateAll(); // Refresh data history
 			} else if (result?.type === 'failure') {
-				toast.error('Gagal mengimport data: ' + ((result?.data as any)?.message || 'Terjadi kesalahan'));
+				toast.error(
+					'Gagal mengimport data: ' + ((result?.data as any)?.message || 'Terjadi kesalahan')
+				);
 			}
 		};
 	}}

@@ -52,7 +52,7 @@
 	}
 </script>
 
-<div class="mx-auto max-w-5xl space-y-8 p-8">
+<div class="mx-auto max-w-5xl space-y-4 p-4 md:space-y-6 md:p-6">
 	<div class="flex items-center gap-4">
 		<Button variant="ghost" size="icon" href="/{data.orgSlug}/pengaturan/pengguna">
 			<ArrowLeft class="h-5 w-5" />

@@ -58,10 +58,10 @@
 	}
 </script>
 
-<div class="space-y-6 p-6">
+<div class="space-y-6 p-4 sm:p-6">
 	<div>
-		<h1 class="text-3xl font-bold tracking-tight text-foreground">Profil</h1>
-		<p class="text-muted-foreground">Kelola informasi akun dan keamanan sesi Anda.</p>
+		<h1 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Profil</h1>
+		<p class="text-sm text-muted-foreground">Kelola informasi akun dan keamanan sesi Anda.</p>
 	</div>
 
 	{#if data.isDefaultPassword}
@@ -92,7 +92,7 @@
 
 	<div class="grid gap-6 lg:grid-cols-12">
 		<!-- Profil User -->
-		<div class="space-y-6 lg:col-span-4">
+		<div class="min-w-0 space-y-6 lg:col-span-4">
 			<Card.Root class="overflow-hidden border-none pt-0 shadow-sm ring-1 ring-border">
 				<Card.Header class="border-b bg-muted/30 pt-8 pb-8 text-center">
 					<div
@@ -104,8 +104,10 @@
 							<UserRound class="h-14 w-14 text-muted-foreground" />
 						{/if}
 					</div>
-					<Card.Title class="text-xl">{data.user.name}</Card.Title>
-					<Card.Description class="font-mono text-xs">{data.user.username}</Card.Description>
+					<Card.Title class="truncate px-4 text-xl">{data.user.name}</Card.Title>
+					<Card.Description class="truncate px-4 font-mono text-xs"
+						>{data.user.username}</Card.Description
+					>
 				</Card.Header>
 				<Card.Content class="space-y-6">
 					<div class="space-y-3">
@@ -115,8 +117,8 @@
 							>
 						</div>
 						<div class="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
-							<ShieldCheck class="h-4 w-4 text-muted-foreground" />
-							<span class="font-medium text-foreground uppercase">{data.user.role}</span>
+							<ShieldCheck class="h-4 w-4 shrink-0 text-muted-foreground" />
+							<span class="truncate font-medium text-foreground uppercase">{data.user.role}</span>
 						</div>
 					</div>
 
@@ -125,8 +127,9 @@
 							>Kesatuan</Label
 						>
 						<div class="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
-							<Globe class="h-4 w-4 text-muted-foreground" />
-							<span class="font-medium text-foreground">{data.user.organization.name}</span>
+							<Globe class="h-4 w-4 shrink-0 text-muted-foreground" />
+							<span class="truncate font-medium text-foreground">{data.user.organization.name}</span
+							>
 						</div>
 					</div>
 
@@ -134,8 +137,10 @@
 						<Label class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
 							>Email</Label
 						>
-						<div class="flex items-center gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
-							<Mail class="h-4 w-4 text-muted-foreground" />
+						<div
+							class="flex items-center gap-3 overflow-hidden rounded-lg border bg-muted/30 p-3 text-sm"
+						>
+							<Mail class="h-4 w-4 shrink-0 text-muted-foreground" />
 							<span class="truncate font-medium text-foreground">{data.user.email}</span>
 						</div>
 					</div>
@@ -144,23 +149,14 @@
 		</div>
 
 		<!-- Manajemen Sesi & Password -->
-		<div class="space-y-8 lg:col-span-8">
+		<div class="min-w-0 space-y-8 lg:col-span-8">
 			<!-- Ubah Data -->
-			<Card.Root class="border-none shadow-sm ring-1 ring-border">
+			<Card.Root class="overflow-hidden border-none shadow-sm ring-1 ring-border">
 				<Card.Header>
-					<div class="flex items-center gap-3">
-						<div
-							class="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary"
-						>
-							<UserRound class="size-5" />
-						</div>
-						<div>
-							<Card.Title>Ubah Data</Card.Title>
-							<Card.Description
-								>Perbarui informasi profil dan kata sandi akun Anda.</Card.Description
-							>
-						</div>
-					</div>
+					<Card.Title class="truncate">Ubah Data</Card.Title>
+					<Card.Description class="truncate text-wrap"
+						>Perbarui informasi profil dan kata sandi akun Anda.</Card.Description
+					>
 				</Card.Header>
 				<Card.Content>
 					<form action="?/updateProfile" method="POST" use:enhance class="space-y-5">
@@ -251,97 +247,103 @@
 
 			<!-- Sesi & Riwayat -->
 			<Tabs.Root bind:value={activeTab} class="space-y-6">
-				<Tabs.List
-					variant="line"
-					class="h-auto w-full justify-start rounded-none border-b bg-transparent px-0"
+				<div
+					class="w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 				>
-					<Tabs.Trigger
-						value="sessions"
-						class="rounded-none border-b-2 border-transparent bg-transparent px-6 py-3 data-active:border-primary data-active:bg-transparent"
+					<Tabs.List
+						variant="line"
+						class="flex h-auto min-w-max justify-start rounded-none border-b bg-transparent px-0"
 					>
-						<div class="flex items-center gap-2">
-							<Monitor class="size-4" />
-							<span>Sesi Aktif</span>
-						</div>
-					</Tabs.Trigger>
-					<Tabs.Trigger
-						value="history"
-						class="rounded-none border-b-2 border-transparent bg-transparent px-6 py-3 data-active:border-primary data-active:bg-transparent"
-					>
-						<div class="flex items-center gap-2">
-							<History class="size-4" />
-							<span>Riwayat Login</span>
-						</div>
-					</Tabs.Trigger>
-				</Tabs.List>
+						<Tabs.Trigger
+							value="sessions"
+							class="rounded-none border-b-2 border-transparent bg-transparent px-6 py-3 data-active:border-primary data-active:bg-transparent"
+						>
+							<div class="flex items-center gap-2">
+								<Monitor class="size-4" />
+								<span>Sesi Aktif</span>
+							</div>
+						</Tabs.Trigger>
+						<Tabs.Trigger
+							value="history"
+							class="rounded-none border-b-2 border-transparent bg-transparent px-6 py-3 data-active:border-primary data-active:bg-transparent"
+						>
+							<div class="flex items-center gap-2">
+								<History class="size-4" />
+								<span>Riwayat Login</span>
+							</div>
+						</Tabs.Trigger>
+					</Tabs.List>
+				</div>
 
 				<Tabs.Content value="sessions">
 					<Card.Root class="overflow-hidden border-none pt-0 pb-0 shadow-sm ring-1 ring-border">
 						<Card.Content class="p-0">
-							<Table.Root>
-								<Table.Header class="bg-muted/30">
-									<Table.Row>
-										<Table.Head class="h-12 px-4">Perangkat</Table.Head>
-										<Table.Head class="h-12 px-4">IP Address</Table.Head>
-										<Table.Head class="h-12 px-4">Login Pada</Table.Head>
-										<Table.Head class="h-12 px-4 text-right">Aksi</Table.Head>
-									</Table.Row>
-								</Table.Header>
-								<Table.Body>
-									{#if data.sessions.data.length === 0}
+							<div class="overflow-x-auto">
+								<Table.Root>
+									<Table.Header class="bg-muted/30">
 										<Table.Row>
-											<Table.Cell colspan={4} class="py-12 text-center text-muted-foreground">
-												Tidak ada sesi aktif.
-											</Table.Cell>
+											<Table.Head class="h-12 px-4 whitespace-nowrap">Perangkat</Table.Head>
+											<Table.Head class="h-12 px-4 whitespace-nowrap">IP Address</Table.Head>
+											<Table.Head class="h-12 px-4 whitespace-nowrap">Login Pada</Table.Head>
+											<Table.Head class="h-12 px-4 text-right">Aksi</Table.Head>
 										</Table.Row>
-									{:else}
-										{#each data.sessions.data as sess (sess.id)}
-											{@const Icon = getDeviceIcon(sess.userAgent)}
-											<Table.Row class="transition-colors hover:bg-muted/20">
-												<Table.Cell class="px-4">
-													<div class="flex items-center gap-3">
-														<div
-															class="flex size-8 items-center justify-center rounded-full bg-muted shadow-inner"
-														>
-															<Icon class="size-4 text-muted-foreground" />
-														</div>
-														<div class="flex max-w-60 flex-col">
-															<span
-																class="truncate text-xs font-medium text-foreground"
-																title={sess.userAgent}
-															>
-																{sess.userAgent || 'Unknown Device'}
-															</span>
-														</div>
-													</div>
-												</Table.Cell>
-												<Table.Cell class="px-4">
-													<div
-														class="flex items-center gap-2 font-mono text-xs text-muted-foreground"
-													>
-														<Globe class="size-3" />
-														{sess.ipAddress || 'Unknown'}
-													</div>
-												</Table.Cell>
-												<Table.Cell class="px-4 text-xs text-muted-foreground">
-													{formatDate(sess.createdAt)}
-												</Table.Cell>
-												<Table.Cell class="px-4 text-right">
-													<Button
-														variant="ghost"
-														size="icon"
-														class="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-														title="Hapus Sesi"
-														onclick={() => triggerRevoke(sess.token)}
-													>
-														<Trash2 class="size-4" />
-													</Button>
+									</Table.Header>
+									<Table.Body>
+										{#if data.sessions.data.length === 0}
+											<Table.Row>
+												<Table.Cell colspan={4} class="py-12 text-center text-muted-foreground">
+													Tidak ada sesi aktif.
 												</Table.Cell>
 											</Table.Row>
-										{/each}
-									{/if}
-								</Table.Body>
-							</Table.Root>
+										{:else}
+											{#each data.sessions.data as sess (sess.id)}
+												{@const Icon = getDeviceIcon(sess.userAgent)}
+												<Table.Row class="transition-colors hover:bg-muted/20">
+													<Table.Cell class="px-4">
+														<div class="flex min-w-0 items-center gap-3">
+															<div
+																class="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted shadow-inner"
+															>
+																<Icon class="size-4 text-muted-foreground" />
+															</div>
+															<div class="flex max-w-40 min-w-0 flex-col sm:max-w-60">
+																<span
+																	class="truncate text-xs font-medium text-foreground"
+																	title={sess.userAgent}
+																>
+																	{sess.userAgent || 'Unknown Device'}
+																</span>
+															</div>
+														</div>
+													</Table.Cell>
+													<Table.Cell class="px-4">
+														<div
+															class="flex items-center gap-2 font-mono text-xs whitespace-nowrap text-muted-foreground"
+														>
+															<Globe class="size-3" />
+															{sess.ipAddress || 'Unknown'}
+														</div>
+													</Table.Cell>
+													<Table.Cell class="px-4 text-xs whitespace-nowrap text-muted-foreground">
+														{formatDate(sess.createdAt)}
+													</Table.Cell>
+													<Table.Cell class="px-4 text-right">
+														<Button
+															variant="ghost"
+															size="icon"
+															class="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+															title="Hapus Sesi"
+															onclick={() => triggerRevoke(sess.token)}
+														>
+															<Trash2 class="size-4" />
+														</Button>
+													</Table.Cell>
+												</Table.Row>
+											{/each}
+										{/if}
+									</Table.Body>
+								</Table.Root>
+							</div>
 							{#if data.sessions.pagination.totalPages > 1}
 								<div
 									class="flex items-center justify-between border-t border-border bg-muted/10 px-4 py-3"
@@ -384,51 +386,55 @@
 				<Tabs.Content value="history">
 					<Card.Root class="overflow-hidden border-none pt-0 pb-0 shadow-sm ring-1 ring-border">
 						<Card.Content class="p-0">
-							<Table.Root>
-								<Table.Header class="bg-muted/30">
-									<Table.Row>
-										<Table.Head class="px-4">Perangkat</Table.Head>
-										<Table.Head class="px-4">IP Address</Table.Head>
-										<Table.Head class="px-4">Waktu Login</Table.Head>
-									</Table.Row>
-								</Table.Header>
-								<Table.Body>
-									{#if data.loginHistory.data.length === 0}
+							<div class="overflow-x-auto">
+								<Table.Root>
+									<Table.Header class="bg-muted/30">
 										<Table.Row>
-											<Table.Cell colspan={3} class="py-12 text-center text-muted-foreground">
-												Belum ada riwayat login yang tercatat.
-											</Table.Cell>
+											<Table.Head class="px-4 whitespace-nowrap">Perangkat</Table.Head>
+											<Table.Head class="px-4 whitespace-nowrap">IP Address</Table.Head>
+											<Table.Head class="px-4 whitespace-nowrap">Waktu Login</Table.Head>
 										</Table.Row>
-									{:else}
-										{#each data.loginHistory.data as log (log.id)}
-											{@const Icon = getDeviceIcon(log.data?.userAgent)}
-											<Table.Row class="transition-colors hover:bg-muted/20">
-												<Table.Cell class="px-4">
-													<div class="flex items-center gap-3">
-														<div
-															class="flex size-8 items-center justify-center rounded-full bg-muted shadow-inner"
-														>
-															<Icon class="size-4 text-muted-foreground" />
-														</div>
-														<span
-															class="max-w-70 truncate text-xs font-medium text-foreground"
-															title={log.data?.userAgent}
-														>
-															{log.data?.userAgent || 'Unknown Device'}
-														</span>
-													</div>
-												</Table.Cell>
-												<Table.Cell class="px-4 font-mono text-xs text-muted-foreground">
-													{log.data?.ipAddress || 'Unknown'}
-												</Table.Cell>
-												<Table.Cell class="px-4 text-xs text-muted-foreground">
-													{formatDate(log.createdAt)}
+									</Table.Header>
+									<Table.Body>
+										{#if data.loginHistory.data.length === 0}
+											<Table.Row>
+												<Table.Cell colspan={3} class="py-12 text-center text-muted-foreground">
+													Belum ada riwayat login yang tercatat.
 												</Table.Cell>
 											</Table.Row>
-										{/each}
-									{/if}
-								</Table.Body>
-							</Table.Root>
+										{:else}
+											{#each data.loginHistory.data as log (log.id)}
+												{@const Icon = getDeviceIcon(log.data?.userAgent)}
+												<Table.Row class="transition-colors hover:bg-muted/20">
+													<Table.Cell class="px-4">
+														<div class="flex min-w-0 items-center gap-3">
+															<div
+																class="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted shadow-inner"
+															>
+																<Icon class="size-4 text-muted-foreground" />
+															</div>
+															<span
+																class="max-w-40 truncate text-xs font-medium text-foreground sm:max-w-70"
+																title={log.data?.userAgent}
+															>
+																{log.data?.userAgent || 'Unknown Device'}
+															</span>
+														</div>
+													</Table.Cell>
+													<Table.Cell
+														class="px-4 font-mono text-xs whitespace-nowrap text-muted-foreground"
+													>
+														{log.data?.ipAddress || 'Unknown'}
+													</Table.Cell>
+													<Table.Cell class="px-4 text-xs whitespace-nowrap text-muted-foreground">
+														{formatDate(log.createdAt)}
+													</Table.Cell>
+												</Table.Row>
+											{/each}
+										{/if}
+									</Table.Body>
+								</Table.Root>
+							</div>
 							{#if data.loginHistory.pagination.totalPages > 1}
 								<div
 									class="flex items-center justify-between border-t border-border bg-muted/10 px-4 py-3"
