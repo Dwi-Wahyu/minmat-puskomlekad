@@ -147,11 +147,6 @@
 				</div>
 
 				<div class="flex justify-end gap-2 pt-4">
-					<Button
-						variant="outline"
-						href="/{page.params.org_slug}/satuan-jajaran/{data.targetOrg.id}"
-						disabled={loading}>Batal</Button
-					>
 					<Button type="submit" disabled={loading || !name || !slug}>
 						<Save class="mr-2 size-4" />
 						{loading ? 'Menyimpan...' : 'Simpan Perubahan'}

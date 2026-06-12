@@ -245,10 +245,13 @@
 {/if}
 
 <aside
-	class="fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-xl transition-all duration-300 ease-in-out md:relative md:translate-x-0"
-	class:md:w-[70px]={!sidebar.open}
-	class:translate-x-0={sidebar.open}
+	class="fixed inset-y-0 left-0 z-50 flex h-screen flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-xl transition-all duration-300 ease-in-out md:relative md:translate-x-0"
+	class:w-64={sidebar.open}
+	class:w-0={!sidebar.open}
 	class:-translate-x-full={!sidebar.open}
+	class:translate-x-0={sidebar.open}
+	class:md:w-64={sidebar.open}
+	class:md:w-[70px]={!sidebar.open}
 >
 	<div class="p-6">
 		<div class="flex items-center justify-between">
@@ -266,8 +269,12 @@
 					class:opacity-0={!sidebar.open}
 					class:pointer-events-none={!sidebar.open}
 				>
-					<h1 class=" font-bold whitespace-nowrap text-sidebar-primary">MINMAT</h1>
-					<p class="font-bold whitespace-nowrap uppercase opacity-80">MATKOMLEK</p>
+					<h1 class="text-xl leading-tight font-bold whitespace-nowrap text-sidebar-primary">
+						MINMAT
+					</h1>
+					<p class="-mt-1 text-xs leading-tight font-bold whitespace-nowrap uppercase opacity-80">
+						MATKOMLEK
+					</p>
 				</div>
 			</div>
 

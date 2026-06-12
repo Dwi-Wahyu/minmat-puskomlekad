@@ -26,7 +26,7 @@
 		"db:seed-missing-satuan": "bun run src/lib/server/db/seed-missing-satuan.ts",
 		"db:seed-operator": "bun run src/lib/server/db/seed-operators.ts",
 		"db:seed-units": "bun run src/lib/server/db/seed-units.ts",
-		"db:seed-users": "bun run src/lib/server/db/seed-users.ts",
+		"db:seed-test-org": "bun run src/lib/server/db/seed-test-org.ts",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
 	},
 	"overrides": {

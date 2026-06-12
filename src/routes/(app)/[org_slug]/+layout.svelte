@@ -24,8 +24,6 @@
 		if (!seen) {
 			onboardingOpen = true;
 		}
-
-		console.log(data.user);
 	});
 
 	const toTitleCase = (str: string) => {
@@ -58,12 +56,12 @@
 	}
 </script>
 
-<div class="flex min-h-screen bg-background">
+<div class="flex h-screen overflow-hidden bg-background">
 	<Sidebar user={data.user} />
 
-	<main class="flex flex-1 flex-col">
+	<main class="flex flex-1 flex-col overflow-hidden">
 		<header
-			class="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/50 px-4 shadow backdrop-blur-md transition-all duration-300 md:px-6"
+			class="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/50 px-4 shadow transition-all duration-300 md:px-6"
 		>
 			<div class="flex items-center gap-4">
 				<button
@@ -121,8 +119,8 @@
 			</div>
 		</header>
 
-		<div class="flex-1">
-			<div class="mx-auto w-screen">
+		<div class="flex-1 overflow-y-auto">
+			<div class="mx-auto w-full max-w-7xl">
 				{@render children()}
 			</div>
 		</div>
@@ -140,7 +138,7 @@
 />
 
 <Dialog.Root bind:open={onboardingOpen}>
-	<Dialog.Content class="sm:max-w-106.25" showCloseButton={false}>
+	<Dialog.Content showCloseButton={false}>
 		<Dialog.Header class="flex flex-col justify-center text-center">
 			<div
 				class="mb-4 flex h-12 w-12 items-center justify-center self-center rounded-full bg-primary/10"

@@ -2,8 +2,8 @@ import { setContext, getContext } from 'svelte';
 import { browser } from '$app/environment';
 
 class SidebarState {
-	// Jika di browser, cek lebar layar. Jika di server, asumsikan false (agar tertutup di mobile)
-	open = $state(browser ? window.innerWidth >= 768 : false);
+	// Jika di browser, cek lebar layar. Jika di server, asumsikan true (agar terbuka di desktop)
+	open = $state(browser ? window.innerWidth >= 768 : true);
 
 	toggle() {
 		this.open = !this.open;

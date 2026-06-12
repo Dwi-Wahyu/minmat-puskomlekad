@@ -30,7 +30,7 @@
 </div>
 
 {#if isFullScreen}
-	<div class="fixed inset-0 z-[100] flex flex-col bg-black/80 p-4 backdrop-blur-sm">
+	<div class="fixed inset-0 z-100 flex flex-col bg-black/80 p-4 backdrop-blur-sm">
 		<div class="mb-4 flex justify-end">
 			<Button
 				variant="ghost"
