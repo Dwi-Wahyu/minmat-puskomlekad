@@ -41,6 +41,24 @@
 		}
 	);
 
+	import { tick } from 'svelte';
+	async function scrollToError() {
+		await tick();
+		const errorElement = document.querySelector('[aria-invalid="true"], .text-destructive');
+		if (errorElement) {
+			errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			if (errorElement instanceof HTMLInputElement || errorElement instanceof HTMLSelectElement) {
+				errorElement.focus();
+			}
+		}
+	}
+
+	$effect(() => {
+		if (Object.keys($errors).length > 0) {
+			scrollToError();
+		}
+	});
+
 	$effect(() => {
 		$form.targetOrgId = data.targetOrg?.id || '';
 	});
@@ -303,13 +321,16 @@
 
 					{#if $form.purpose === 'PERINTAH_LANGSUNG'}
 						<div class="col-span-2 space-y-2">
-							<Label for="overrideReason">Keterangan Perintah Langsung</Label>
+							<Label for="overrideReason" class={$errors.overrideReason ? 'text-destructive' : ''}>
+								Keterangan Perintah Langsung <span class="text-red-500"> * </span>
+							</Label>
 							<Input
 								id="overrideReason"
 								name="overrideReason"
 								bind:value={$form.overrideReason}
 								placeholder="Contoh: Operasi mendesak atas perintah pimpinan..."
 								class="border-primary/20 focus-visible:ring-primary"
+								aria-invalid={$errors.overrideReason ? 'true' : undefined}
 							/>
 							{#if $errors.overrideReason}
 								<p class="text-sm text-destructive">{$errors.overrideReason}</p>
@@ -348,7 +369,7 @@
 					</div>
 
 					<div class="col-span-2 space-y-2">
-						<Label for="attachment" class="flex items-center gap-2">
+						<Label for="attachment" class="flex items-center gap-2 {$errors.attachment ? 'text-destructive' : ''}">
 							Dokumen Pendukung (Surat Perintah/Permohonan)
 						</Label>
 						<Input
@@ -357,10 +378,18 @@
 							type="file"
 							accept=".pdf,.docx"
 							class="cursor-pointer"
+							onchange={(e) => {
+								const file = e.currentTarget.files?.[0];
+								if (file) $form.attachment = file;
+							}}
 						/>
-						<p class="text-[10px] text-muted-foreground uppercase">
-							Format yang diterima: .PDF, .DOCX (Maks 5MB)
-						</p>
+						{#if $errors.attachment}
+							<p class="text-sm text-destructive">{$errors.attachment}</p>
+						{:else}
+							<p class="text-[10px] text-muted-foreground uppercase">
+								Format yang diterima: .PDF, .DOCX (Maks 5MB)
+							</p>
+						{/if}
 					</div>
 				</div>
 			</div>

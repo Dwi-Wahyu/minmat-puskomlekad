@@ -63,12 +63,14 @@
 	function handleImageChange(e: Event) {
 		const file = (e.target as HTMLInputElement).files?.[0];
 		if (file) {
+			$form.image = file;
 			const reader = new FileReader();
 			reader.onload = (e) => {
 				imagePreview = e.target?.result as string;
 			};
 			reader.readAsDataURL(file);
 		} else {
+			$form.image = undefined;
 			imagePreview = data.consumable.imagePath
 				? `/uploads/item/${data.consumable.imagePath}`
 				: null;
@@ -101,7 +103,7 @@
 				class="grid grid-cols-1 gap-6 md:grid-cols-2"
 			>
 				<div class="flex flex-col gap-2 md:col-span-2">
-					<Label for="image">Foto Barang</Label>
+					<Label for="image" class={$errors.image ? 'text-destructive' : ''}>Foto Barang</Label>
 					<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
 						<div
 							class="flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg border-2 border-dashed"
@@ -122,9 +124,13 @@
 							onchange={handleImageChange}
 							class="cursor-pointer"
 						/>
-						<p class="mt-1.5 text-xs text-muted-foreground">
-							Format: JPG, PNG, atau WEBP. Maks: 5MB. Biarkan kosong jika tidak ingin mengubah foto.
-						</p>
+						{#if $errors.image}
+							<p class="mt-1.5 text-xs font-medium text-destructive">{$errors.image}</p>
+						{:else}
+							<p class="mt-1.5 text-xs text-muted-foreground">
+								Format: JPG, PNG, atau WEBP. Maks: 5MB. Biarkan kosong jika tidak ingin mengubah foto.
+							</p>
+						{/if}
 					</div>
 				</div>
 

@@ -223,15 +223,23 @@
 			</div>
 
 			<div class="space-y-2">
-				<Label for="image">Gambar Peralatan</Label>
+				<Label for="image" class={$errors.image ? 'text-destructive' : ''}>Gambar Peralatan</Label>
 				<Input
 					type="file"
 					name="image"
 					id="image"
 					accept="image/png, image/jpeg, image/jpg"
 					class="cursor-pointer"
+					onchange={(e) => {
+						const file = e.currentTarget.files?.[0];
+						if (file) $form.image = file;
+					}}
 				/>
-				<p class="text-xs text-muted-foreground">Max 5MB. Format: PNG, JPG, JPEG.</p>
+				{#if $errors.image}
+					<p class="text-xs font-medium text-destructive">{$errors.image}</p>
+				{:else}
+					<p class="text-xs text-muted-foreground">Max 5MB. Format: PNG, JPG, JPEG.</p>
+				{/if}
 			</div>
 		</div>
 

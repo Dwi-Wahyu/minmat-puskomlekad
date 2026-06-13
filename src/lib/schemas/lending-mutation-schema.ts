@@ -19,7 +19,21 @@ export const lendingMutationSchema = yup.object({
 	warehouseIds: yup.array().of(yup.string()).optional(),
 	conditions: yup.array().of(yup.string()).optional(),
 	qtys: yup.array().of(yup.number()).optional(),
-	manualEquipmentIds: yup.array().of(yup.string()).optional()
+	manualEquipmentIds: yup.array().of(yup.string()).optional(),
+	attachment: yup.mixed<File>()
+		.test('fileSize', 'Ukuran file maksimal 5MB', (value) => {
+			if (!value || !(value instanceof File)) return true;
+			return value.size <= 5 * 1024 * 1024;
+		})
+		.test('fileType', 'Format file harus PDF atau DOCX', (value) => {
+			if (!value || !(value instanceof File)) return true;
+			return [
+				'application/pdf',
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+			].includes(value.type);
+		})
+		.nullable()
+		.optional()
 });
 
 export type LendingMutationSchema = typeof lendingMutationSchema;

@@ -60,12 +60,14 @@
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (file) {
+			$form.image = file;
 			const reader = new FileReader();
 			reader.onload = (e) => {
 				imagePreview = e.target?.result as string;
 			};
 			reader.readAsDataURL(file);
 		} else {
+			$form.image = undefined;
 			imagePreview = data.equipment.item.imagePath
 				? `/uploads/item/${data.equipment.item.imagePath}`
 				: null;
@@ -214,7 +216,7 @@
 			</div> -->
 
 			<div class="space-y-2">
-				<Label for="image">Gambar Baru</Label>
+				<Label for="image" class={$errors.image ? 'text-destructive' : ''}>Gambar Baru</Label>
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
 					<div class="flex-1 space-y-2">
 						<Input
@@ -224,7 +226,11 @@
 							accept="image/png, image/jpeg, image/jpg"
 							onchange={handleImageChange}
 						/>
-						<p class="text-xs text-muted-foreground">Max 5MB. Format: PNG, JPG, JPEG.</p>
+						{#if $errors.image}
+							<p class="text-xs font-medium text-destructive">{$errors.image}</p>
+						{:else}
+							<p class="text-xs text-muted-foreground">Max 5MB. Format: PNG, JPG, JPEG.</p>
+						{/if}
 					</div>
 				</div>
 			</div>

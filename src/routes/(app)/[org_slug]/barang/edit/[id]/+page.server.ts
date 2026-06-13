@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const form = await superValidate(
 		{
 			name: consumable.name,
-			baseUnit: consumable.baseUnit as any,
+			baseUnit: (consumable.baseUnit?.toUpperCase() as any) || 'PCS',
 			description: consumable.description
 		},
 		yup(itemSchema)

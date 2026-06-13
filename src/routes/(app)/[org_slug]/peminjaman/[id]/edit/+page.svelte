@@ -38,6 +38,24 @@
 		}
 	});
 
+	import { tick } from 'svelte';
+	async function scrollToError() {
+		await tick();
+		const errorElement = document.querySelector('[aria-invalid="true"], .text-destructive');
+		if (errorElement) {
+			errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			if (errorElement instanceof HTMLInputElement || errorElement instanceof HTMLSelectElement) {
+				errorElement.focus();
+			}
+		}
+	}
+
+	$effect(() => {
+		if (Object.keys($errors).length > 0) {
+			scrollToError();
+		}
+	});
+
 	$effect(() => {
 		$form.targetOrgId = data.targetOrg?.id || '';
 	});
@@ -648,6 +666,12 @@
 		bind:open={notificationOpen}
 		type={notificationType}
 		title={notificationTitle}
+		description={notificationMsg}
+		actionLabel={notificationActionLabel}
+		onAction={handleNotificationAction}
+	/>
+</div>
+ationTitle}
 		description={notificationMsg}
 		actionLabel={notificationActionLabel}
 		onAction={handleNotificationAction}

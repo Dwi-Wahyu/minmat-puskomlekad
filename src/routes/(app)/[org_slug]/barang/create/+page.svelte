@@ -82,12 +82,26 @@
 				class="grid grid-cols-1 gap-6 md:grid-cols-2"
 			>
 				<div class="flex flex-col gap-2 md:col-span-2">
-					<Label for="image">Foto Barang</Label>
+					<Label for="image" class={$errors.image ? 'text-destructive' : ''}>Foto Barang</Label>
 					<div class="flex-1">
-						<Input type="file" name="image" id="image" accept="image/*" class="cursor-pointer" />
-						<p class="mt-1.5 text-xs text-muted-foreground">
-							Format: JPG, PNG, atau WEBP. Maks: 5MB.
-						</p>
+						<Input
+							type="file"
+							name="image"
+							id="image"
+							accept="image/*"
+							class="cursor-pointer"
+							onchange={(e) => {
+								const file = e.currentTarget.files?.[0];
+								if (file) $form.image = file;
+							}}
+						/>
+						{#if $errors.image}
+							<p class="mt-1.5 text-xs font-medium text-destructive">{$errors.image}</p>
+						{:else}
+							<p class="mt-1.5 text-xs text-muted-foreground">
+								Format: JPG, PNG, atau WEBP. Maks: 5MB.
+							</p>
+						{/if}
 					</div>
 				</div>
 
