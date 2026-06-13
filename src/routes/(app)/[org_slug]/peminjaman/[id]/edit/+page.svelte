@@ -671,9 +671,3 @@
 		onAction={handleNotificationAction}
 	/>
 </div>
-ationTitle}
-		description={notificationMsg}
-		actionLabel={notificationActionLabel}
-		onAction={handleNotificationAction}
-	/>
-</div>
