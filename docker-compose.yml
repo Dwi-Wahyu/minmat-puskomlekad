@@ -59,6 +59,8 @@ services:
       PORT: ${PORT}
     ports:
       - '3000:3000'
+    volumes:
+      - /var/www/minmat-puskomlekad/static/uploads:/app/static/uploads
 
 volumes:
   redis_data:
