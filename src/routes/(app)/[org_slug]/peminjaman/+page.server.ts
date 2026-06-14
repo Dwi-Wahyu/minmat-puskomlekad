@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { lending, member } from '$lib/server/db/schema';
+import { lending, member, organization } from '$lib/server/db/schema';
 import { eq, or, desc, and, like, inArray } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -11,26 +11,31 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 		throw error(401, 'Unauthorized');
 	}
 
+	const { org_slug } = params;
+	const org = await db.query.organization.findFirst({
+		where: eq(organization.slug, org_slug)
+	});
+
+	if (!org) throw error(404, 'Organisasi tidak ditemukan');
+
+	const organizationId = org.id;
+
 	const searchQuery = url.searchParams.get('q') || '';
 	const statusFilter = url.searchParams.get('status') || 'ALL';
 
-	// Dapatkan semua user ID yang berada di organisasi yang sama dengan currentUser
+	// Dapatkan semua user ID yang berada di organisasi yang sama
 	const orgUserIdsSubquery = db
 		.select({ id: member.userId })
 		.from(member)
-		.where(eq(member.organizationId, currentUser.organization.id));
+		.where(eq(member.organizationId, organizationId));
 
-	// Query peminjaman dimana:
-	// Jika INDUK (parentId null): Hanya tampilkan pengajuan MASUK (organizationId = org ini)
-	// Jika BUKAN INDUK: Tampilkan pengajuan MASUK dan KELUAR (requestedBy anggota org ini)
-
-	const isInduk = currentUser.organization.parentId === null;
+	const isInduk = org.parentId === null;
 
 	const filters = isInduk
-		? [eq(lending.organizationId, currentUser.organization.id)]
+		? [eq(lending.organizationId, organizationId)]
 		: [
 				or(
-					eq(lending.organizationId, currentUser.organization.id),
+					eq(lending.organizationId, organizationId),
 					inArray(lending.requestedBy, orgUserIdsSubquery)
 				)
 			];

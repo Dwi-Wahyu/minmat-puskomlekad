@@ -5,7 +5,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Card from '$lib/components/ui/card';
-	import { ArrowLeft, Save, Warehouse, MapPin } from '@lucide/svelte';
+	import { Save, Warehouse, MapPin } from '@lucide/svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import { goto } from '$app/navigation';
 

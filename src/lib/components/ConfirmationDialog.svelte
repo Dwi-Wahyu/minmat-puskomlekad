@@ -33,6 +33,7 @@
 			color: 'text-success',
 			bg: 'bg-success',
 			fg: 'text-success-foreground',
+			bg_hover: 'hover:bg-success/80',
 			border: 'border-t-success',
 			icon: Check
 		},
@@ -40,6 +41,7 @@
 			color: 'text-destructive',
 			bg: 'bg-destructive',
 			fg: 'text-destructive-foreground',
+			bg_hover: 'hover:bg-destructive/80',
 			border: 'border-t-destructive',
 			icon: X
 		},
@@ -47,6 +49,7 @@
 			color: 'text-primary',
 			bg: 'bg-primary',
 			fg: 'text-primary-foreground',
+			bg_hover: 'hover:bg-primary/80',
 			border: 'border-t-primary',
 			icon: Info
 		}
@@ -95,7 +98,7 @@
 				</AlertDialog.Cancel>
 
 				<Button
-					class={cn(config.bg, config.fg, 'hover:opacity-90')}
+					class={cn(config.bg, config.fg, config.bg_hover)}
 					onclick={() => {
 						onAction();
 						if (!loading) open = false;

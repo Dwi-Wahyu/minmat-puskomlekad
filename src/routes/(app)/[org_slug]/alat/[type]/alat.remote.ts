@@ -1,11 +1,12 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { equipment, item, warehouse, movement } from '$lib/server/db/schema';
+import { equipment, item, warehouse, movement, organization } from '$lib/server/db/schema';
 import { eq, and, like, sql, desc, inArray } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
 
 const alatSchema = v.object({
+	orgSlug: v.string(),
 	type: v.string(),
 	q: v.optional(v.string(), ''),
 	page: v.optional(v.number(), 1)
@@ -22,7 +23,17 @@ export type AlatListData = {
 
 export const getAlatData = query(alatSchema, async (args): Promise<AlatListData> => {
 	const { user } = requireAuth();
-	const orgId = user.organization.id;
+
+	// Resolve organization ID from slug
+	const org = await db.query.organization.findFirst({
+		where: eq(organization.slug, args.orgSlug)
+	});
+
+	if (!org) {
+		throw new Error('Organisasi tidak ditemukan');
+	}
+
+	const orgId = org.id;
 
 	const { type, q: searchQuery, page = 1 } = args;
 	const limit = 10;

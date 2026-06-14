@@ -7,18 +7,17 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
 	import * as Table from '$lib/components/ui/table';
-	import * as Select from '$lib/components/ui/select';
 	import ConfirmationDialog from '$lib/components/ConfirmationDialog.svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import { Search, Plus, Pencil, Trash2, ArrowRightLeft, Info } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 
-	let { data }: { data: PageData } = $props();
+	let { data } = $props();
 
 	const barangQuery = $derived(
 		getBarangData({
+			orgSlug: page.params.org_slug as string,
 			name: page.url.searchParams.get('name') || '',
 			page: Number(page.url.searchParams.get('page')) || 1
 		})

@@ -1,11 +1,12 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { lending, member, equipment } from '$lib/server/db/schema';
+import { lending, member, equipment, organization } from '$lib/server/db/schema';
 import { eq, or, desc, and, like, inArray } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
 
 const peminjamanSchema = v.object({
+	orgSlug: v.string(),
 	q: v.optional(v.string(), ''),
 	status: v.optional(v.string(), 'ALL')
 });
@@ -17,20 +18,31 @@ export type PeminjamanListData = {
 
 export const getPeminjamanData = query(peminjamanSchema, async (args): Promise<PeminjamanListData> => {
 	const { user: currentUser } = requireAuth();
-	const { q: searchQuery, status: statusFilter } = args;
+	const { orgSlug, q: searchQuery, status: statusFilter } = args;
+
+	// Resolve organization ID from slug
+	const org = await db.query.organization.findFirst({
+		where: eq(organization.slug, orgSlug)
+	});
+
+	if (!org) {
+		throw new Error('Organisasi tidak ditemukan');
+	}
+
+	const organizationId = org.id;
 
 	const orgUserIdsSubquery = db
 		.select({ id: member.userId })
 		.from(member)
-		.where(eq(member.organizationId, currentUser.organization.id));
+		.where(eq(member.organizationId, organizationId));
 
-	const isInduk = currentUser.organization.parentId === null;
+	const isInduk = org.parentId === null;
 
 	const filters = isInduk
-		? [eq(lending.organizationId, currentUser.organization.id)]
+		? [eq(lending.organizationId, organizationId)]
 		: [
 				or(
-					eq(lending.organizationId, currentUser.organization.id),
+					eq(lending.organizationId, organizationId),
 					inArray(lending.requestedBy, orgUserIdsSubquery)
 				)
 			];

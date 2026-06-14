@@ -151,7 +151,7 @@
 					<DropdownMenu.Item
 						closeOnSelect={false}
 						class={cn(
-							'relative flex cursor-pointer flex-col items-start gap-1 rounded-none border-b p-4 transition-colors last:border-0 focus:bg-muted/50 data-[highlighted]:bg-muted/50',
+							'relative flex cursor-pointer flex-col items-start gap-1 rounded-none border-b p-4 transition-colors last:border-0 focus:bg-muted/50 data-highlighted:bg-muted/50',
 							!notif.read && 'bg-primary/5'
 						)}
 						onclick={() => handleNotificationClick(notif)}

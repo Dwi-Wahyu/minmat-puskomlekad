@@ -195,7 +195,8 @@
 					<div class="grid gap-4 sm:grid-cols-2">
 						<div class="space-y-2">
 							<Label for="warehouseId"
-								>{$form.type === 'TRANSFER_OUT' ? 'Asal' : 'Pilih Gudang'}</Label
+								>{$form.type === 'TRANSFER_OUT' ? 'Asal' : 'Pilih Gudang'}
+								<span class="text-red-500">*</span></Label
 							>
 							<Select.Root type="single" bind:value={$form.warehouseId as string}>
 								<Select.Trigger class="w-full">
@@ -275,7 +276,7 @@
 					</div>
 
 					<div class="space-y-2">
-						<Label for="qty">Jumlah (Qty)</Label>
+						<Label for="qty">Jumlah (Qty) <span class="text-red-500">*</span></Label>
 						<Input
 							type="number"
 							id="qty"

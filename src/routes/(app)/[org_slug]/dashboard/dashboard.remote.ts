@@ -1,6 +1,6 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { equipment, stock, movement, warehouse, item } from '$lib/server/db/schema';
+import { equipment, stock, movement, warehouse, item, organization } from '$lib/server/db/schema';
 import { eq, and, count, sum, gte, desc, sql, inArray } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import { getOrSetCache, CacheTTL } from '$lib/server/redis';
@@ -47,13 +47,24 @@ export type DashboardData = {
 };
 
 export const getDashboardData = query(
-	async (filters?: { period?: string; equipmentType?: string }): Promise<DashboardData> => {
+	async (args?: { orgSlug?: string; period?: string; equipmentType?: string }): Promise<DashboardData> => {
 		const { user } = requireAuth();
-		const orgId = user.organization.id;
-		const orgSlug = user.organization.slug;
+		
+		const orgSlug = args?.orgSlug || user.organization.slug;
 
-		const period = filters?.period || 'this_month';
-		const equipmentType = filters?.equipmentType || 'ALL';
+		// Resolve organization ID from slug
+		const org = await db.query.organization.findFirst({
+			where: eq(organization.slug, orgSlug)
+		});
+
+		if (!org) {
+			throw new Error('Organisasi tidak ditemukan');
+		}
+
+		const orgId = org.id;
+
+		const period = args?.period || 'this_month';
+		const equipmentType = args?.equipmentType || 'ALL';
 
 		const cacheKey = `dashboard:${orgId}:${period}:${equipmentType}`;
 

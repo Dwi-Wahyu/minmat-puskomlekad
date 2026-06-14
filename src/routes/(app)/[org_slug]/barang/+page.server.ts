@@ -6,15 +6,12 @@ import { fail } from '@sveltejs/kit';
 import { deleteFile } from '$lib/server/storage';
 import { invalidateOrgInventoryCache } from '$lib/server/redis';
 
-export const load: PageServerLoad = async ({ params }) => {
-	const org = await db.query.organization.findFirst({
-		where: eq(organization.slug, params.org_slug)
-	});
-
-	if (!org) throw fail(404, { message: 'Organisasi tidak ditemukan' });
+export const load: PageServerLoad = async ({ locals, params }) => {
+	if (!locals.user) {
+		fail(404, { message: 'Organisasi tidak ditemukan' });
+	}
 
 	return {
-		orgId: org.id,
 		org_slug: params.org_slug
 	};
 };

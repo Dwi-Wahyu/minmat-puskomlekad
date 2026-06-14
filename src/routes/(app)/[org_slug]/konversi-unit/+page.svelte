@@ -402,7 +402,7 @@
 				<Button
 					type="submit"
 					disabled={formLoading}
-					class="min-w-[100px] bg-emerald-700 hover:bg-emerald-800"
+					class="min-w-25 bg-emerald-700 hover:bg-emerald-800"
 				>
 					{formLoading ? 'Menyimpan...' : 'Simpan Konversi'}
 				</Button>

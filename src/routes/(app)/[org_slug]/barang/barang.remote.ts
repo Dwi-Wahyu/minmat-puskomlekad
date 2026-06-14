@@ -1,11 +1,12 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { item, stock, warehouse, itemUnitConversion } from '$lib/server/db/schema';
+import { item, stock, warehouse, itemUnitConversion, organization } from '$lib/server/db/schema';
 import { eq, and, like, desc, sql, inArray } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
 
 const barangSchema = v.object({
+	orgSlug: v.string(),
 	name: v.optional(v.string(), ''),
 	page: v.optional(v.number(), 1)
 });
@@ -21,8 +22,16 @@ export type BarangData = {
 };
 
 export const getBarangData = query(barangSchema, async (args): Promise<BarangData> => {
-	const { user } = requireAuth();
-	const organizationId = user.organization.id;
+	// Resolve organization ID from slug
+	const org = await db.query.organization.findFirst({
+		where: eq(organization.slug, args.orgSlug)
+	});
+
+	if (!org) {
+		throw new Error('Organisasi tidak ditemukan');
+	}
+
+	const organizationId = org.id;
 
 	const searchQuery = args.name || '';
 	const page = args.page || 1;
@@ -53,7 +62,7 @@ export const getBarangData = query(barangSchema, async (args): Promise<BarangDat
 				totalStock: stockAgg.totalQty
 			})
 			.from(item)
-			.leftJoin(stockAgg, eq(item.id, stockAgg.itemId))
+			.innerJoin(stockAgg, eq(item.id, stockAgg.itemId))
 			.where(and(...filters))
 			.limit(limit)
 			.offset(offset)
@@ -61,6 +70,7 @@ export const getBarangData = query(barangSchema, async (args): Promise<BarangDat
 		db
 			.select({ count: sql<number>`count(*)` })
 			.from(item)
+			.innerJoin(stockAgg, eq(item.id, stockAgg.itemId))
 			.where(and(...filters)),
 		db.query.warehouse.findMany({
 			where: eq(warehouse.organizationId, organizationId)

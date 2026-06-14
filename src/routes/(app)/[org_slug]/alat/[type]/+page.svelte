@@ -20,6 +20,7 @@
 
 	const alatQuery = $derived(
 		getAlatData({
+			orgSlug: page.params.org_slug,
 			type: page.params.type || '',
 			q: page.url.searchParams.get('q') || '',
 			page: Number(page.url.searchParams.get('page')) || 1

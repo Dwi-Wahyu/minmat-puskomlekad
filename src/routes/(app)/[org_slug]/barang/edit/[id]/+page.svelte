@@ -128,14 +128,17 @@
 							<p class="mt-1.5 text-xs font-medium text-destructive">{$errors.image}</p>
 						{:else}
 							<p class="mt-1.5 text-xs text-muted-foreground">
-								Format: JPG, PNG, atau WEBP. Maks: 5MB. Biarkan kosong jika tidak ingin mengubah foto.
+								Format: JPG, PNG, atau WEBP. Maks: 5MB. Biarkan kosong jika tidak ingin mengubah
+								foto.
 							</p>
 						{/if}
 					</div>
 				</div>
 
 				<div class="flex flex-col gap-2">
-					<Label for="name" class={$errors.name ? 'text-destructive' : ''}>Nama Barang</Label>
+					<Label for="name" class={$errors.name ? 'text-destructive' : ''}
+						>Nama Barang <span class="text-red-500">*</span></Label
+					>
 					<Input
 						type="text"
 						name="name"
@@ -151,8 +154,9 @@
 
 				<div class="flex flex-col gap-2">
 					<Label for="baseUnit" class={$errors.baseUnit ? 'text-destructive' : ''}
-						>Satuan Dasar</Label
-					>
+						>Satuan Dasar
+						<span class="text-red-500">*</span>
+					</Label>
 					<Select.Root
 						type="single"
 						value={$form.baseUnit}

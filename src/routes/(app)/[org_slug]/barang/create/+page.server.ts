@@ -80,12 +80,13 @@ export const actions: Actions = {
 					createdAt: new Date()
 				});
 
-				if (warehouseId && qty && qty > 0) {
+				// Always create a stock entry (even with qty 0) to ensure isolation inner join works
+				if (warehouseId) {
 					await tx.insert(stock).values({
 						id: uuidv4(),
 						itemId,
 						warehouseId,
-						qty: qty.toString(),
+						qty: (qty || 0).toString(),
 						updatedAt: new Date()
 					});
 				}
