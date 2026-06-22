@@ -160,7 +160,12 @@
 				<Select.Root
 					type="single"
 					value={$form.condition || ''}
-					onValueChange={(v) => ($form.condition = v as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT')}
+					onValueChange={(v) => {
+						$form.condition = v as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
+						if (v === 'RUSAK_TOTAL') {
+							$form.status = 'DISPOSED';
+						}
+					}}
 				>
 					<Select.Trigger class="w-full">
 						{equipmentConditionLabel[$form.condition]}
@@ -169,6 +174,7 @@
 						<Select.Item value="BAIK">Baik</Select.Item>
 						<Select.Item value="RUSAK_RINGAN">Rusak Ringan</Select.Item>
 						<Select.Item value="RUSAK_BERAT">Rusak Berat</Select.Item>
+						<Select.Item value="RUSAK_TOTAL">Rusak Total</Select.Item>
 					</Select.Content>
 				</Select.Root>
 				<input type="hidden" name="condition" value={$form.condition} />
@@ -180,7 +186,7 @@
 					type="single"
 					value={$form.status || ''}
 					onValueChange={(v) =>
-						($form.status = v as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE')}
+						($form.status = v as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE' | 'DISPOSED')}
 				>
 					<Select.Trigger class="w-full">
 						{equipmentStatusLabel[$form.status as keyof typeof equipmentStatusLabel] || ''}
@@ -190,6 +196,7 @@
 						<Select.Item value="IN_USE">{equipmentStatusLabel['IN_USE']}</Select.Item>
 						<Select.Item value="TRANSIT">{equipmentStatusLabel['TRANSIT']}</Select.Item>
 						<Select.Item value="MAINTENANCE">{equipmentStatusLabel['MAINTENANCE']}</Select.Item>
+						<Select.Item value="DISPOSED">{equipmentStatusLabel['DISPOSED']}</Select.Item>
 					</Select.Content>
 				</Select.Root>
 				<input type="hidden" name="status" value={$form.status} />

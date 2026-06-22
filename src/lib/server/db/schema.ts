@@ -152,10 +152,12 @@ export const equipment = mysqlTable(
 		itemId: varchar('item_id', { length: 36 })
 			.notNull()
 			.references(() => item.id),
-		condition: mysqlEnum('condition', ['BAIK', 'RUSAK_RINGAN', 'RUSAK_BERAT'])
+		condition: mysqlEnum('condition', ['BAIK', 'RUSAK_RINGAN', 'RUSAK_BERAT', 'RUSAK_TOTAL'])
 			.default('BAIK')
 			.notNull(),
-		status: mysqlEnum('status', ['READY', 'IN_USE', 'TRANSIT', 'MAINTENANCE']).default('READY'),
+		status: mysqlEnum('status', ['READY', 'IN_USE', 'TRANSIT', 'MAINTENANCE', 'DISPOSED']).default(
+			'READY'
+		),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at').onUpdateNow()
 	},

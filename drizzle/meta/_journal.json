@@ -71,6 +71,13 @@
       "when": 1781177554714,
       "tag": "0009_noisy_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1782136323973,
+      "tag": "0010_square_emma_frost",
+      "breakpoints": true
     }
   ]
 }

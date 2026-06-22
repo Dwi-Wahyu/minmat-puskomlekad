@@ -180,7 +180,8 @@
 				<Select.Root
 					type="single"
 					value={$form.condition || ''}
-					onValueChange={(v) => ($form.condition = v as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT')}
+					onValueChange={(v) =>
+						($form.condition = v as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL')}
 				>
 					<Select.Trigger class="w-full">
 						{equipmentConditionLabel[$form.condition]}
@@ -189,6 +190,7 @@
 						<Select.Item value="BAIK">Baik</Select.Item>
 						<Select.Item value="RUSAK_RINGAN">Rusak Ringan</Select.Item>
 						<Select.Item value="RUSAK_BERAT">Rusak Berat</Select.Item>
+						<Select.Item value="RUSAK_TOTAL">Rusak Total</Select.Item>
 					</Select.Content>
 				</Select.Root>
 				<input type="hidden" name="condition" value={$form.condition} />

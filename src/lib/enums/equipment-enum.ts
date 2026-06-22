@@ -3,14 +3,16 @@
 export const equipmentConditionLabel: Record<string, string> = {
 	BAIK: 'Baik',
 	RUSAK_RINGAN: 'Rusak Ringan',
-	RUSAK_BERAT: 'Rusak Berat'
+	RUSAK_BERAT: 'Rusak Berat',
+	RUSAK_TOTAL: 'Rusak Total'
 };
 
 export const equipmentStatusLabel: Record<string, string> = {
 	READY: 'Siap Digunakan',
 	IN_USE: 'Sedang Digunakan',
 	TRANSIT: 'Dalam Perjalanan',
-	MAINTENANCE: 'Dalam Perawatan'
+	MAINTENANCE: 'Dalam Perawatan',
+	DISPOSED: 'Tidak Bisa Diperbaiki'
 };
 
 export const equipmentTypeLabel: Record<string, string> = {
@@ -28,5 +30,6 @@ export const equipmentStatusColor: Record<string, string> = {
 export const equipmentConditionColor: Record<string, string> = {
 	BAIK: 'bg-green-100 text-green-700 border-green-200',
 	RUSAK_RINGAN: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-	RUSAK_BERAT: 'bg-red-100 text-red-700 border-red-200'
+	RUSAK_BERAT: 'bg-red-100 text-red-700 border-red-200',
+	RUSAK_TOTAL: 'bg-red-100 text-red-700 border-red-200'
 };

@@ -77,6 +77,8 @@ export const actions: Actions = {
 			status: string;
 		};
 
+		const finalStatus = condition === 'RUSAK_TOTAL' ? 'DISPOSED' : status;
+
 		// Map URL type to database equipmentType
 		const equipmentType = type.toUpperCase() === 'ALPERNIKA' ? 'PERNIKA_LEK' : 'ALKOMLEK';
 
@@ -151,7 +153,8 @@ export const actions: Actions = {
 					brand: brand || null,
 					warehouseId: warehouseId || null,
 					condition: (condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT') || 'BAIK',
-					status: (status as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE') || 'READY',
+					status:
+						(finalStatus as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE' | 'DISPOSED') || 'READY',
 					updatedAt: new Date()
 				})
 				.where(eq(equipment.id, id));
