@@ -58,6 +58,18 @@ export const kakomlek = accessControl.newRole({
 	organization: ['view']
 });
 
+export const kepalaGudang = accessControl.newRole({
+	inventory: ['create', 'update', 'delete', 'view'],
+	warehouse: ['view'],
+	movement: ['create', 'view'],
+	report: ['view'],
+	lending: ['view'],
+	maintenance: ['view', 'create', 'update', 'delete'],
+	distribution: ['view', 'receive'],
+	infrastructure: ['view'],
+	organization: ['view']
+});
+
 export const operatorPusatDanDaerah = accessControl.newRole({
 	inventory: ['create', 'update', 'delete', 'view'],
 	warehouse: ['view'],
@@ -87,5 +99,6 @@ export const roles = {
 	pimpinan,
 	kakomlek,
 	operatorPusatDanDaerah,
-	operatorBinmatDanBekharrah
+	operatorBinmatDanBekharrah,
+	kepalaGudang
 };

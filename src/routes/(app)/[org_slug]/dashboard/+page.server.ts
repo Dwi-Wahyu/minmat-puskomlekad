@@ -9,7 +9,9 @@ import {
 	organization,
 	user,
 	lending,
-	member
+	member,
+	maintenance,
+	distribution
 } from '$lib/server/db/schema';
 import { eq, and, count, sum, gte, desc, sql, inArray, ne } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
@@ -169,6 +171,311 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				damagedCount: Number(damagedCount?.count) || 0,
 				pendingLendingActions
 			}
+		};
+	}
+
+	// Dashboard khusus Kepala Gudang — terfilter sesuai warehouseHeadType (TRANSITO/BALKIR/KOMUNITY)
+	// Tidak ikut cache "dashboard:{orgId}:*" milik DashboardPimpinan karena scope datanya beda (per warehouseHeadType, bukan per filter periode)
+	const isKepalaGudang = locals.user?.role === 'kepalaGudang';
+
+	if (isKepalaGudang) {
+		const warehouseHeadType = locals.user?.warehouseHeadType;
+
+		// Kepala Gudang satuan jajaran (non-pusat) tidak memiliki warehouseHeadType spesifik —
+		// dia mengelola satu gudang tunggal yang menangani SEMUA jenis pergerakan (Balkir, Transito, Komunity)
+		// sekaligus, berbeda dengan Kepala Gudang Pusat yang masing-masing dibagi per klasifikasi.
+		// Maka headType 'ALL' di sini BUKAN fallback/default tampilan, tapi mode tampilan gabungan yang
+		// sengaja menampilkan ketiga panel sekaligus.
+		const headType: 'TRANSITO' | 'BALKIR' | 'KOMUNITY' | 'ALL' = warehouseHeadType ?? 'ALL';
+
+		const kgCacheKey = `dashboard:kepalaGudang:${orgId}:${locals.user!.id}:${headType}`;
+
+		const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+		const kgDashboardPromise = getOrSetCache(
+			kgCacheKey,
+			async () => {
+				// Status equipment yang relevan dengan jenis gudang yang diawasi.
+				// Untuk mode 'ALL' (kepala gudang satuan jajaran), relevantStatuses mencakup ketiganya
+				// sehingga summary atas menghitung gabungan, bukan satu status saja.
+				// const statusByHeadType: Record<string, ('READY' | 'TRANSIT' | 'IN_USE')[]> = {
+				// 	BALKIR: ['READY'],
+				// 	TRANSITO: ['TRANSIT'],
+				// 	KOMUNITY: ['IN_USE'],
+				// 	ALL: ['READY', 'TRANSIT', 'IN_USE']
+				// };
+				// const relevantStatuses = statusByHeadType[headType];
+
+				const relevantClassifications: ('BALKIR' | 'TRANSITO' | 'KOMUNITY')[] =
+					headType === 'ALL' ? ['BALKIR', 'TRANSITO', 'KOMUNITY'] : [headType];
+
+				const [totalAlat] = await db
+					.select({ count: count() })
+					.from(equipment)
+					.where(
+						and(
+							eq(equipment.organizationId, orgId),
+							inArray(equipment.classification, relevantClassifications)
+						)
+					);
+
+				const [siapPakai] = await db
+					.select({ count: count() })
+					.from(equipment)
+					.where(
+						and(
+							eq(equipment.organizationId, orgId),
+							inArray(equipment.classification, relevantClassifications),
+							eq(equipment.condition, 'BAIK')
+						)
+					);
+
+				const [rusak] = await db
+					.select({ count: count() })
+					.from(equipment)
+					.where(
+						and(
+							eq(equipment.organizationId, orgId),
+							inArray(equipment.classification, relevantClassifications),
+							sql`${equipment.condition} != 'BAIK'`
+						)
+					);
+
+				// Mutasi bulan ini — mode ALL menghitung ketiga klasifikasi (tanpa filter classification),
+				// mode spesifik tetap hanya menghitung classification miliknya sendiri
+				const [mutasiBulanIni] = await db
+					.select({ count: count() })
+					.from(movement)
+					.where(
+						and(
+							eq(movement.organizationId, orgId),
+							headType === 'ALL'
+								? inArray(movement.classification, ['BALKIR', 'TRANSITO', 'KOMUNITY'])
+								: eq(movement.classification, headType),
+							gte(movement.createdAt, startOfMonth)
+						)
+					);
+
+				// Panel spesifik per jenis gudang — untuk mode ALL, ketiganya dihitung sekaligus
+				let transito, balkir, komunity;
+
+				if (headType === 'TRANSITO' || headType === 'ALL') {
+					const [menungguKonfirmasi] = await db
+						.select({ count: count() })
+						.from(equipment)
+						.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'TRANSIT')));
+
+					const [masukBulanIni] = await db
+						.select({ count: count() })
+						.from(movement)
+						.where(
+							and(
+								eq(movement.organizationId, orgId),
+								eq(movement.classification, 'TRANSITO'),
+								inArray(movement.eventType, ['RECEIVE', 'TRANSFER_IN']),
+								gte(movement.createdAt, startOfMonth)
+							)
+						);
+
+					const [keluarBulanIni] = await db
+						.select({ count: count() })
+						.from(movement)
+						.where(
+							and(
+								eq(movement.organizationId, orgId),
+								eq(movement.classification, 'TRANSITO'),
+								inArray(movement.eventType, ['ISSUE', 'TRANSFER_OUT']),
+								gte(movement.createdAt, startOfMonth)
+							)
+						);
+
+					transito = {
+						menungguKonfirmasi: Number(menungguKonfirmasi?.count) || 0,
+						masukBulanIni: Number(masukBulanIni?.count) || 0,
+						keluarBulanIni: Number(keluarBulanIni?.count) || 0
+					};
+				}
+
+				if (headType === 'BALKIR' || headType === 'ALL') {
+					const [ready] = await db
+						.select({ count: count() })
+						.from(equipment)
+						.where(
+							and(
+								eq(equipment.organizationId, orgId),
+								eq(equipment.status, 'READY'),
+								eq(equipment.condition, 'BAIK')
+							)
+						);
+
+					const [rusakRingan] = await db
+						.select({ count: count() })
+						.from(equipment)
+						.where(
+							and(
+								eq(equipment.organizationId, orgId),
+								eq(equipment.classification, 'BALKIR'),
+								eq(equipment.condition, 'RUSAK_RINGAN')
+							)
+						);
+
+					const [rusakBerat] = await db
+						.select({ count: count() })
+						.from(equipment)
+						.where(
+							and(
+								eq(equipment.organizationId, orgId),
+								eq(equipment.classification, 'BALKIR'),
+								inArray(equipment.condition, ['RUSAK_BERAT'])
+							)
+						);
+
+					const [rusakTotal] = await db
+						.select({ count: count() })
+						.from(equipment)
+						.where(
+							and(
+								eq(equipment.organizationId, orgId),
+								eq(equipment.classification, 'BALKIR'),
+								eq(equipment.condition, 'RUSAK_TOTAL')
+							)
+						);
+
+					const [kandidatPenghapusan] = await db
+						.select({ count: count() })
+						.from(equipment)
+						.where(
+							and(
+								eq(equipment.organizationId, orgId),
+								eq(equipment.classification, 'BALKIR'),
+								eq(equipment.condition, 'RUSAK_TOTAL'),
+								ne(equipment.status, 'DISPOSED')
+							)
+						);
+
+					const [sudahDihapuskan] = await db
+						.select({ count: count() })
+						.from(equipment)
+						.where(
+							and(
+								eq(equipment.organizationId, orgId),
+								eq(equipment.classification, 'BALKIR'),
+								eq(equipment.status, 'DISPOSED')
+							)
+						);
+
+					balkir = {
+						rusakRingan: Number(rusakRingan?.count) || 0,
+						rusakBerat: Number(rusakBerat?.count) || 0,
+						rusakTotal: Number(rusakTotal?.count) || 0,
+						kandidatPenghapusan: Number(kandidatPenghapusan?.count) || 0,
+						sudahDihapuskan: Number(sudahDihapuskan?.count) || 0
+					};
+				}
+
+				if (headType === 'KOMUNITY' || headType === 'ALL') {
+					const [sedangDipinjam] = await db
+						.select({ count: count() })
+						.from(equipment)
+						.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'IN_USE')));
+
+					const [distribusiPending] = await db
+						.select({ count: count() })
+						.from(distribution)
+						.where(
+							and(
+								eq(distribution.toOrganizationId, orgId),
+								inArray(distribution.status, ['VALIDATED', 'APPROVED', 'SHIPPED'])
+							)
+						);
+
+					const [rusakDiLapangan] = await db
+						.select({ count: count() })
+						.from(equipment)
+						.where(
+							and(
+								eq(equipment.organizationId, orgId),
+								eq(equipment.status, 'IN_USE'),
+								sql`${equipment.condition} != 'BAIK'`
+							)
+						);
+
+					komunity = {
+						sedangDipinjam: Number(sedangDipinjam?.count) || 0,
+						distribusiPending: Number(distribusiPending?.count) || 0,
+						rusakDiLapangan: Number(rusakDiLapangan?.count) || 0
+					};
+				}
+
+				// Daftar pemeliharaan yang masih pending/berjalan — hanya untuk alat dengan status
+				// yang relevan dengan jenis gudang yang diawasi (mode ALL mencakup ketiga status)
+				const pemeliharaanResults = await db
+					.select({ maintenance: maintenance, equipment: equipment, item: item })
+					.from(maintenance)
+					.innerJoin(equipment, eq(maintenance.equipmentId, equipment.id))
+					.innerJoin(item, eq(equipment.itemId, item.id))
+					.where(
+						and(
+							eq(equipment.organizationId, orgId),
+							inArray(equipment.classification, relevantClassifications),
+							inArray(maintenance.status, ['PENDING', 'IN_PROGRESS'])
+						)
+					)
+					.limit(6)
+					.orderBy(desc(maintenance.scheduledDate));
+
+				// Daftar alat dengan kondisi tidak baik pada status yang relevan dengan gudang ini
+				const alatPerluPerhatianResults = await db
+					.select({ equipment: equipment, item: item })
+					.from(equipment)
+					.innerJoin(item, eq(equipment.itemId, item.id))
+					.where(
+						and(
+							eq(equipment.organizationId, orgId),
+							inArray(equipment.classification, relevantClassifications),
+							sql`${equipment.condition} != 'BAIK'`
+						)
+					)
+					.limit(8)
+					.orderBy(desc(equipment.updatedAt));
+
+				return {
+					org_slug: params.org_slug,
+					warehouseHeadType: headType,
+					summary: {
+						totalAlat: Number(totalAlat?.count) || 0,
+						siapPakai: Number(siapPakai?.count) || 0,
+						rusak: Number(rusak?.count) || 0,
+						mutasiBulanIni: Number(mutasiBulanIni?.count) || 0
+					},
+					transito,
+					balkir,
+					komunity,
+					pemeliharaanPending: pemeliharaanResults.map((r) => ({
+						id: r.maintenance.id,
+						equipmentName: r.item.name,
+						serialNumber: r.equipment.serialNumber,
+						maintenanceType: r.maintenance.maintenanceType,
+						status: r.maintenance.status ?? 'PENDING',
+						scheduledDate: r.maintenance.scheduledDate.toISOString()
+					})),
+					alatPerluPerhatian: alatPerluPerhatianResults.map((r) => ({
+						id: r.equipment.id,
+						name: r.item.name,
+						brand: r.equipment.brand,
+						serialNumber: r.equipment.serialNumber,
+						condition: r.equipment.condition,
+						status: r.equipment.status
+					}))
+				};
+			},
+			CacheTTL.DASHBOARD
+		);
+
+		return {
+			org_slug: params.org_slug,
+			isKepalaGudang: true,
+			kgDashboardPromise
 		};
 	}
 

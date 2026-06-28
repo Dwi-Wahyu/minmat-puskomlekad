@@ -1,6 +1,6 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { movement } from '$lib/server/db/schema';
+import { equipment, movement } from '$lib/server/db/schema';
 import { eq, desc, and, isNull, isNotNull } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
@@ -37,27 +37,20 @@ export const getBalkirData = query(balkirSchema, async (args): Promise<BalkirDat
 
 	const orgs = isMabes ? await db.query.organization.findMany() : [];
 
-	// ─── 1. Asset movements ───────────────────────────────────────────────────────
-	const assetMovements = await db.query.movement.findMany({
-		where: and(
-			eq(movement.classification, 'BALKIR'),
-			eq(movement.organizationId, selectedOrgId),
-			isNotNull(movement.equipmentId)
-		),
+	// ─── 1. Asset: query ke equipment (current-state) ─────────────────────────
+	// Basis: equipment.classification = 'BALKIR', bukan histori movement.
+	// Ini memastikan equipment yang sudah pindah classification tidak ikut muncul.
+	const assetEquipments = await db.query.equipment.findMany({
+		where: and(eq(equipment.classification, 'BALKIR'), eq(equipment.organizationId, selectedOrgId)),
 		with: {
-			equipment: {
-				with: {
-					item: true,
-					warehouse: true
-				}
-			},
-			organization: { columns: { name: true } },
-			fromWarehouse: { columns: { name: true } }
-		},
-		orderBy: [desc(movement.createdAt)]
+			item: true,
+			warehouse: true
+		}
 	});
 
-	// ─── 2. Consumable movements ──────────────────────────────────────────────────
+	// ─── 2. Consumable: tetap dari movement (tidak ada current-state di equipment) ─
+	// Consumable tidak punya identitas unit individual, sehingga classification-nya
+	// hanya bisa diambil dari histori movement. Ini keterbatasan skema saat ini.
 	const consumableMovements = await db.query.movement.findMany({
 		where: and(
 			eq(movement.classification, 'BALKIR'),
@@ -73,24 +66,23 @@ export const getBalkirData = query(balkirSchema, async (args): Promise<BalkirDat
 		orderBy: [desc(movement.createdAt)]
 	});
 
-	// ─── 3. Filter assets ─────────────────────────────────────────────────────────
-	const filteredAssets = assetMovements.filter((m) => {
-		const itemData = m.equipment?.item;
-		if (!itemData) return false;
+	// ─── 3. Filter assets ──────────────────────────────────────────────────────
+	const filteredAssets = assetEquipments.filter((eq_) => {
+		if (!eq_.item) return false;
 
 		if (searchQuery) {
-			const nameMatch = itemData.name.toLowerCase().includes(searchQuery.toLowerCase());
-			const snMatch = m.equipment?.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+			const nameMatch = eq_.item.name.toLowerCase().includes(searchQuery.toLowerCase());
+			const snMatch = eq_.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase());
 			if (!nameMatch && !snMatch) return false;
 		}
 
 		if (typeFilter && typeFilter !== 'ASSET') return false;
-		if (categoryFilter && itemData.equipmentType !== categoryFilter) return false;
+		if (categoryFilter && eq_.item.equipmentType !== categoryFilter) return false;
 
 		return true;
 	});
 
-	// ─── 4. Filter consumables ────────────────────────────────────────────────────
+	// ─── 4. Filter consumables ─────────────────────────────────────────────────
 	const filteredConsumables = consumableMovements.filter((m) => {
 		if (!m.item || m.item.type !== 'CONSUMABLE') return false;
 
@@ -100,31 +92,31 @@ export const getBalkirData = query(balkirSchema, async (args): Promise<BalkirDat
 		}
 
 		if (typeFilter && typeFilter !== 'CONSUMABLE') return false;
-		if (categoryFilter) return false; // consumable tidak punya equipmentType
+		if (categoryFilter) return false;
 
 		return true;
 	});
 
-	// ─── 5. Map ke shape yang sama ────────────────────────────────────────────────
-	const mappedAssets = filteredAssets.map((m) => {
-		const displayOrgName =
-			m.organizationId === userOrg.id ? 'Internal' : (m.organization?.name ?? 'Unknown');
+	// ─── 5. Map ke shape yang sama ─────────────────────────────────────────────
+	const mappedAssets = filteredAssets.map((eq_) => {
 		return {
-			id: m.id,
-			equipmentId: m.equipment!.id,
+			id: eq_.id,
+			equipmentId: eq_.id,
 			type: 'asset' as const,
-			nama: m.equipment!.item.name,
-			tipe: m.equipment!.item.type,
-			kategori: m.equipment!.item.equipmentType,
-			sn: m.equipment!.serialNumber,
+			nama: eq_.item.name,
+			tipe: eq_.item.type,
+			kategori: eq_.item.equipmentType,
+			sn: eq_.serialNumber,
 			qty: 1,
-			satuan: m.equipment!.item.baseUnit,
-			kondisi: m.equipment!.condition,
-			lokasi: m.specificLocationName,
-			tglMasuk: m.createdAt,
-			organizationName: displayOrgName,
-			fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar',
-			classification: m.classification
+			satuan: eq_.item.baseUnit,
+			kondisi: eq_.condition,
+			lokasi: eq_.warehouse?.location ?? null,
+			// updatedAt dipakai sebagai pengganti createdAt movement —
+			// merupakan waktu terakhir equipment ini diupdate (termasuk saat classification di-set).
+			tglMasuk: eq_.updatedAt ?? eq_.createdAt,
+			organizationName: 'Internal',
+			fromWarehouse: eq_.warehouse?.name ?? 'Pusat/Luar',
+			classification: eq_.classification
 		};
 	});
 
@@ -145,12 +137,12 @@ export const getBalkirData = query(balkirSchema, async (args): Promise<BalkirDat
 			lokasi: m.specificLocationName,
 			tglMasuk: m.createdAt,
 			organizationName: displayOrgName,
-			fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar',
+			fromWarehouse: m.fromWarehouse?.name ?? 'Pusat/Luar',
 			classification: m.classification
 		};
 	});
 
-	// ─── 6. Group consumables ─────────────────────────────────────────────────────
+	// ─── 6. Group consumables ──────────────────────────────────────────────────
 	const finalMovements: any[] = [...mappedAssets];
 	const consumableGroups = new Map<string, any>();
 
@@ -171,7 +163,7 @@ export const getBalkirData = query(balkirSchema, async (args): Promise<BalkirDat
 
 	finalMovements.sort((a, b) => new Date(b.tglMasuk).getTime() - new Date(a.tglMasuk).getTime());
 
-	// ─── 7. Pagination ────────────────────────────────────────────────────────────
+	// ─── 7. Pagination ─────────────────────────────────────────────────────────
 	const { page = 1, limit = 25 } = args;
 	const totalItems = finalMovements.length;
 	const totalPages = Math.ceil(totalItems / limit);

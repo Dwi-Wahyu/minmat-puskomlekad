@@ -14,6 +14,12 @@ import { relations, type InferSelectModel, type InferInsertModel } from 'drizzle
 
 // --- Auth Tables (Formerly auth.schema.ts) ---
 
+export const movementClassificationEnum = mysqlEnum('movement_classification', [
+	'BALKIR',
+	'KOMUNITY',
+	'TRANSITO'
+]);
+
 export const user = mysqlTable('user', {
 	id: varchar('id', { length: 36 }).primaryKey(),
 	name: varchar('name', { length: 255 }).notNull(),
@@ -126,6 +132,7 @@ export const member = mysqlTable('member', {
 	}),
 	userId: varchar('user_id', { length: 36 }).references(() => user.id, { onDelete: 'cascade' }),
 	role: varchar('role', { length: 50 }).notNull(),
+	warehouseHeadType: mysqlEnum('warehouse_head_type', ['TRANSITO', 'BALKIR', 'KOMUNITY']),
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -158,12 +165,16 @@ export const equipment = mysqlTable(
 		status: mysqlEnum('status', ['READY', 'IN_USE', 'TRANSIT', 'MAINTENANCE', 'DISPOSED']).default(
 			'READY'
 		),
+		// Nullable karena ribuan equipment lama belum tentu punya movement classification —
+		// backfill akan mengisi sebanyak mungkin, sisanya tetap NULL (artinya "belum diklasifikasi").
+		classification: mysqlEnum('classification', ['BALKIR', 'KOMUNITY', 'TRANSITO']),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at').onUpdateNow()
 	},
 	(table) => [
 		index('equipment_condition_idx').on(table.condition),
-		index('equipment_item_id_idx').on(table.itemId)
+		index('equipment_item_id_idx').on(table.itemId),
+		index('equipment_classification_idx').on(table.classification)
 	]
 );
 
@@ -231,12 +242,6 @@ export const movementEventTypeEnum = mysqlEnum('movement_event_type', [
 	'DISTRIBUTE_IN',
 	'MAINTENANCE_IN',
 	'MAINTENANCE_OUT'
-]);
-
-export const movementClassificationEnum = mysqlEnum('movement_classification', [
-	'BALKIR',
-	'KOMUNITY',
-	'TRANSITO'
 ]);
 
 export const movementReferenceTypeEnum = mysqlEnum('movement_reference_type', [
@@ -381,7 +386,9 @@ export const approval = mysqlTable('approval', {
 
 export const auditLog = mysqlTable('audit_log', {
 	id: varchar('id', { length: 36 }).primaryKey(),
-	userId: varchar('user_id', { length: 36 }).references(() => user.id),
+	userId: varchar('user_id', { length: 36 }).references(() => user.id, {
+		onDelete: 'cascade'
+	}),
 	action: varchar('action', { length: 50 }),
 	tableName: varchar('table_name', { length: 50 }),
 	recordId: varchar('record_id', { length: 36 }),

@@ -148,7 +148,8 @@ export const CacheTTL = {
 	EQUIPMENT_LIST: 300, // 5 menit
 	GUDANG: 300, // 5 menit
 	ITEM_CONSUMABLE: 300, // 5 menit
-	LAPORAN: 3600 // 1 jam
+	LAPORAN: 3600, // 1 jam
+	LENDING_SUB_ORGANIZATION_UNITS: 86400 // 24 jam
 };
 
 /**
@@ -168,6 +169,17 @@ export async function invalidateOrgInventoryCache(orgId: string): Promise<void> 
 		invalidateCachePattern(`equipment:list:${orgId}:*`),
 		invalidateCache(CacheKeys.itemConsumable(orgId))
 	]);
+}
+
+export async function unitsCacheKey(orgId: string) {
+	return `lending:units:${orgId}`;
+}
+
+// Dipanggil setelah lending baru berhasil dibuat — invalidate cache
+export async function invalidateLendingUnitsCache(orgId: string) {
+	if (!orgId) return;
+
+	await redis.del(await unitsCacheKey(orgId));
 }
 
 /**

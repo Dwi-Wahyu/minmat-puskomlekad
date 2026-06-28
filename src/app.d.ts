@@ -7,6 +7,7 @@ declare global {
 		interface Locals {
 			user?: User & {
 				role: string;
+				warehouseHeadType: 'TRANSITO' | 'BALKIR' | 'KOMUNITY' | null;
 				organization: {
 					id: string;
 					parentId: string | null;

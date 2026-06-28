@@ -25,6 +25,8 @@
 		"db:seed-puskomlekad": "bun run src/lib/server/db/seed-puskomlekad.ts",
 		"db:seed-another-missing-satuan": "bun run src/lib/server/db/seed-another-missing-satuan.ts",
 		"db:seed-missing-satuan": "bun run src/lib/server/db/seed-missing-satuan.ts",
+		"db:seed-kepala-gudang": "bun run src/lib/server/db/seed-kepala-gudang.ts",
+		"db:seed-backfil-equipment": "bun run src/lib/server/db/backfill-equipment-classification.ts",
 		"db:seed-operator": "bun run src/lib/server/db/seed-operators.ts",
 		"db:seed-units": "bun run src/lib/server/db/seed-units.ts",
 		"db:seed-test-org": "bun run src/lib/server/db/seed-test-org.ts",

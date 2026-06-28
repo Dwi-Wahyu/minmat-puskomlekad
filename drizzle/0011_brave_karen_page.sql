@@ -1,0 +1,1 @@
+ALTER TABLE `member` ADD `warehouse_head_type` enum('TRANSITO','BALKIR','KOMUNITY');

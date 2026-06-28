@@ -38,6 +38,7 @@
 	let { user } = $props<{
 		user: {
 			role: string;
+			warehouseHeadType?: 'TRANSITO' | 'BALKIR' | 'KOMUNITY' | null;
 			organization: {
 				slug: string;
 				parentId: string | null;
@@ -218,10 +219,35 @@
 		}
 	];
 
+	// const menus = $derived(
+	// 	rawMenus
+	// 		.filter((menu) => hasRole(menu.role, user.role))
+	// 		.map((menu) => {
+	// 			if (menu.isDropdown) {
+	// 				// Filter anak menu berdasarkan role juga
+	// 				const filteredChildren = menu.children.filter((child) => hasRole(child.role, user.role));
+	// 				return { ...menu, children: filteredChildren };
+	// 			}
+	// 			return menu;
+	// 		})
+	// 		// Sembunyikan dropdown jika isinya kosong setelah difilter
+	// 		.filter((menu) => !menu.isDropdown || menu.children.length > 0)
+	// );
+
 	const menus = $derived(
 		rawMenus
 			.filter((menu) => hasRole(menu.role, user.role))
 			.map((menu) => {
+				// LOGIKA DINAMIS KEPALA GUDANG: Bypass dropdown dan arahkan langsung
+				if (menu.name === 'Stok Gudang' && user.role === 'kepalaGudang' && user.warehouseHeadType) {
+					return {
+						...menu,
+						isDropdown: false, // Ubah dari dropdown ke single link
+						path: getPath(`/stok/${user.warehouseHeadType.toLowerCase()}`),
+						children: [] // Kosongkan submenu
+					};
+				}
+
 				if (menu.isDropdown) {
 					// Filter anak menu berdasarkan role juga
 					const filteredChildren = menu.children.filter((child) => hasRole(child.role, user.role));

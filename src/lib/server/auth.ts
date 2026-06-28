@@ -11,7 +11,8 @@ import {
 	operatorBinmatDanBekharrah,
 	operatorPusatDanDaerah,
 	pimpinan,
-	superadmin
+	superadmin,
+	kepalaGudang
 } from './auth.roles';
 
 import * as schema from '$lib/server/db/schema';
@@ -27,7 +28,7 @@ export const auth = betterAuth({
 		updateAge: 60 * 60 * 24 // 1 day (every 1 day the session expiration is updated)
 	},
 	advanced: {
-		disableOriginCheck: true
+		disableOriginCheck: false
 	},
 	databaseHooks: {
 		session: {
@@ -53,7 +54,7 @@ export const auth = betterAuth({
 		admin(),
 		username({
 			minUsernameLength: 5,
-			maxUsernameLength: 30
+			maxUsernameLength: 50
 		}),
 		bearer(),
 		apiKey(),
@@ -64,7 +65,8 @@ export const auth = betterAuth({
 				pimpinan,
 				kakomlek,
 				operatorPusatDanDaerah,
-				operatorBinmatDanBekharrah
+				operatorBinmatDanBekharrah,
+				kepalaGudang
 			}
 		}),
 		customSession(async ({ user, session }) => {
@@ -84,6 +86,7 @@ export const auth = betterAuth({
 				user: {
 					...user,
 					role: firstMember?.role ?? 'user',
+					warehouseHeadType: firstMember?.warehouseHeadType ?? null,
 					organization: firstMember?.organization
 						? {
 								id: firstMember.organization.id,

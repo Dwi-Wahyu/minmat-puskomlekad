@@ -204,12 +204,16 @@ export const actions: Actions = {
 			const allowed = validTransitions[currentStatus] ?? [];
 
 			if (!allowed.includes(eventType)) {
-				return fail(400, { message: `Mutasi "${eventType}" tidak valid untuk alat dengan status "${currentStatus}".` });
+				return fail(400, {
+					message: `Mutasi "${eventType}" tidak valid untuk alat dengan status "${currentStatus}".`
+				});
 			}
 
 			// Validasi tambahan: jika sudah RECEIVE, tidak boleh RECEIVE lagi secara berturut-turut
 			if (eventType === 'RECEIVE' && lastMovementCheck?.eventType === 'RECEIVE') {
-				return fail(400, { message: 'Alat ini sudah diterima sebelumnya (tidak perlu RECEIVE lagi).' });
+				return fail(400, {
+					message: 'Alat ini sudah diterima sebelumnya (tidak perlu RECEIVE lagi).'
+				});
 			}
 
 			let newMovementId = '';
@@ -226,21 +230,34 @@ export const actions: Actions = {
 						// External -> System
 						fromWhId = null;
 						toWhId = toWarehouseId;
-						equipmentUpdate = { warehouseId: toWhId, status: status || 'READY' };
+						equipmentUpdate = {
+							warehouseId: toWhId,
+							status: status || 'READY',
+							classification: classification || null
+						};
 						break;
 
 					case 'ISSUE':
 						// System -> External (Permanent)
 						fromWhId = currentEquipment.warehouseId;
 						toWhId = null;
-						equipmentUpdate = { warehouseId: null, status: status || 'READY' };
+						equipmentUpdate = {
+							warehouseId: null,
+							status: status || 'READY',
+
+							classification: classification || null
+						};
 						break;
 
 					case 'TRANSFER_OUT':
 						// Internal Movement (Kirim)
 						fromWhId = currentEquipment.warehouseId;
 						toWhId = toWarehouseId;
-						equipmentUpdate = { warehouseId: fromWhId, status: status || 'TRANSIT' };
+						equipmentUpdate = {
+							warehouseId: fromWhId,
+							status: status || 'TRANSIT',
+							classification: classification || null
+						};
 						break;
 
 					case 'TRANSFER_IN':
@@ -250,6 +267,7 @@ export const actions: Actions = {
 						equipmentUpdate = {
 							warehouseId: toWhId,
 							status: status || 'READY',
+							classification: classification || null,
 							// Update kondisi equipment jika penerima melaporkan kerusakan
 							...(conditionAtArrival
 								? { condition: conditionAtArrival as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' }
@@ -261,6 +279,7 @@ export const actions: Actions = {
 						fromWhId = currentEquipment.warehouseId;
 						toWhId = toWarehouseId;
 						if (status) equipmentUpdate.status = status;
+						if (classification) equipmentUpdate.classification = classification;
 				}
 
 				// Update Equipment State

@@ -66,6 +66,19 @@
 		}
 	}
 
+	const isKepalaGudangSatuan = $derived(
+		data.user.role === 'kepalaGudang' && data.user.warehouseHeadType === null
+	);
+	const isHeadBalkir = $derived(
+		data.user.role === 'kepalaGudang' && data.user.warehouseHeadType === 'BALKIR'
+	);
+	const isHeadTransito = $derived(
+		data.user.role === 'kepalaGudang' && data.user.warehouseHeadType === 'TRANSITO'
+	);
+	const isHeadKomunity = $derived(
+		data.user.role === 'kepalaGudang' && data.user.warehouseHeadType === 'KOMUNITY'
+	);
+
 	$effect(() => {
 		if (Object.keys($errors).length > 0) {
 			scrollToError();
@@ -220,9 +233,18 @@
 					</Select.Trigger>
 					<Select.Content>
 						<Select.Item value="">-- Pilih Klasifikasi --</Select.Item>
-						<Select.Item value="TRANSITO">Transito</Select.Item>
-						<Select.Item value="BALKIR">Balkir</Select.Item>
-						<Select.Item value="KOMUNITY">Komunity</Select.Item>
+
+						{#if isKepalaGudangSatuan}
+							<Select.Item value="TRANSITO">Transito</Select.Item>
+							<Select.Item value="BALKIR">Balkir</Select.Item>
+							<Select.Item value="KOMUNITY">Komunity</Select.Item>
+						{:else if isHeadBalkir}
+							<Select.Item value="BALKIR">Balkir</Select.Item>
+						{:else if isHeadTransito}
+							<Select.Item value="BALKIR">Transito</Select.Item>
+						{:else if isHeadKomunity}
+							<Select.Item value="BALKIR">Komunity</Select.Item>
+						{/if}
 					</Select.Content>
 				</Select.Root>
 				<input type="hidden" name="classification" value={$form.classification} />

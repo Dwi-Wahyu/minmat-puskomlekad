@@ -78,6 +78,34 @@
       "when": 1782136323973,
       "tag": "0010_square_emma_frost",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1782339071781,
+      "tag": "0011_brave_karen_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1782345217200,
+      "tag": "0012_spicy_boomer",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1782410151438,
+      "tag": "0013_sparkling_quicksilver",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1782410265883,
+      "tag": "0014_swift_madelyne_pryor",
+      "breakpoints": true
     }
   ]
 }

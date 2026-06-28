@@ -131,6 +131,12 @@ export const actions: Actions = {
 					notes: `Penambahan alat baru dengan klasifikasi ${classification}`,
 					createdAt: new Date()
 				});
+
+				db.update(equipment)
+					.set({
+						classification: classification as 'BALKIR' | 'KOMUNITY' | 'TRANSITO'
+					})
+					.where(eq(equipment.id, equipmentId));
 			}
 
 			// Invalidate cache

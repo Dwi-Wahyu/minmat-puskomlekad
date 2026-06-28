@@ -1,6 +1,6 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { movement, organization, equipment, item } from '$lib/server/db/schema';
+import { equipment, movement } from '$lib/server/db/schema';
 import { eq, desc, and, isNull, isNotNull } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
@@ -35,29 +35,21 @@ export const getTransitoData = query(transitoSchema, async (args): Promise<Trans
 
 	const { search: searchQuery, type: typeFilter, category: categoryFilter } = args;
 
-	// Fetch all organizations if user is Mabes
 	const orgs = isMabes ? await db.query.organization.findMany() : [];
 
-	// ─── 1. Asset movements (equipmentId NOT NULL) ───────────────────────────────
-	const assetMovements = await db.query.movement.findMany({
+	// ─── 1. Asset: query ke equipment (current-state) ─────────────────────────
+	const assetEquipments = await db.query.equipment.findMany({
 		where: and(
-			eq(movement.classification, 'TRANSITO'),
-			eq(movement.organizationId, selectedOrgId),
-			isNotNull(movement.equipmentId)
+			eq(equipment.classification, 'TRANSITO'),
+			eq(equipment.organizationId, selectedOrgId)
 		),
 		with: {
-			equipment: {
-				with: { item: true }
-			},
-			organization: { columns: { name: true } },
-			fromWarehouse: { columns: { name: true } }
-		},
-		orderBy: [desc(movement.createdAt)]
+			item: true,
+			warehouse: true
+		}
 	});
 
-	// ─── 2. Consumable movements: inner join ke item, filter item.type = CONSUMABLE ─
-	// Query terpisah dengan explicit join agar item.type bisa difilter di DB,
-	// bukan di aplikasi. equipmentId harus NULL untuk memastikan ini bukan asset.
+	// ─── 2. Consumable: tetap dari movement ────────────────────────────────────
 	const consumableMovements = await db.query.movement.findMany({
 		where: and(
 			eq(movement.classification, 'TRANSITO'),
@@ -73,29 +65,25 @@ export const getTransitoData = query(transitoSchema, async (args): Promise<Trans
 		orderBy: [desc(movement.createdAt)]
 	});
 
-	// ─── 3. Filter asset movements ───────────────────────────────────────────────
-	const filteredAssets = assetMovements.filter((m) => {
-		const itemData = m.equipment?.item;
-		if (!itemData) return false;
+	// ─── 3. Filter assets ──────────────────────────────────────────────────────
+	const filteredAssets = assetEquipments.filter((eq_) => {
+		if (!eq_.item) return false;
 
 		if (searchQuery) {
-			const nameMatch = itemData.name.toLowerCase().includes(searchQuery.toLowerCase());
-			const snMatch = m.equipment?.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+			const nameMatch = eq_.item.name.toLowerCase().includes(searchQuery.toLowerCase());
+			const snMatch = eq_.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase());
 			if (!nameMatch && !snMatch) return false;
 		}
 
 		if (typeFilter && typeFilter !== 'ASSET') return false;
-		if (categoryFilter && itemData.equipmentType !== categoryFilter) return false;
+		if (categoryFilter && eq_.item.equipmentType !== categoryFilter) return false;
 
 		return true;
 	});
 
-	// ─── 4. Filter consumable movements ──────────────────────────────────────────
+	// ─── 4. Filter consumables ─────────────────────────────────────────────────
 	const filteredConsumables = consumableMovements.filter((m) => {
-		// item null berarti itemId ada tapi relasi broken — skip
 		if (!m.item) return false;
-
-		// Pastikan memang CONSUMABLE (defense in depth, seharusnya sudah benar dari query)
 		if (m.item.type !== 'CONSUMABLE') return false;
 
 		if (searchQuery) {
@@ -104,31 +92,29 @@ export const getTransitoData = query(transitoSchema, async (args): Promise<Trans
 		}
 
 		if (typeFilter && typeFilter !== 'CONSUMABLE') return false;
-		// Consumable tidak punya equipmentType, skip jika filter kategori aktif
 		if (categoryFilter) return false;
 
 		return true;
 	});
 
-	// ─── 5. Map ke shape yang sama ────────────────────────────────────────────────
-	const mappedAssets = filteredAssets.map((m) => {
-		const displayOrgName =
-			m.organizationId === userOrg.id ? 'Internal' : (m.organization?.name ?? 'Unknown');
+	// ─── 5. Map ke shape yang sama ─────────────────────────────────────────────
+	const mappedAssets = filteredAssets.map((eq_) => {
 		return {
-			id: m.id,
-			equipmentId: m.equipment!.id,
+			id: eq_.id,
+			equipmentId: eq_.id,
 			type: 'asset' as const,
-			nama: m.equipment!.item.name,
-			tipe: m.equipment!.item.type,
-			kategori: m.equipment!.item.equipmentType,
-			sn: m.equipment!.serialNumber,
+			nama: eq_.item.name,
+			tipe: eq_.item.type,
+			kategori: eq_.item.equipmentType,
+			sn: eq_.serialNumber,
 			qty: 1,
-			satuan: m.equipment!.item.baseUnit,
-			notes: m.notes,
-			lokasi: m.specificLocationName,
-			tglMasuk: m.createdAt,
-			organizationName: displayOrgName,
-			fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar'
+			satuan: eq_.item.baseUnit,
+			notes: null,
+			kondisi: eq_.condition,
+			lokasi: eq_.warehouse?.location ?? null,
+			tglMasuk: eq_.updatedAt ?? eq_.createdAt,
+			organizationName: 'Internal',
+			fromWarehouse: eq_.warehouse?.name ?? 'Pusat/Luar'
 		};
 	});
 
@@ -146,14 +132,15 @@ export const getTransitoData = query(transitoSchema, async (args): Promise<Trans
 			qty: Number(m.qty),
 			satuan: m.item!.baseUnit,
 			notes: m.notes,
+			kondisi: null,
 			lokasi: m.specificLocationName,
 			tglMasuk: m.createdAt,
 			organizationName: displayOrgName,
-			fromWarehouse: m.fromWarehouse?.name || 'Pusat/Luar'
+			fromWarehouse: m.fromWarehouse?.name ?? 'Pusat/Luar'
 		};
 	});
 
-	// ─── 6. Group consumables by itemId + lokasi + org + fromWarehouse ────────────
+	// ─── 6. Group consumables ──────────────────────────────────────────────────
 	const finalMovements: any[] = [...mappedAssets];
 	const consumableGroups = new Map<string, any>();
 
@@ -172,10 +159,9 @@ export const getTransitoData = query(transitoSchema, async (args): Promise<Trans
 
 	finalMovements.push(...Array.from(consumableGroups.values()));
 
-	// Sort by latest date
 	finalMovements.sort((a, b) => new Date(b.tglMasuk).getTime() - new Date(a.tglMasuk).getTime());
 
-	// ─── 7. Pagination ────────────────────────────────────────────────────────────
+	// ─── 7. Pagination ─────────────────────────────────────────────────────────
 	const { page = 1, limit = 25 } = args;
 	const totalItems = finalMovements.length;
 	const totalPages = Math.ceil(totalItems / limit);

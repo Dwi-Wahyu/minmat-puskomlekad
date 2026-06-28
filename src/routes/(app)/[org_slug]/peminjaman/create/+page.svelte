@@ -42,6 +42,7 @@
 	);
 
 	import { tick } from 'svelte';
+	import UnitAutocomplete from '@/components/UnitAutocomplete.svelte';
 	async function scrollToError() {
 		await tick();
 		const errorElement = document.querySelector('[aria-invalid="true"], .text-destructive');
@@ -291,12 +292,21 @@
 				<div class="grid gap-6 md:grid-cols-2">
 					<div class="space-y-2">
 						<Label for="unit">Unit <span class="text-red-500"> * </span></Label>
-						<Input
+						<!-- <Input
 							id="unit"
 							name="unit"
 							bind:value={$form.unit}
 							placeholder="Contoh: Yonif 201, Hubdam, dll."
+						/> -->
+
+						<UnitAutocomplete
+							orgSlug={data.user.organization.slug}
+							placeholder="Unit satuan"
+							name="unit"
+							id="unit"
+							bind:value={$form.unit}
 						/>
+
 						{#if $errors.unit}
 							<p class="text-sm text-destructive">{$errors.unit}</p>
 						{/if}
@@ -369,7 +379,10 @@
 					</div>
 
 					<div class="col-span-2 space-y-2">
-						<Label for="attachment" class="flex items-center gap-2 {$errors.attachment ? 'text-destructive' : ''}">
+						<Label
+							for="attachment"
+							class="flex items-center gap-2 {$errors.attachment ? 'text-destructive' : ''}"
+						>
 							Dokumen Pendukung (Surat Perintah/Permohonan)
 						</Label>
 						<Input
