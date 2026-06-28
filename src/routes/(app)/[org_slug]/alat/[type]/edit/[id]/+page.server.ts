@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { equipment, item, warehouse, organization } from '$lib/server/db/schema';
+import { equipment, item, warehouse, organization, itemCategory } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail, error } from '@sveltejs/kit';
@@ -12,7 +12,7 @@ import { equipmentSchema } from '$lib/schemas/equipment-schema';
 export const load: PageServerLoad = async ({ params }) => {
 	const { org_slug, id } = params;
 
-	const [warehousesResults, currentEquipmentResults] = await Promise.all([
+	const [warehousesResults, currentEquipmentResults, categories] = await Promise.all([
 		db
 			.select({ warehouse: warehouse })
 			.from(warehouse)
@@ -26,7 +26,10 @@ export const load: PageServerLoad = async ({ params }) => {
 			.from(equipment)
 			.innerJoin(item, eq(equipment.itemId, item.id))
 			.where(eq(equipment.id, id))
-			.limit(1)
+			.limit(1),
+		db.query.itemCategory.findMany({
+			with: { parent: true }
+		})
 	]);
 
 	if (currentEquipmentResults.length === 0) {
@@ -45,7 +48,8 @@ export const load: PageServerLoad = async ({ params }) => {
 			brand: currentEquipment.brand ?? undefined,
 			warehouseId: currentEquipment.warehouseId ?? undefined,
 			condition: currentEquipment.condition,
-			status: currentEquipment.status ?? undefined
+			status: currentEquipment.status ?? undefined,
+			categoryId: currentEquipment.item.categoryId ?? undefined
 		},
 		yup(equipmentSchema)
 	);
@@ -54,6 +58,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		warehouses: warehousesResults.map((w) => w.warehouse),
 		equipment: currentEquipment,
 		type: params.type,
+		categories,
 		form
 	};
 };
@@ -68,13 +73,28 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		const { itemName, serialNumber, brand, warehouseId, condition, status } = form.data as {
+		const {
+			itemName,
+			serialNumber,
+			brand,
+			warehouseId,
+			condition,
+			status,
+			categoryId,
+			newCategoryName,
+			parentCategoryId,
+			categoryMode
+		} = form.data as {
 			itemName: string;
 			serialNumber: string | null;
 			brand: string | null;
 			warehouseId: string | null;
 			condition: string;
 			status: string;
+			categoryId: string | null;
+			newCategoryName: string | null;
+			parentCategoryId: string | null;
+			categoryMode: 'select' | 'new';
 		};
 
 		const finalStatus = condition === 'RUSAK_TOTAL' ? 'DISPOSED' : status;
@@ -83,84 +103,114 @@ export const actions: Actions = {
 		const equipmentType = type.toUpperCase() === 'ALPERNIKA' ? 'PERNIKA_LEK' : 'ALKOMLEK';
 
 		try {
-			// Menggunakan select eksplisit alih-alih db.query
-			const currentResults = await db
-				.select({
-					equipment: equipment,
-					item: item
-				})
-				.from(equipment)
-				.innerJoin(item, eq(equipment.itemId, item.id))
-				.where(eq(equipment.id, id))
-				.limit(1);
+			const resultOrgId = await db.transaction(async (tx) => {
+				// Get current equipment
+				const currentResults = await tx
+					.select({
+						equipment: equipment,
+						item: item
+					})
+					.from(equipment)
+					.innerJoin(item, eq(equipment.itemId, item.id))
+					.where(eq(equipment.id, id))
+					.limit(1);
 
-			if (currentResults.length === 0) {
-				return message(form, 'Alat tidak ditemukan', { status: 404 });
-			}
-			const current = currentResults[0];
-
-			// Get the raw form data for the image file
-			const imageFile = formData.get('image') as File;
-
-			let imagePath = current.item.imagePath;
-
-			// Upload new image if exists
-			if (imageFile && imageFile.size > 0) {
-				const { fileName: newFileName, error: uploadError } = await uploadFile(imageFile, 'item');
-				if (uploadError) {
-					return message(form, uploadError, { status: 400 });
+				if (currentResults.length === 0) {
+					throw new Error('Alat tidak ditemukan');
 				}
+				const current = currentResults[0];
 
-				// Delete old image if new one is uploaded
-				if (current.item.imagePath) {
-					deleteFile(current.item.imagePath, 'item');
-				}
-				imagePath = newFileName;
-			}
+				// Get image file
+				const imageFile = formData.get('image') as File;
+				let imagePath = current.item.imagePath;
 
-			// Find or Create Item (Jika Nama Berubah)
-			let itemId: string;
-			const existingItemResults = await db
-				.select()
-				.from(item)
-				.where(and(eq(item.name, itemName), eq(item.equipmentType, equipmentType)))
-				.limit(1);
-
-			if (existingItemResults.length > 0) {
-				itemId = existingItemResults[0].id;
-				// Update existing item's image if new one uploaded
+				// Upload new image if exists
 				if (imageFile && imageFile.size > 0) {
-					await db.update(item).set({ imagePath: imagePath }).where(eq(item.id, itemId));
-				}
-			} else {
-				itemId = crypto.randomUUID();
-				await db.insert(item).values({
-					id: itemId,
-					name: itemName,
-					type: 'ASSET',
-					equipmentType: equipmentType,
-					baseUnit: 'UNIT',
-					imagePath: imagePath,
-					createdAt: new Date()
-				});
-			}
+					const { fileName: newFileName, error: uploadError } = await uploadFile(imageFile, 'item');
+					if (uploadError) {
+						throw new Error(uploadError);
+					}
 
-			await db
-				.update(equipment)
-				.set({
-					itemId,
-					serialNumber: serialNumber || null,
-					brand: brand || null,
-					warehouseId: warehouseId || null,
-					condition: (condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT') || 'BAIK',
-					status:
-						(finalStatus as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE' | 'DISPOSED') || 'READY',
-					updatedAt: new Date()
-				})
-				.where(eq(equipment.id, id));
+					// Delete old image if new one is uploaded
+					if (current.item.imagePath) {
+						deleteFile(current.item.imagePath, 'item');
+					}
+					imagePath = newFileName;
+				}
+
+				// Handle dynamic category on-the-fly
+				let finalCategoryId: string | null = categoryId;
+
+				if (categoryMode === 'new' && newCategoryName) {
+					const existingCat = await tx.query.itemCategory.findFirst({
+						where: eq(itemCategory.name, newCategoryName)
+					});
+
+					if (existingCat) {
+						finalCategoryId = existingCat.id;
+					} else {
+						finalCategoryId = crypto.randomUUID();
+						await tx.insert(itemCategory).values({
+							id: finalCategoryId,
+							name: newCategoryName,
+							parentId: parentCategoryId || null,
+							order: 0,
+							createdAt: new Date()
+						});
+					}
+				}
+
+				// Find or Create Item (Jika Nama Berubah)
+				let itemId: string;
+				const existingItemResults = await tx
+					.select()
+					.from(item)
+					.where(and(eq(item.name, itemName), eq(item.equipmentType, equipmentType)))
+					.limit(1);
+
+				if (existingItemResults.length > 0) {
+					itemId = existingItemResults[0].id;
+					// Update existing item details
+					const updateData: any = {};
+					if (imageFile && imageFile.size > 0) updateData.imagePath = imagePath;
+					if (finalCategoryId) updateData.categoryId = finalCategoryId;
+
+					if (Object.keys(updateData).length > 0) {
+						await tx.update(item).set(updateData).where(eq(item.id, itemId));
+					}
+				} else {
+					itemId = crypto.randomUUID();
+					await tx.insert(item).values({
+						id: itemId,
+						name: itemName,
+						type: 'ASSET',
+						equipmentType: equipmentType,
+						baseUnit: 'UNIT',
+						categoryId: finalCategoryId,
+						imagePath: imagePath,
+						createdAt: new Date()
+					});
+				}
+
+				await tx
+					.update(equipment)
+					.set({
+						itemId,
+						serialNumber: serialNumber || null,
+						brand: brand || null,
+						warehouseId: warehouseId || null,
+						condition: (condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT') || 'BAIK',
+						status:
+							(finalStatus as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE' | 'DISPOSED') || 'READY',
+						updatedAt: new Date()
+					})
+					.where(eq(equipment.id, id));
+
+				return current.equipment.organizationId!;
+			});
 
 			// Invalidate cache
-			await invalidateOrgInventoryCache(current.equipment.organizationId!);
+			await invalidateOrgInventoryCache(resultOrgId);
 
 			return message(form, 'Data alat berhasil diperbarui');
 		} catch (error: any) {
@@ -168,7 +218,7 @@ export const actions: Actions = {
 			if (error.code === 'ER_DUP_ENTRY') {
 				return setError(form, 'serialNumber', 'Serial Number sudah terdaftar');
 			}
-			return message(form, 'Gagal memperbarui data alat', { status: 500 });
+			return message(form, error.message || 'Gagal memperbarui data alat', { status: 500 });
 		}
 	}
 };

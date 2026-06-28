@@ -13,6 +13,12 @@
 	import { yupClient } from 'sveltekit-superforms/adapters';
 	import { equipmentSchema } from '$lib/schemas/equipment-schema';
 	import { untrack } from 'svelte';
+	import {
+		SearchableSelect,
+		SearchableSelectContent,
+		SearchableSelectItem,
+		SearchableSelectTrigger
+	} from '$lib/components/ui/searchable-select';
 
 	let { data }: { data: PageData } = $props();
 
@@ -28,7 +34,6 @@
 				} else {
 					const hasFieldErrors = Object.values($errors).some((error) => error !== undefined);
 					if ($message && !hasFieldErrors) {
-						// Only show dialog for general messages if there are no specific field errors
 						notificationMsg = $message;
 						notificationType = 'error';
 						notificationOpen = true;
@@ -103,6 +108,93 @@
 		use:enhance
 		class="grid gap-8 rounded-lg border bg-card p-6 shadow-sm"
 	>
+		<!-- KATEGORI FIELD -->
+		<div class="space-y-4">
+			<div class="flex items-center justify-between">
+				<Label class="text-sm font-bold">Kategori Alat</Label>
+				<button
+					type="button"
+					onclick={() => {
+						$form.categoryMode = $form.categoryMode === 'select' ? 'new' : 'select';
+					}}
+					class="text-xs font-semibold text-primary hover:underline"
+				>
+					{$form.categoryMode === 'select' ? '+ Buat Kategori Baru' : 'Pilih Kategori Terdaftar'}
+				</button>
+			</div>
+
+			<!-- Hidden Inputs untuk data superforms -->
+			<input type="hidden" name="categoryMode" value={$form.categoryMode} />
+
+			{#if $form.categoryMode === 'select'}
+				<div class="space-y-2">
+					<Label for="categoryId">Pilih Kategori</Label>
+					<SearchableSelect type="single" bind:value={$form.categoryId}>
+						<SearchableSelectTrigger class="w-full text-left text-xs">
+							{(() => {
+								const cat = data.categories?.find((c: any) => c.id === $form.categoryId);
+								if (!cat) return 'Pilih Kategori...';
+								return cat.parent ? `${cat.parent.name} - ${cat.name}` : cat.name;
+							})()}
+						</SearchableSelectTrigger>
+						<SearchableSelectContent>
+							<SearchableSelectItem value="" label="Tanpa Kategori"
+								>Tanpa Kategori</SearchableSelectItem
+							>
+							{#each data.categories || [] as cat (cat.id)}
+								{@const label = cat.parent ? `${cat.parent.name} - ${cat.name}` : cat.name}
+								<SearchableSelectItem value={cat.id} {label}>
+									{label}
+								</SearchableSelectItem>
+							{/each}
+						</SearchableSelectContent>
+					</SearchableSelect>
+					<input type="hidden" name="categoryId" value={$form.categoryId || ''} />
+					<p class="text-xs text-muted-foreground">
+						Kategori mempermudah pengelompokan pada laporan BTK-16.
+					</p>
+				</div>
+			{:else}
+				<div class="grid gap-4 pt-2 sm:grid-cols-2">
+					<div class="space-y-2">
+						<Label for="newCategoryName"
+							>Nama Kategori Baru <span class="text-destructive">*</span></Label
+						>
+						<Input
+							name="newCategoryName"
+							id="newCategoryName"
+							placeholder="Masukkan nama kategori baru..."
+							bind:value={$form.newCategoryName}
+						/>
+					</div>
+					<div class="space-y-2">
+						<Label for="parentCategoryId"
+							>Kategori Induk <span class="text-xs text-muted-foreground">(Opsional)</span></Label
+						>
+						<Select.Root
+							type="single"
+							value={$form.parentCategoryId || ''}
+							onValueChange={(val) => {
+								$form.parentCategoryId = val || null;
+							}}
+						>
+							<Select.Trigger class="w-full bg-card text-left text-xs">
+								{data.categories?.find((c: any) => c.id === $form.parentCategoryId)?.name ||
+									'Tidak Ada (Kategori Utama)'}
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item value="">Tidak Ada (Kategori Utama)</Select.Item>
+								{#each (data.categories || []).filter((c: any) => !c.parentId) as cat (cat.id)}
+									<Select.Item value={cat.id}>{cat.name}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+						<input type="hidden" name="parentCategoryId" value={$form.parentCategoryId || ''} />
+					</div>
+				</div>
+			{/if}
+		</div>
+
 		<div class="grid gap-6 md:grid-cols-2">
 			<div class="space-y-2">
 				<Label for="itemName" class={$errors.itemName ? 'text-destructive' : ''}>Nama Alat</Label>

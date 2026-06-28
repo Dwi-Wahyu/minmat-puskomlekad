@@ -8,7 +8,8 @@ import {
 	index,
 	uniqueIndex,
 	unique,
-	decimal
+	decimal,
+	int
 } from 'drizzle-orm/mysql-core';
 import { relations, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 
@@ -178,6 +179,14 @@ export const equipment = mysqlTable(
 	]
 );
 
+export const itemCategory = mysqlTable('item_category', {
+	id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+	name: varchar('name', { length: 255 }).notNull(),
+	parentId: varchar('parent_id', { length: 36 }), // Null jika kategori level 1 (Utama)
+	order: int('order').default(0), // Untuk sorting urutan laporan (A, B, C atau I, II, III)
+	createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 export const item = mysqlTable('item', {
 	id: varchar('id', { length: 36 }).primaryKey(),
 	name: varchar('name', { length: 255 }).notNull(),
@@ -186,6 +195,7 @@ export const item = mysqlTable('item', {
 	baseUnit: varchar('base_unit', { length: 21 })
 		.notNull()
 		.references(() => unit.id),
+	categoryId: varchar('category_id', { length: 36 }).references(() => itemCategory.id),
 	description: text('description'),
 	imagePath: text('image_path'),
 	createdAt: timestamp('created_at').defaultNow().notNull()
@@ -685,11 +695,27 @@ export const lendingItemRelations = relations(lendingItem, ({ one }) => ({
 	})
 }));
 
-export const itemRelations = relations(item, ({ many }) => ({
+export const itemCategoryRelations = relations(itemCategory, ({ one, many }) => ({
+	parent: one(itemCategory, {
+		fields: [itemCategory.parentId],
+		references: [itemCategory.id],
+		relationName: 'category_to_children'
+	}),
+	children: many(itemCategory, {
+		relationName: 'category_to_children'
+	}),
+	items: many(item)
+}));
+
+export const itemRelations = relations(item, ({ many, one }) => ({
 	stocks: many(stock),
 	movements: many(movement),
 	unitConversions: many(itemUnitConversion),
-	equipments: many(equipment)
+	equipments: many(equipment),
+	category: one(itemCategory, {
+		fields: [item.categoryId],
+		references: [itemCategory.id]
+	})
 }));
 
 export const itemUnitConversionRelations = relations(itemUnitConversion, ({ one }) => ({
@@ -819,3 +845,5 @@ export type Building = InferSelectModel<typeof building>;
 export type NewBuilding = InferInsertModel<typeof building>;
 export type Notification = InferSelectModel<typeof notification>;
 export type NewNotification = InferInsertModel<typeof notification>;
+export type ItemCategory = InferSelectModel<typeof itemCategory>;
+export type NewItemCategory = InferInsertModel<typeof itemCategory>;

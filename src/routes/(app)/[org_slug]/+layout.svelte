@@ -17,14 +17,6 @@
 	const sidebar = setSidebarState();
 
 	let isLogoutDialogOpen = $state(false);
-	let onboardingOpen = $state(false);
-
-	$effect(() => {
-		const seen = localStorage.getItem(`guide_book_popup_seen_${data.user.id}`);
-		if (!seen) {
-			onboardingOpen = true;
-		}
-	});
 
 	const toTitleCase = (str: string) => {
 		// Langsung kembalikan nama jika ada display name
@@ -45,15 +37,7 @@
 		goto(resolve('/logout'));
 	}
 
-	function handleCloseOnboarding() {
-		localStorage.setItem(`guide_book_popup_seen_${data.user.id}`, 'true');
-		onboardingOpen = false;
-	}
 
-	function handleGoToGuideBook() {
-		handleCloseOnboarding();
-		goto(resolve('/(app)/[org_slug]/guide-book', { org_slug: data.user.organization.slug }));
-	}
 </script>
 
 <div class="flex h-screen overflow-hidden bg-background">
@@ -137,26 +121,4 @@
 	onAction={handleLogout}
 />
 
-<Dialog.Root bind:open={onboardingOpen}>
-	<Dialog.Content showCloseButton={false}>
-		<Dialog.Header class="flex flex-col justify-center text-center">
-			<div
-				class="mb-4 flex h-12 w-12 items-center justify-center self-center rounded-full bg-primary/10"
-			>
-				<BookText class="h-6 w-6 text-primary" />
-			</div>
-			<Dialog.Title>Selamat Datang!</Dialog.Title>
-			<Dialog.Description>
-				Halo <strong>{data.user.name}</strong>, selamat datang di sistem MINMAT. Untuk memudahkan
-				Anda memahami fitur-fitur yang ada, kami menyarankan Anda membaca Panduan Penggunaan (Guide
-				Book) terlebih dahulu.
-			</Dialog.Description>
-		</Dialog.Header>
-		<Dialog.Footer class="flex flex-col gap-2 sm:flex-row">
-			<Button.Root variant="outline" onclick={handleCloseOnboarding} class="sm:flex-1">
-				Nanti Saja
-			</Button.Root>
-			<Button.Root onclick={handleGoToGuideBook} class="sm:flex-1">Baca Sekarang</Button.Root>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+

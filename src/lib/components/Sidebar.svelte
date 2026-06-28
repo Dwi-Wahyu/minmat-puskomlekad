@@ -112,16 +112,24 @@
 			}
 		}
 
-		// Cek role spesifik user (superadmin, kakomlek, dll)
-		// Kita filter 'parent' dari pengecekan role string karena 'parent' adalah pengecekan struktur org
-		const functionalRoles = roles.filter((r) => r !== 'parent');
+		// Cek hak akses 'level2' (hanya untuk organisasi Level 2)
+		if (roles.includes('level2')) {
+			// Jika user tidak punya parentId (artinya dia Pusat/Level 1), blokir akses ke menu 'level2'
+			if (user.organization.parentId === null) {
+				return false;
+			}
+		}
 
-		// Jika setelah difilter 'parent' masih ada role lain (seperti 'superadmin')
+		// Cek role spesifik user (superadmin, kakomlek, dll)
+		// Kita filter 'parent' dan 'level2' dari pengecekan role string karena mereka adalah pengecekan struktur org
+		const functionalRoles = roles.filter((r) => r !== 'parent' && r !== 'level2');
+
+		// Jika setelah difilter masih ada role lain (seperti 'superadmin')
 		if (functionalRoles.length > 0) {
 			return functionalRoles.includes(userRole);
 		}
 
-		// Jika hanya ada role 'parent' dan lolos pengecekan parentId === null di atas
+		// Jika lolos pengecekan di atas
 		return true;
 	}
 
@@ -198,8 +206,8 @@
 			children: [
 				{
 					name: 'Satuan Jajaran',
-					path: '/satuan-jajaran',
-					role: ['parent', 'superadmin', 'owner']
+					path: getPath('/satuan-jajaran'),
+					role: ['level2', 'superadmin', 'owner', 'kakomlek']
 				},
 				{
 					name: 'Manajemen Pengguna',

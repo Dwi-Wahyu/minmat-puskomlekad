@@ -20,7 +20,7 @@
 
 	const alatQuery = $derived(
 		getAlatData({
-			orgSlug: page.params.org_slug,
+			orgSlug: page.params.org_slug || '',
 			type: page.params.type || '',
 			q: page.url.searchParams.get('q') || '',
 			page: Number(page.url.searchParams.get('page')) || 1
@@ -85,7 +85,15 @@
 				<ArrowRightLeft class="size-4" />
 				Mutasi Batch {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
 			</Button> -->
-			<Button href="/{page.params.org_slug}/alat/{page.params.type}/create" class="w-full md:w-fit">
+			<Button
+				variant="outline"
+				href="/{page.params.org_slug}/alat/{page.params.type}/batch-create"
+				class="w-full md:w-fit gap-2"
+			>
+				<Plus class="size-4" />
+				Batch Input Alat
+			</Button>
+			<Button href="/{page.params.org_slug}/alat/{page.params.type}/create" class="w-full md:w-fit gap-2">
 				<Plus class="size-4" />
 				Tambah Alat
 			</Button>

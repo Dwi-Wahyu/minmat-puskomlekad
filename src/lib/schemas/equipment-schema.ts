@@ -14,6 +14,10 @@ export const equipmentSchema = yup.object({
 		.oneOf(['READY', 'IN_USE', 'TRANSIT', 'MAINTENANCE', 'DISPOSED'])
 		.default('READY'),
 	classification: yup.string().nullable().default(null),
+	categoryId: yup.string().optional().default(undefined),
+	newCategoryName: yup.string().nullable().default(null),
+	parentCategoryId: yup.string().nullable().default(null),
+	categoryMode: yup.string().oneOf(['select', 'new']).default('select'),
 	image: yup
 		.mixed<File>()
 		.test('fileSize', 'Ukuran file maksimal 5MB', (value) => {
