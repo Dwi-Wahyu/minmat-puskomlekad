@@ -92,6 +92,8 @@
 		});
 	}
 
+	const isSubordinate = $derived(page.data.user?.organization?.parentId !== null);
+
 	const chartData = $derived([
 		{ label: 'Transito', value: transito.incoming, color: 'bg-blue-500' },
 		{ label: 'Komunity', value: komoditi.outgoing, color: 'bg-orange-500' },
@@ -103,41 +105,42 @@
 
 <!-- Filter Toolbar -->
 <div class="flex flex-wrap items-center gap-3">
-	<div class="flex items-center gap-1 rounded-xl border border-border bg-card p-1">
-		{#each periods as p (p.value)}
-			<button
-				onclick={() => applyFilter(p.value, activeFilters?.equipmentType ?? 'ALL')}
-				class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all {activeFilters?.period ===
-				p.value
-					? 'bg-primary text-primary-foreground shadow-sm'
-					: 'text-muted-foreground hover:text-foreground'}"
-			>
-				{p.label}
-			</button>
-		{/each}
-	</div>
+	{#each periods as p}
+		<button
+			onclick={() => applyFilter(p.value, activeFilters.equipmentType)}
+			class="rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-300 {activeFilters.period ===
+			p.value
+				? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105'
+				: 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'}"
+		>
+			{p.label}
+		</button>
+	{/each}
 
-	<div class="flex items-center gap-1 rounded-xl border border-border bg-card p-1">
-		{#each equipmentTypes as t (t.value)}
-			<button
-				onclick={() => applyFilter(activeFilters?.period ?? 'this_month', t.value)}
-				class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all {activeFilters?.equipmentType ===
-				t.value
-					? 'bg-primary text-primary-foreground shadow-sm'
-					: 'text-muted-foreground hover:text-foreground'}"
-			>
-				{t.label}
-			</button>
-		{/each}
-	</div>
+	<div class="h-6 w-px bg-border"></div>
+
+	{#each equipmentTypes as type}
+		<button
+			onclick={() => applyFilter(activeFilters.period, type.value)}
+			class="rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-300 {activeFilters.equipmentType ===
+			type.value
+				? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105'
+				: 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'}"
+		>
+			{type.label}
+		</button>
+	{/each}
 </div>
 
-<!-- Summary Cards -->
+<!-- 4 Summary Cards -->
 <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+	<!-- Active Inventory -->
 	<div
-		class="flex items-center gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md"
+		class="flex items-center gap-5 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md"
 	>
-		<div class="rounded-xl bg-primary/10 p-3 text-primary"><Box size={24} /></div>
+		<div class="rounded-xl bg-primary/10 p-3 text-primary">
+			<Package size={24} />
+		</div>
 		<div>
 			<p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
 				Inventaris Aktif
@@ -146,20 +149,24 @@
 		</div>
 	</div>
 
+	<!-- Warehouse Stock -->
 	<div
-		class="flex items-center gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md"
+		class="flex items-center gap-5 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md"
 	>
-		<div class="rounded-xl bg-success/10 p-3 text-success"><Package size={24} /></div>
+		<div class="rounded-xl bg-orange-500/10 p-3 text-orange-500">
+			<Box size={24} />
+		</div>
 		<div>
 			<p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-				Persediaan Gudang
+				Stok Gudang
 			</p>
 			<p class="text-2xl font-bold text-foreground">{summary.warehouseStock.toLocaleString()}</p>
 		</div>
 	</div>
 
+	<!-- Damaged Items -->
 	<div
-		class="flex items-center gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md"
+		class="flex items-center gap-5 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md"
 	>
 		<div class="rounded-xl bg-destructive/10 p-3 text-destructive">
 			<AlertTriangle size={24} />
@@ -172,10 +179,13 @@
 		</div>
 	</div>
 
+	<!-- Monthly Movements -->
 	<div
-		class="flex items-center gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md"
+		class="flex items-center gap-5 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md"
 	>
-		<div class="rounded-xl bg-primary/10 p-3 text-primary"><ArrowLeftRight size={24} /></div>
+		<div class="rounded-xl bg-blue-500/10 p-3 text-blue-500">
+			<ArrowLeftRight size={24} />
+		</div>
 		<div>
 			<p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
 				Mutasi Bulan Ini
@@ -187,31 +197,33 @@
 
 <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
 	<!-- Logistic Groups -->
-	<div class="grid grid-cols-1 gap-6 md:grid-cols-3 lg:col-span-2">
+	<div class="grid grid-cols-1 gap-6 {isSubordinate ? 'md:grid-cols-2' : 'md:grid-cols-3'} lg:col-span-2">
 		<!-- Transito -->
-		<div class="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-			<div class="border-b border-border bg-muted/50 px-5 py-4">
-				<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">Gudang Transito</h3>
-			</div>
-			<div class="flex flex-1 flex-col justify-between space-y-4 p-5">
-				<div>
-					<div class="mb-4 flex items-center justify-between text-sm">
-						<span class="text-muted-foreground">Barang Masuk</span>
-						<span class="font-bold text-foreground">{transito.incoming}</span>
+		{#if !isSubordinate}
+			<div class="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+				<div class="border-b border-border bg-muted/50 px-5 py-4">
+					<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">Gudang Transito</h3>
+				</div>
+				<div class="flex flex-1 flex-col justify-between space-y-4 p-5">
+					<div>
+						<div class="mb-4 flex items-center justify-between text-sm">
+							<span class="text-muted-foreground">Barang Masuk</span>
+							<span class="font-bold text-foreground">{transito.incoming}</span>
+						</div>
+						<div class="flex items-center justify-between text-sm">
+							<span class="text-muted-foreground">Barang Keluar</span>
+							<span class="font-bold text-foreground">{transito.outgoing}</span>
+						</div>
 					</div>
-					<div class="flex items-center justify-between text-sm">
-						<span class="text-muted-foreground">Barang Keluar</span>
-						<span class="font-bold text-foreground">{transito.outgoing}</span>
+					<div
+						class="flex items-center justify-between border-t border-border pt-2 text-sm font-semibold text-primary"
+					>
+						<span>Pending</span>
+						<span>{transito.pending} Item</span>
 					</div>
 				</div>
-				<div
-					class="flex items-center justify-between border-t border-border pt-2 text-sm font-semibold text-primary"
-				>
-					<span>Pending</span>
-					<span>{transito.pending} Item</span>
-				</div>
 			</div>
-		</div>
+		{/if}
 
 		<!-- Komoditi -->
 		<div class="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">

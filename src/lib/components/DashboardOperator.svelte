@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { ClipboardCheck, Truck, PackageCheck, Send, ArrowRight } from '@lucide/svelte';
+	import { page } from '$app/state';
 
 	type OperatorDashboard = {
 		pendingTransferIn: {
@@ -27,6 +28,8 @@
 
 	let { org_slug, operatorDashboard }: { org_slug: string; operatorDashboard: OperatorDashboard } =
 		$props();
+
+	const isSubordinate = $derived(page.data.user?.organization?.parentId !== null);
 </script>
 
 <div class="space-y-6">
@@ -35,18 +38,20 @@
 		<p class="text-sm text-muted-foreground">Mutasi yang perlu ditindaklanjuti</p>
 	</div>
 
-	<!-- 4 Summary Cards -->
-	<div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-		<a
-			href={resolve('/(app)/[org_slug]/alat/[type]', { org_slug, type: 'ALKOMLEK' })}
-			class="rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/50"
-		>
-			<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-				Perlu Dikonfirmasi
-			</p>
-			<p class="mt-2 text-3xl font-bold text-primary">{operatorDashboard.transitCount}</p>
-			<p class="mt-1 text-sm text-muted-foreground">Alat sedang transit</p>
-		</a>
+	<!-- Summary Cards -->
+	<div class="grid grid-cols-2 gap-4 {isSubordinate ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}">
+		{#if !isSubordinate}
+			<a
+				href={resolve('/(app)/[org_slug]/alat/[type]', { org_slug, type: 'ALKOMLEK' })}
+				class="rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/50"
+			>
+				<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+					Perlu Dikonfirmasi
+				</p>
+				<p class="mt-2 text-3xl font-bold text-primary">{operatorDashboard.transitCount}</p>
+				<p class="mt-1 text-sm text-muted-foreground">Alat sedang transit</p>
+			</a>
+		{/if}
 
 		<div class="rounded-xl border border-border bg-card p-5">
 			<p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
