@@ -112,148 +112,153 @@
 		{ value: '2025-Q4', label: '2025 - Triwulan IV' }
 	];
 
-	function exportCSV() {
-		if (!btkQuery.current || !btkQuery.current.reports || !btkQuery.current.reports.length) return;
+	import * as XLSX from 'xlsx';
+	import { toast } from 'svelte-sonner';
 
-		let headers: string[] = [];
-		if (reportType === 'NOMINATIF') {
-			headers = [
-				'NO',
-				'KAT/KODE',
-				'TAHUN PEROLEHAN',
-				'JENIS MATERIEL',
-				'MERK/TYPE',
-				'SATUAN',
-				'NO SERI',
-				'JUMLAH',
-				'B',
-				'RR',
-				'RB',
-				'LOKASI',
-				'KETERANGAN'
-			];
-		} else if (reportType === 'TRIWULAN') {
-			headers = [
-				'NO',
-				'KAT/KODE',
-				'JENIS MATERIEL',
-				'SAT',
-				'TOP',
-				'TW LALU',
-				'TAMBAH',
-				'KURANG',
-				'SEKARANG',
-				'B',
-				'RR',
-				'RB',
-				'LOKASI',
-				'KETERANGAN'
-			];
-		} else {
-			headers = [
-				'NO',
-				'KAT/KODE',
-				'JENIS MATERIEL',
-				'SATUAN',
-				'JUMLAH',
-				'B',
-				'RR',
-				'RB',
-				'KETERANGAN'
-			];
-		}
+	async function exportXLSX() {
+		try {
+			toast.info('Menyiapkan seluruh data laporan untuk diekspor...');
+			const fullData = await getBtk16Data({
+				reportType,
+				periodStr,
+				categoryId,
+				page: 1,
+				limit: 999999
+			});
 
-		const rows: any[] = [];
-		let globalIndex = 0;
+			if (!fullData || !fullData.reports || !fullData.reports.length) {
+				toast.error('Tidak ada data untuk diekspor');
+				return;
+			}
 
-		for (const mainCat of btkQuery.current.reports) {
-			const mainRow = Array(headers.length).fill('');
-			mainRow[0] = 'KATEGORI';
-			mainRow[2] = mainCat.name;
-			rows.push(mainRow);
+			let headers: string[] = [];
+			if (reportType === 'NOMINATIF') {
+				headers = [
+					'NO',
+					'KAT/KODE',
+					'TAHUN PEROLEHAN',
+					'JENIS MATERIEL',
+					'MERK/TYPE',
+					'SATUAN',
+					'NO SERI',
+					'JUMLAH',
+					'B',
+					'RR',
+					'RB',
+					'LOKASI',
+					'KETERANGAN'
+				];
+			} else if (reportType === 'TRIWULAN') {
+				headers = [
+					'NO',
+					'KAT/KODE',
+					'JENIS MATERIEL',
+					'SAT',
+					'TOP',
+					'TW LALU',
+					'TAMBAH',
+					'KURANG',
+					'SEKARANG',
+					'B',
+					'RR',
+					'RB',
+					'LOKASI',
+					'KETERANGAN'
+				];
+			} else {
+				headers = [
+					'NO',
+					'KAT/KODE',
+					'JENIS MATERIEL',
+					'SATUAN',
+					'JUMLAH',
+					'B',
+					'RR',
+					'RB',
+					'KETERANGAN'
+				];
+			}
 
-			for (const subCat of mainCat.subCategories) {
-				const subRow = Array(headers.length).fill('');
-				subRow[0] = 'SUB KATEGORI';
-				subRow[2] = `  ↳ ${subCat.name}`;
-				rows.push(subRow);
+			const rows: any[] = [];
+			let globalIndex = 0;
 
-				for (const item of subCat.items) {
-					if (reportType === 'NOMINATIF') {
-						for (const eq of item.equipments || []) {
+			for (const mainCat of fullData.reports) {
+				const mainRow = Array(headers.length).fill('');
+				mainRow[0] = 'KATEGORI';
+				mainRow[2] = mainCat.name;
+				rows.push(mainRow);
+
+				for (const subCat of mainCat.subCategories) {
+					const subRow = Array(headers.length).fill('');
+					subRow[0] = 'SUB KATEGORI';
+					subRow[2] = `  ↳ ${subCat.name}`;
+					rows.push(subRow);
+
+					for (const item of subCat.items) {
+						if (reportType === 'NOMINATIF') {
+							for (const eq of item.equipments || []) {
+								globalIndex++;
+								rows.push([
+									globalIndex,
+									item.itemId,
+									eq.year || '-',
+									item.itemName,
+									eq.brand || '-',
+									item.baseUnit,
+									eq.serialNumber,
+									1,
+									eq.condition === 'BAIK' ? '1' : '0',
+									eq.condition === 'RUSAK_RINGAN' ? '1' : '0',
+									['RUSAK_BERAT', 'RUSAK_TOTAL'].includes(eq.condition) ? '1' : '0',
+									eq.statusInfo,
+									''
+								]);
+							}
+						} else if (reportType === 'TRIWULAN') {
 							globalIndex++;
 							rows.push([
 								globalIndex,
 								item.itemId,
-								eq.year || '-',
 								item.itemName,
-								eq.brand || '-',
 								item.baseUnit,
-								eq.serialNumber,
-								1,
-								eq.condition === 'BAIK' ? '1' : '0',
-								eq.condition === 'RUSAK_RINGAN' ? '1' : '0',
-								['RUSAK_BERAT', 'RUSAK_TOTAL'].includes(eq.condition) ? '1' : '0',
-								eq.statusInfo,
-								''
+								item.totalStock || 0,
+								item.twLalu || 0,
+								item.tambah || 0,
+								item.kurang || 0,
+								item.sekarang || 0,
+								item.baik || 0,
+								item.rusakRingan || 0,
+								(item.rusakBerat || 0) + (item.rusakTotal || 0),
+								'',
+								item.keterangan || '-'
+							]);
+						} else if (reportType === 'BULANAN') {
+							globalIndex++;
+							rows.push([
+								globalIndex,
+								item.itemId,
+								item.itemName,
+								item.baseUnit,
+								item.totalStock || 0,
+								item.baik || 0,
+								item.rusakRingan || 0,
+								(item.rusakBerat || 0) + (item.rusakTotal || 0),
+								item.keterangan || '-'
 							]);
 						}
-					} else if (reportType === 'TRIWULAN') {
-						globalIndex++;
-						rows.push([
-							globalIndex,
-							item.itemId,
-							item.itemName,
-							item.baseUnit,
-							item.totalStock || 0,
-							item.twLalu || 0,
-							item.tambah || 0,
-							item.kurang || 0,
-							item.sekarang || 0,
-							item.baik || 0,
-							item.rusakRingan || 0,
-							(item.rusakBerat || 0) + (item.rusakTotal || 0),
-							'',
-							item.keterangan || '-'
-						]);
-					} else if (reportType === 'BULANAN') {
-						globalIndex++;
-						rows.push([
-							globalIndex,
-							item.itemId,
-							item.itemName,
-							item.baseUnit,
-							item.totalStock || 0,
-							item.baik || 0,
-							item.rusakRingan || 0,
-							(item.rusakBerat || 0) + (item.rusakTotal || 0),
-							item.keterangan || '-'
-						]);
 					}
 				}
 			}
+
+			const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+			const wb = XLSX.utils.book_new();
+			XLSX.utils.book_append_sheet(wb, ws, 'BTK-16 Report');
+			XLSX.writeFile(wb, `BTK16_${reportType}_${periodStr}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+			toast.success('Laporan berhasil diekspor ke format XLSX');
+		} catch (error) {
+			console.error(error);
+			toast.error('Gagal mengekspor laporan');
 		}
-
-		const content = [headers, ...rows]
-			.map((row) =>
-				row
-					.map((val: any) => {
-						const str = String(val === null || val === undefined ? '' : val).trim();
-						if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-							return `"${str.replace(/"/g, '""')}"`;
-						}
-						return str;
-					})
-					.join(',')
-			)
-			.join('\n');
-
-		const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `BTK16_${reportType}_${periodStr}_${new Date().toISOString().slice(0, 10)}.csv`;
-		a.click();
 	}
 </script>
 
@@ -312,7 +317,7 @@
 				</Button>
 			</form>
 			<Button
-				onclick={exportCSV}
+				onclick={exportXLSX}
 				disabled={btkQuery.loading ||
 					!btkQuery.current ||
 					!btkQuery.current.reports ||
@@ -321,7 +326,7 @@
 				size="sm"
 				class="font-semibold shadow-sm"
 			>
-				Ekspor CSV
+				Ekspor XLSX
 			</Button>
 		</div>
 	</div>
