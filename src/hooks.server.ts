@@ -72,6 +72,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 				path.includes('/peminjaman') ||
 				path.includes('/pemeliharaan') ||
 				path.includes('/logout') ||
+				path.includes('/laporan/') ||
 				path.startsWith('/api/notifications');
 
 			if (!isAllowedOperatorWrite) {

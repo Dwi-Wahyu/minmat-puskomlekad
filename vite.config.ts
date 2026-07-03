@@ -12,7 +12,8 @@ export default defineConfig({
 		}
 	},
 	ssr: {
-		noExternal: ['lucide-svelte']
+		noExternal: ['lucide-svelte'],
+		external: ['better-auth']
 	},
 	build: {
 		sourcemap: false
