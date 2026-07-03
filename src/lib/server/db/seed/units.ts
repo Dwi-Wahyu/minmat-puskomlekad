@@ -1,5 +1,5 @@
-import { db } from './index';
-import { unit } from './schema';
+import { db } from '../index';
+import { unit } from '../schema';
 import { nanoid } from 'nanoid';
 
 async function seedUnits() {

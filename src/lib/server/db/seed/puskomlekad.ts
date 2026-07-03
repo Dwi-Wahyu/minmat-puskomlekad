@@ -2,8 +2,8 @@ import { config } from 'dotenv';
 config();
 
 import mysql from 'mysql2/promise';
-import * as schema from './schema';
-import * as authSchema from './auth.schema';
+import * as schema from '../schema';
+import * as authSchema from '../auth.schema';
 import { drizzle } from 'drizzle-orm/mysql2';
 import { sql } from 'drizzle-orm';
 

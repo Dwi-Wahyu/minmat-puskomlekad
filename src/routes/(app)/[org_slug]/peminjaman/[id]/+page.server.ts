@@ -8,7 +8,8 @@ import {
 	movement,
 	auditLog,
 	organization,
-	user as userTable
+	user as userTable,
+	member
 } from '$lib/server/db/schema';
 import { eq, or, inArray, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
@@ -65,24 +66,23 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const canOverride =
 		isLender && !isRequester && user.role === 'pimpinan' && lendingDetail.status === 'DRAFT';
 
-	const OPERATOR_ROLES = ['operatorPusatDanDaerah', 'operatorBinmatDanBekharrah'];
-	const isOperatorRole = OPERATOR_ROLES.includes(user.role);
+	const isKepalaGudang = user.role === 'kepalaGudang';
 
 	// Operator GUDANG (isLender = org pemilik alat) yang keluarkan alat
 	const canDispatch =
 		isLender &&
-		isOperatorRole &&
+		isKepalaGudang &&
 		(lendingDetail.status === 'APPROVED' || lendingDetail.status === 'PERINTAH_LANGSUNG');
 
 	// Operator PEMINJAM (bukan isLender) yang konfirmasi terima
 	const canConfirmReceive =
-		!isLender && isOperatorRole && lendingDetail.status === 'DALAM_PENGIRIMAN';
+		!isLender && isKepalaGudang && lendingDetail.status === 'DALAM_PENGIRIMAN';
 
 	// Operator PEMINJAM yang kirim balik
-	const canSendBack = !isLender && isOperatorRole && lendingDetail.status === 'DIPINJAM';
+	const canSendBack = !isLender && isKepalaGudang && lendingDetail.status === 'DIPINJAM';
 
 	// Operator GUDANG yang konfirmasi terima kembali
-	const canConfirmReturn = isLender && isOperatorRole && lendingDetail.status === 'DIKIRIM_KEMBALI';
+	const canConfirmReturn = isLender && isKepalaGudang && lendingDetail.status === 'DIKIRIM_KEMBALI';
 
 	const canDelete = isRequester && lendingDetail.status === 'DRAFT';
 
@@ -433,18 +433,30 @@ export const actions: Actions = {
 			const requesterOrgSlug = requesterUser?.members?.[0]?.organization?.slug ?? org_slug;
 
 			if (requesterOrgId) {
-				// Kirim notifikasi ke semua operator di org peminjam
-				await createNotification({
-					organizationId: requesterOrgId,
-					title: 'Alat Siap Diterima',
-					body: `Alat untuk peminjaman unit ${lendingData.unit} telah dikirim dari gudang. Mohon konfirmasi penerimaan.`,
-					priority: 'HIGH',
-					action: {
-						type: 'LENDING_DETAIL',
-						resourceId: id,
-						webPath: `/${requesterOrgSlug}/peminjaman/${id}`
-					}
+				// Kirim notifikasi ke kepala gudang di org peminjam
+				const borrowerKGMembers = await db.query.member.findMany({
+					where: and(
+						eq(member.organizationId, requesterOrgId),
+						eq(member.role, 'kepalaGudang')
+					),
+					columns: { userId: true }
 				});
+
+				const borrowerKGs = borrowerKGMembers.map((m) => m.userId!).filter(Boolean);
+
+				for (const kgId of borrowerKGs) {
+					await createNotification({
+						userId: kgId,
+						title: 'Alat Siap Diterima',
+						body: `Alat untuk peminjaman unit ${lendingData.unit} telah dikirim dari gudang. Mohon konfirmasi penerimaan.`,
+						priority: 'HIGH',
+						action: {
+							type: 'LENDING_DETAIL',
+							resourceId: id,
+							webPath: `/${requesterOrgSlug}/peminjaman/${id}`
+						}
+					});
+				}
 			}
 
 			// Notifikasi ke requester
@@ -598,48 +610,54 @@ export const actions: Actions = {
 			}
 
 			// 2. Notifikasi ke Operator & Pimpinan Puskomlekad (Lender)
-			const lenderStaff = await db.query.user.findMany({
-				where: (u, { inArray }) =>
-					inArray(u.role, [
-						'pimpinan',
-						'kakomlek',
-						'operatorPusatDanDaerah',
-						'operatorBinmatDanBekharrah'
-					]),
-				with: {
-					members: {
-						where: (m, { eq }) => eq(m.organizationId, lendingData.organizationId!)
-					}
-				}
+			const lenderMembers = await db.query.member.findMany({
+				where: and(
+					eq(member.organizationId, lendingData.organizationId!),
+					inArray(member.role, ['pimpinan', 'kakomlek', 'kepalaGudang'])
+				)
 			});
 
-			for (const staff of lenderStaff) {
-				if (!staff.members || staff.members.length === 0) continue;
+			const lenderUserIds = lenderMembers.map((m) => m.userId!).filter(Boolean);
 
-				let title = '';
-				let body = '';
-				let priority: 'HIGH' | 'MEDIUM' = 'MEDIUM';
-
-				if (staff.role === 'pimpinan' || staff.role === 'kakomlek') {
-					title = 'Pemberitahuan Pengembalian Alat';
-					body = `Unit ${lendingData.unit} telah mengirimkan kembali alat peminjaman. Menunggu konfirmasi gudang.`;
-				} else {
-					title = 'Alat Dikirim Kembali — Perlu Konfirmasi';
-					body = `Unit ${lendingData.unit} telah mengirimkan kembali alat. Mohon konfirmasi penerimaan di gudang.`;
-					priority = 'HIGH';
-				}
-
-				await createNotification({
-					userId: staff.id,
-					title,
-					body,
-					priority,
-					action: {
-						type: 'LENDING_DETAIL',
-						resourceId: id,
-						webPath: `/${lenderOrgSlug}/peminjaman/${id}`
-					}
+			if (lenderUserIds.length > 0) {
+				const lenderStaff = await db.query.user.findMany({
+					where: inArray(userTable.id, lenderUserIds)
 				});
+
+				for (const staff of lenderStaff) {
+					const memberRecord = lenderMembers.find((m) => m.userId === staff.id);
+					if (!memberRecord) continue;
+
+					// Hanya kirim notifikasi ke kepalaGudang jika warehouseHeadType === 'KOMUNITY'
+					if (memberRecord.role === 'kepalaGudang' && memberRecord.warehouseHeadType !== 'KOMUNITY') {
+						continue;
+					}
+
+					let title = '';
+					let body = '';
+					let priority: 'HIGH' | 'MEDIUM' = 'MEDIUM';
+
+					if (memberRecord.role === 'pimpinan' || memberRecord.role === 'kakomlek') {
+						title = 'Pemberitahuan Pengembalian Alat';
+						body = `Unit ${lendingData.unit} telah mengirimkan kembali alat peminjaman. Menunggu konfirmasi gudang.`;
+					} else {
+						title = 'Alat Dikirim Kembali — Perlu Konfirmasi';
+						body = `Unit ${lendingData.unit} telah mengirimkan kembali alat. Mohon konfirmasi penerimaan di gudang.`;
+						priority = 'HIGH';
+					}
+
+					await createNotification({
+						userId: staff.id,
+						title,
+						body,
+						priority,
+						action: {
+							type: 'LENDING_DETAIL',
+							resourceId: id,
+							webPath: `/${lenderOrgSlug}/peminjaman/${id}`
+						}
+					});
+				}
 			}
 
 			return { success: true, message: 'Alat berhasil dikirim kembali' };

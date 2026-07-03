@@ -365,7 +365,7 @@
 					</div>
 
 					<div class="space-y-2">
-						<Label for="endDate">Rencana Tanggal Selesai</Label>
+						<Label for="endDate">Rencana Tanggal Selesai <span class="text-red-500">*</span></Label>
 						<Input
 							id="endDate"
 							name="endDate"

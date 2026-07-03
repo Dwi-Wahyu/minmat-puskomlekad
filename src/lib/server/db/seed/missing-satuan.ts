@@ -2,8 +2,8 @@ import { config } from 'dotenv';
 config();
 
 import mysql from 'mysql2/promise';
-import * as schema from './schema';
-import * as authSchema from './auth.schema';
+import * as schema from '../schema';
+import * as authSchema from '../auth.schema';
 import { drizzle } from 'drizzle-orm/mysql2';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -19,7 +19,7 @@ import {
 	operatorPusatDanDaerah,
 	pimpinan,
 	superadmin
-} from '../auth.roles';
+} from '../../auth.roles';
 
 const client = mysql.createPool(process.env.DATABASE_URL ?? '');
 const db = drizzle(client, { schema: { ...schema, ...authSchema }, mode: 'default' });
@@ -46,11 +46,7 @@ export const auth = betterAuth({
 	]
 });
 
-// Kesatuan yang belum ada di seed utama:
-// - Kodam Jaya
-// - Yonkomlek
-// - Bengpus
-const daftarSatuanTambahan = ['KODAM JAYA', 'YONKOMLEK', 'BENGPUS'];
+const daftarSatuanTambahan = ['KOMLEKDAM JAYA', 'DENMA MABESAD'];
 
 async function main() {
 	console.log('Sedang melakukan seeding tambahan...');

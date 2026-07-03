@@ -2,8 +2,8 @@ import { config } from 'dotenv';
 config();
 
 import mysql from 'mysql2/promise';
-import * as schema from './schema';
-import * as authSchema from './auth.schema';
+import * as schema from '../schema';
+import * as authSchema from '../auth.schema';
 import { drizzle } from 'drizzle-orm/mysql2';
 import { sql } from 'drizzle-orm';
 
@@ -18,7 +18,7 @@ import {
 	operatorPusatDanDaerah,
 	pimpinan,
 	superadmin
-} from '../auth.roles';
+} from '../../auth.roles';
 
 import fs from 'fs';
 import path from 'path';
@@ -346,9 +346,13 @@ async function main() {
 	// ─── Cleanup Data Existing (AKMIL Only) ───────────────────────────────────
 	console.log('\n🧹 Step 0: Membersihkan data AKMIL lama...');
 	// Hapus movement yang terkait dengan organizationId AKMIL
-	await db.delete(schema.movement).where(sql`${schema.movement.organizationId} = ${existingOrg.id}`);
+	await db
+		.delete(schema.movement)
+		.where(sql`${schema.movement.organizationId} = ${existingOrg.id}`);
 	// Hapus equipment yang terkait dengan organizationId AKMIL
-	await db.delete(schema.equipment).where(sql`${schema.equipment.organizationId} = ${existingOrg.id}`);
+	await db
+		.delete(schema.equipment)
+		.where(sql`${schema.equipment.organizationId} = ${existingOrg.id}`);
 	// Hapus stock yang terkait dengan warehouseId AKMIL
 	await db.delete(schema.stock).where(sql`${schema.stock.warehouseId} = ${existingWarehouse.id}`);
 	console.log('  ✅ Data lama berhasil dibersihkan.');

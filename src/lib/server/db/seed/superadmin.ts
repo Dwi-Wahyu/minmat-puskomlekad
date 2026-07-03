@@ -2,8 +2,8 @@ import { config } from 'dotenv';
 config();
 
 import mysql from 'mysql2/promise';
-import * as schema from './schema';
-import * as authSchema from './auth.schema';
+import * as schema from '../schema';
+import * as authSchema from '../auth.schema';
 import { drizzle } from 'drizzle-orm/mysql2';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -17,7 +17,7 @@ import {
 	operatorPusatDanDaerah,
 	pimpinan,
 	superadmin
-} from '../auth.roles';
+} from '../../auth.roles';
 import { hashPassword } from 'better-auth/crypto';
 
 const client = mysql.createPool(process.env.DATABASE_URL ?? '');

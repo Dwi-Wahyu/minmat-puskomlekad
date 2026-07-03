@@ -36,6 +36,77 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const org = orgResult[0];
 	const orgId = org.id;
 
+	const isSatuanBawahan = locals.user?.organization?.parentId !== null;
+	const REMINDER_ROLES = ['kepalaGudang', 'operatorPusatDanDaerah', 'operatorBinmatDanBekharrah'];
+	const roleAllowed = locals.user?.role ? REMINDER_ROLES.includes(locals.user.role) : false;
+	const isCentralKomunityKG = !isSatuanBawahan && locals.user?.role === 'kepalaGudang' && locals.user?.warehouseHeadType === 'KOMUNITY';
+
+	let returnReminders: {
+		lendingId: string;
+		unit: string;
+		equipmentName: string;
+		serialNumber: string;
+		endDate: Date;
+		isOverdue: boolean;
+	}[] = [];
+
+	if ((isSatuanBawahan && roleAllowed) || isCentralKomunityKG) {
+		let memberIds: string[] = [];
+		if (isSatuanBawahan) {
+			const members = await db.query.member.findMany({
+				where: eq(member.organizationId, orgId),
+				columns: { userId: true }
+			});
+			memberIds = members.map((m) => m.userId!).filter(Boolean);
+		}
+
+		if (isCentralKomunityKG || memberIds.length > 0) {
+			const now = new Date();
+			const REMINDER_DUE_SOON_DAYS = 1; // H-1
+			const soonThreshold = new Date(now.getTime() + REMINDER_DUE_SOON_DAYS * 24 * 60 * 60 * 1000);
+
+			const lendingFilter = isCentralKomunityKG
+				? and(eq(lending.organizationId, orgId), eq(lending.status, 'DIPINJAM'))
+				: and(inArray(lending.requestedBy, memberIds), eq(lending.status, 'DIPINJAM'));
+
+			const dueLendings = await db.query.lending.findMany({
+				where: lendingFilter,
+				columns: { id: true, unit: true, endDate: true },
+				with: {
+					items: {
+						with: {
+							equipment: {
+								with: {
+									item: { columns: { name: true } }
+								}
+							}
+						}
+					}
+				}
+			});
+
+			const flatItems: typeof returnReminders = [];
+
+			for (const l of dueLendings) {
+				if (!l.endDate) continue;
+				if (new Date(l.endDate) > soonThreshold) continue;
+
+				for (const li of l.items) {
+					flatItems.push({
+						lendingId: l.id,
+						unit: l.unit,
+						equipmentName: li.equipment?.item?.name ?? 'Alat tidak dikenal',
+						serialNumber: li.equipment?.serialNumber ?? '-',
+						endDate: l.endDate as Date,
+						isOverdue: new Date(l.endDate as Date) < now
+					});
+				}
+			}
+
+			returnReminders = flatItems.sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
+		}
+	}
+
 	const OPERATOR_ROLES = ['operatorPusatDanDaerah', 'operatorBinmatDanBekharrah'];
 	const isOperator = locals.user?.role && OPERATOR_ROLES.includes(locals.user.role);
 
@@ -170,7 +241,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				myMovementsThisMonth: Number(myMovementsCount?.count) || 0,
 				damagedCount: Number(damagedCount?.count) || 0,
 				pendingLendingActions
-			}
+			},
+			returnReminders,
+			isSatuanBawahan
 		};
 	}
 
@@ -475,7 +548,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		return {
 			org_slug: params.org_slug,
 			isKepalaGudang: true,
-			kgDashboardPromise
+			kgDashboardPromise,
+			returnReminders,
+			isSatuanBawahan
 		};
 	}
 
@@ -758,6 +833,8 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			period,
 			equipmentType
 		},
-		dashboardDataPromise
+		dashboardDataPromise,
+		returnReminders,
+		isSatuanBawahan
 	};
 };

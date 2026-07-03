@@ -200,8 +200,7 @@ export const actions: Actions = {
 					await tx.insert(lendingItem).values({
 						id: uuidv4(),
 						lendingId: id,
-						equipmentId: eqId,
-						qty: '1'
+						equipmentId: eqId
 					});
 				}
 
@@ -227,8 +226,7 @@ export const actions: Actions = {
 						await tx.insert(lendingItem).values({
 							id: uuidv4(),
 							lendingId: id,
-							equipmentId: eqp.id,
-							qty: '1'
+							equipmentId: eqp.id
 						});
 					}
 				}
@@ -237,7 +235,7 @@ export const actions: Actions = {
 			return message(form, 'Perubahan peminjaman berhasil disimpan');
 		} catch (err) {
 			console.error('Error updating lending:', err);
-			return message(form, (err.message as string) || 'Kesalahan server internal', { status: 500 });
+			return message(form, ((err as any).message as string) || 'Kesalahan server internal', { status: 500 });
 		}
 	}
 };

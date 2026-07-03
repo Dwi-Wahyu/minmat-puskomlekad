@@ -65,7 +65,22 @@
 		}[];
 	};
 
-	let { data, org_slug }: { data: DashboardData; org_slug: string } = $props();
+	let {
+		data,
+		org_slug,
+		returnReminders = []
+	}: {
+		data: DashboardData;
+		org_slug: string;
+		returnReminders?: {
+			lendingId: string;
+			unit: string;
+			equipmentName: string;
+			serialNumber: string;
+			endDate: Date;
+			isOverdue: boolean;
+		}[];
+	} = $props();
 
 	const summary = $derived(
 		data.summary ?? { totalAlat: 0, siapPakai: 0, rusak: 0, mutasiBulanIni: 0 }
@@ -171,7 +186,59 @@
 		     mode 'ALL' (kepala gudang satuan jajaran) dapat menampilkan ketiga panel sekaligus,
 		     sementara mode spesifik (TRANSITO/BALKIR/KOMUNITY) hanya menampilkan satu karena
 		     data panel lain memang tidak dikirim dari server (undefined) -->
-		{#if data.transito}
+		{#if data.warehouseHeadType === 'ALL' || data.warehouseHeadType === 'KOMUNITY'}
+			<!-- Alat Perlu Dikembalikan -->
+			<div class="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+				<div class="flex items-center gap-2 border-b border-border bg-muted/50 px-5 py-4">
+					<Clock size={16} class="text-amber-500" />
+					<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">
+						Alat Perlu Dikembalikan
+					</h3>
+					<span class="ml-auto text-xs font-medium text-muted-foreground">
+						{returnReminders.length} item
+					</span>
+				</div>
+				<div class="divide-y divide-border">
+					{#each returnReminders as r, idx (r.lendingId + '-' + r.serialNumber + '-' + idx)}
+						<a
+							href={resolve('/(app)/[org_slug]/peminjaman/[id]', {
+								org_slug,
+								id: r.lendingId
+							})}
+							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/40"
+						>
+							<div class="min-w-0 flex-1">
+								<p class="truncate text-sm font-bold text-foreground">{r.equipmentName}</p>
+								<p class="text-xs font-medium text-muted-foreground">{r.unit}</p>
+								<p class="mt-0.5 text-[10px] text-muted-foreground">
+									S/N: {r.serialNumber} · Batas waktu: {new Date(r.endDate).toLocaleDateString(
+										'id-ID',
+										{
+											day: 'numeric',
+											month: 'short',
+											year: 'numeric'
+										}
+									)}
+								</p>
+							</div>
+							<span
+								class="rounded px-2 py-1 text-[10px] font-bold {r.isOverdue
+									? 'bg-destructive/10 text-destructive'
+									: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'}"
+							>
+								{r.isOverdue ? 'Terlambat' : 'Harus Kembali'}
+							</span>
+						</a>
+					{:else}
+						<p class="px-5 py-8 text-center text-sm text-muted-foreground">
+							Tidak ada alat yang perlu dikembalikan saat ini
+						</p>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
+		{#if data.transito && data.warehouseHeadType !== 'ALL'}
 			<div class="rounded-2xl border border-border bg-card shadow-sm">
 				<div class="flex items-center justify-between border-b border-border bg-muted/50 px-5 py-4">
 					<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">Status Transito</h3>
@@ -202,7 +269,7 @@
 			</div>
 		{/if}
 
-		{#if data.balkir}
+		{#if data.balkir && data.warehouseHeadType !== 'ALL'}
 			<div class="rounded-2xl border border-border bg-card shadow-sm">
 				<div class="border-b border-border bg-muted/50 px-5 py-4">
 					<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">Materiil Balkir</h3>
@@ -232,7 +299,7 @@
 			</div>
 		{/if}
 
-		{#if data.komunity}
+		{#if data.komunity && data.warehouseHeadType !== 'ALL'}
 			<div class="rounded-2xl border border-border bg-card shadow-sm">
 				<div class="border-b border-border bg-muted/50 px-5 py-4">
 					<h3 class="text-sm font-bold tracking-wide text-foreground uppercase">Status Komunity</h3>

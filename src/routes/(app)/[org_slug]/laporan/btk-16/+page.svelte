@@ -420,7 +420,7 @@
 						<th class="w-12 border-r border-b px-2 py-3 text-center" rowspan="2">No Urt</th>
 						<th class="w-28 border-r border-b px-2 py-3 text-center" rowspan="2">Kode Barang</th>
 						<th class="w-24 border-r border-b px-2 py-3 text-center" rowspan="2">Tahun</th>
-						<th class="border-r border-b px-3 py-3 text-left" rowspan="2">Nama Materiel</th>
+						<th class="border-r border-b px-3 py-3 text-left" rowspan="2">Nama Materiil</th>
 						<th class="w-36 border-r border-b px-2 py-3 text-center" rowspan="2">Merek / Type</th>
 						<th class="w-16 border-r border-b px-2 py-3 text-center" rowspan="2">Satuan</th>
 						<th class="w-36 border-r border-b px-3 py-3 text-center" rowspan="2">No Seri</th>
@@ -429,7 +429,7 @@
 					{:else if reportType === 'TRIWULAN'}
 						<th class="w-12 border-r border-b px-2 py-3 text-center" rowspan="2">No Urt</th>
 						<th class="w-28 border-r border-b px-2 py-3 text-center" rowspan="2">Kode Barang</th>
-						<th class="border-r border-b px-3 py-3 text-left" rowspan="2">Nama Materiel</th>
+						<th class="border-r border-b px-3 py-3 text-left" rowspan="2">Nama Materiil</th>
 						<th class="w-16 border-r border-b px-2 py-3 text-center" rowspan="2">Sat</th>
 						<th class="w-16 border-r border-b px-2 py-3 text-center" rowspan="2">TOP</th>
 						<th class="w-16 border-r border-b px-2 py-3 text-center" rowspan="2">TW Lalu</th>
@@ -441,7 +441,7 @@
 					{:else if reportType === 'BULANAN'}
 						<th class="w-12 border-r border-b px-2 py-3 text-center" rowspan="2">No Urt</th>
 						<th class="w-28 border-r border-b px-2 py-3 text-center" rowspan="2">Kode Barang</th>
-						<th class="border-r border-b px-3 py-3 text-left" rowspan="2">Nama Materiel</th>
+						<th class="border-r border-b px-3 py-3 text-left" rowspan="2">Nama Materiil</th>
 						<th class="w-16 border-r border-b px-2 py-3 text-center" rowspan="2">Satuan</th>
 						<th class="w-20 border-r border-b px-2 py-3 text-center" rowspan="2">Jumlah</th>
 						<th class="w-36 border-r border-b px-2 py-1.5 text-center" colspan="3">Kondisi</th>

@@ -40,6 +40,18 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 				)
 			];
 
+	const dipinjamFilters = isInduk
+		? [eq(lending.organizationId, organizationId), eq(lending.status, 'DIPINJAM')]
+		: [
+				and(
+					or(
+						eq(lending.organizationId, organizationId),
+						inArray(lending.requestedBy, orgUserIdsSubquery)
+					),
+					eq(lending.status, 'DIPINJAM')
+				)
+			];
+
 	if (statusFilter !== 'ALL') {
 		filters.push(eq(lending.status, statusFilter as any));
 	}
@@ -60,8 +72,22 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 		orderBy: [desc(lending.createdAt)]
 	});
 
+	const dipinjamListPromise = db.query.lending.findMany({
+		where: and(...dipinjamFilters),
+		with: {
+			requestedByUser: { columns: { name: true } },
+			items: {
+				with: {
+					equipment: { with: { item: { columns: { name: true } } } }
+				}
+			}
+		},
+		orderBy: [desc(lending.endDate)]
+	});
+
 	return {
 		lendingListPromise,
+		dipinjamListPromise,
 		filters: {
 			q: searchQuery,
 			status: statusFilter
@@ -70,3 +96,4 @@ export const load: PageServerLoad = async ({ locals, url, params }) => {
 		org_slug: params.org_slug
 	};
 };
+

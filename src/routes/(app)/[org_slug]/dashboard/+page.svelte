@@ -3,15 +3,43 @@
 	import DashboardOperator from '$lib/components/DashboardOperator.svelte';
 	import DashboardPimpinan from '$lib/components/DashboardPimpinan.svelte';
 	import DashboardKepalaGudang from '$lib/components/DashboardKepalaGudang.svelte';
+	import ReturnReminderDialog from '$lib/components/ReturnReminderDialog.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	const isOperator = $derived(data.isOperator ?? false);
 	const operatorDashboard = $derived(data.operatorDashboard);
 	const isKepalaGudang = $derived(data.isKepalaGudang ?? false);
+
+	let reminderOpen = $state(false);
+	let hasOpened = $state(false);
+
+	$effect(() => {
+		if (data.returnReminders && data.returnReminders.length > 0 && data.isSatuanBawahan) {
+			const dismissedKey = `return-reminder-dismissed-${data.org_slug}`;
+			if (!sessionStorage.getItem(dismissedKey)) {
+				reminderOpen = true;
+				hasOpened = true;
+			}
+		}
+	});
+
+	$effect(() => {
+		if (hasOpened && !reminderOpen) {
+			sessionStorage.setItem(`return-reminder-dismissed-${data.org_slug}`, '1');
+		}
+	});
 </script>
 
 <div class="space-y-4 p-4 text-foreground md:space-y-6 md:p-6">
+	{#if data.returnReminders && data.returnReminders.length > 0}
+		<ReturnReminderDialog
+			bind:open={reminderOpen}
+			reminders={data.returnReminders}
+			orgSlug={data.org_slug}
+		/>
+	{/if}
+
 	{#if isOperator && operatorDashboard}
 		<DashboardOperator org_slug={data.org_slug} {operatorDashboard} />
 	{:else if isKepalaGudang}
@@ -50,7 +78,9 @@
 				</div>
 			</div>
 		{:then kgData}
-			<DashboardKepalaGudang data={kgData} org_slug={data.org_slug} />
+			{#if kgData}
+				<DashboardKepalaGudang data={kgData as any} org_slug={data.org_slug} returnReminders={data.returnReminders} />
+			{/if}
 		{:catch err}
 			<div
 				class="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center text-sm text-destructive"
@@ -97,12 +127,14 @@
 				</div>
 			</div>
 		{:then dashboardData}
-			<DashboardPimpinan
-				data={dashboardData}
-				activeFilters={data.activeFilters}
-				userRole={data.user?.role ?? ''}
-				org_slug={data.org_slug}
-			/>
+			{#if dashboardData && data.activeFilters}
+				<DashboardPimpinan
+					data={dashboardData as any}
+					activeFilters={data.activeFilters as any}
+					userRole={data.user?.role ?? ''}
+					org_slug={data.org_slug}
+				/>
+			{/if}
 		{:catch err}
 			<div
 				class="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center text-sm text-destructive"

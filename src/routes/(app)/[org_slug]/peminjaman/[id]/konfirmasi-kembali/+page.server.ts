@@ -92,7 +92,7 @@ export const actions: Actions = {
 				for (const item of items) {
 					// Cek apakah ada override kondisi untuk alat ini
 					const override = conditionOverrides.find((o) => o.equipmentId === item.equipmentId);
-					const finalCondition = override?.condition ?? item.equipment!.condition;
+					const finalCondition = (override?.condition ?? item.equipment!.condition) as any;
 
 					// Kembalikan status ke READY
 					await tx

@@ -14,13 +14,14 @@ export const lendingMutationSchema = yup.object({
 		otherwise: (schema) => schema.nullable().optional()
 	}),
 	startDate: yup.string().required('Tanggal mulai wajib diisi'),
-	endDate: yup.string().nullable().optional(),
+	endDate: yup.string().required('Rencana tanggal selesai harus kembali wajib diisi'),
 	itemIds: yup.array().of(yup.string()).optional(),
 	warehouseIds: yup.array().of(yup.string()).optional(),
 	conditions: yup.array().of(yup.string()).optional(),
 	qtys: yup.array().of(yup.number()).optional(),
 	manualEquipmentIds: yup.array().of(yup.string()).optional(),
-	attachment: yup.mixed<File>()
+	attachment: yup
+		.mixed<File>()
 		.test('fileSize', 'Ukuran file maksimal 5MB', (value) => {
 			if (!value || !(value instanceof File)) return true;
 			return value.size <= 5 * 1024 * 1024;

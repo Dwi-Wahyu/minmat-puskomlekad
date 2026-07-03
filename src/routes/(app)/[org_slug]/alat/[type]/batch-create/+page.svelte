@@ -240,20 +240,15 @@
 		<div>
 			<h1 class="text-3xl font-bold tracking-tight uppercase">Batch Input Alat</h1>
 			<p class="text-sm text-muted-foreground">
-				Tambahkan banyak alat secara dinamis ke dalam organisasi {data.currentOrg.displayName ||
-					data.currentOrg.name}.
+				Tambahkan banyak alat secara dinamis. Tentukan jenis alat, merek, and kuantitas input.
 			</p>
 		</div>
 	</header>
 
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
 		<!-- Sidebar Form Configuration -->
-		<Card.Root class="h-fit border-border bg-card shadow-sm">
-			<Card.Header>
-				<Card.Title>Konfigurasi Batch</Card.Title>
-				<Card.Description>Tentukan jenis alat, merek, and kuantitas input.</Card.Description>
-			</Card.Header>
-			<Card.Content class="space-y-4">
+		<div class="h-fit">
+			<div class="space-y-4">
 				<!-- Choice Mode for Jenis Alat -->
 				<div class="space-y-2">
 					<Label>Jenis Alat <span class="text-red-500">*</span></Label>
@@ -323,7 +318,7 @@
 							</div>
 
 							<!-- Category on-the-fly selection inside Batch Create -->
-							<div class="mt-3 space-y-3 border-t pt-3">
+							<div class="mt-3 space-y-3">
 								<div class="flex items-center justify-between">
 									<Label class="text-xs font-bold text-muted-foreground uppercase"
 										>Kategori Alat <span class="text-red-500">*</span></Label
@@ -463,7 +458,7 @@
 						</p>
 					</div>
 				{:else}
-					<!-- Normal Flow: Superadmin, Kakomlek, Operator -->
+					<!-- Render standard role controls: Superadmin, Kakomlek, Operator -->
 					<div class="space-y-4">
 						<div class="space-y-2">
 							<Label for="totalKomunity">Total Komunity (Grand Total)</Label>
@@ -495,8 +490,8 @@
 						{/if}
 					</div>
 				{/if}
-			</Card.Content>
-		</Card.Root>
+			</div>
+		</div>
 
 		<!-- Main Dynamic Rows Input Area -->
 		<div class="space-y-4 md:col-span-2">
@@ -732,11 +727,10 @@
 			>
 			<Dialog.Description>
 				{#if isHeadTransito}
-					Pilih Satuan Jajaran (Level 3) target distribusi alat ini. Status alat akan diset ke READY
-					untuk proses pengiriman.
+					Pilih satuan target distribusi alat ini. Status alat akan diset ke READY untuk proses
+					pengiriman.
 				{:else}
-					Pilih Satuan Jajaran (Level 3) target peminjaman alat ini. Status alat akan langsung diset
-					ke IN_USE.
+					Pilih satuan peminjam / peruntukan satuan alat ini.
 				{/if}
 			</Dialog.Description>
 		</Dialog.Header>

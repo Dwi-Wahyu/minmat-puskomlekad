@@ -160,7 +160,8 @@
 			children: [
 				{ name: 'Alkomlek', path: getPath('/alat/alkomlek') },
 				{ name: 'Alpernika & Lek', path: getPath('/alat/alpernika') },
-				{ name: 'Barang Habis Pakai', path: getPath('/barang') }
+				{ name: 'Barang Habis Pakai', path: getPath('/barang') },
+				{ name: 'Kategori', path: getPath('/kategori') }
 				// { name: 'Import Inventaris', path: getPath('/materiil/import') }
 			]
 		},

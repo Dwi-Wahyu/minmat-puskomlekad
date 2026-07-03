@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { lending, lendingItem, equipment, organization, auditLog } from '$lib/server/db/schema';
-import { and, eq, isNull } from 'drizzle-orm';
+import { lending, lendingItem, equipment, organization, auditLog, member } from '$lib/server/db/schema';
+import { and, eq, isNull, inArray } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { createNotification } from '$lib/server/notification';
 import { v4 as uuidv4 } from 'uuid';
@@ -199,8 +199,7 @@ export const actions: Actions = {
 					await tx.insert(lendingItem).values({
 						id: uuidv4(),
 						lendingId,
-						equipmentId: eqId,
-						qty: '1'
+						equipmentId: eqId
 					});
 				}
 
@@ -228,8 +227,7 @@ export const actions: Actions = {
 						await tx.insert(lendingItem).values({
 							id: uuidv4(),
 							lendingId,
-							equipmentId: eqp.id,
-							qty: '1'
+							equipmentId: eqp.id
 						});
 					}
 				}
@@ -255,20 +253,41 @@ export const actions: Actions = {
 				where: eq(organization.id, user.organization.parentId || '')
 			});
 
-			// Kirim notifikasi ke organisasi target (pemberi pinjaman)
-			await createNotification({
-				organizationId: targetOrgId,
-				title: isOverride ? 'Perintah Langsung Peminjaman' : 'Pengajuan Peminjaman Baru',
-				body: isOverride
-					? `Unit ${unit} melakukan peminjaman darurat (Perintah Langsung).`
-					: `Unit ${unit} mengajukan peminjaman alat untuk keperluan ${purpose}.`,
-				priority: isOverride ? 'HIGH' : 'MEDIUM',
-				action: {
-					type: 'LENDING_DETAIL',
-					resourceId: lendingId,
-					webPath: `/${parentOrg?.slug || user.organization.slug}/peminjaman/${lendingId}`
-				}
+			// Ambil member dari organisasi pemberi pinjaman yang memiliki role pimpinan, kakomlek, atau kepalaGudang
+			const targetMembers = await db.query.member.findMany({
+				where: and(
+					eq(member.organizationId, targetOrgId),
+					inArray(member.role, ['pimpinan', 'kakomlek', 'kepalaGudang'])
+				)
 			});
+
+			for (const tm of targetMembers) {
+				if (!tm.userId) continue;
+
+				// Jika pengajuan biasa (butuh approval), hanya kirim ke pimpinan dan kakomlek
+				if (!isOverride && tm.role === 'kepalaGudang') {
+					continue;
+				}
+
+				// Jika kepalaGudang, hanya kirim jika warehouseHeadType === 'KOMUNITY'
+				if (tm.role === 'kepalaGudang' && tm.warehouseHeadType !== 'KOMUNITY') {
+					continue;
+				}
+
+				await createNotification({
+					userId: tm.userId,
+					title: isOverride ? 'Perintah Langsung Peminjaman' : 'Pengajuan Peminjaman Baru',
+					body: isOverride
+						? `Unit ${unit} melakukan peminjaman darurat (Perintah Langsung).`
+						: `Unit ${unit} mengajukan peminjaman alat untuk keperluan ${purpose}.`,
+					priority: isOverride ? 'HIGH' : 'MEDIUM',
+					action: {
+						type: 'LENDING_DETAIL',
+						resourceId: lendingId,
+						webPath: `/${parentOrg?.slug || user.organization.slug}/peminjaman/${lendingId}`
+					}
+				});
+			}
 
 			return message(form, 'Peminjaman berhasil diajukan');
 		} catch (err) {
