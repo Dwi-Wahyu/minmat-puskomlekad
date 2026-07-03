@@ -57,7 +57,8 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       PORT: ${PORT}
-      BODY_SIZE_LIMIT: 5000000
+      BODY_SIZE_LIMIT: 5000000,
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET},
     ports:
       - '3000:3000'
     volumes:
