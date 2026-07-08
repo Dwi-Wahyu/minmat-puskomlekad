@@ -1,5 +1,4 @@
 import { eq, inArray, and } from 'drizzle-orm';
-import { db } from '../../db'; // Sesuaikan dengan instance konfigurasi Drizzle Anda
 import {
 	organization,
 	warehouse,
@@ -10,6 +9,13 @@ import {
 	lendingItem,
 	distributionEquipment
 } from '../schema';
+
+import mysql from 'mysql2/promise';
+import * as schema from '../schema';
+import { drizzle } from 'drizzle-orm/mysql2';
+
+const client = mysql.createPool(process.env.DATABASE_URL ?? '');
+const db = drizzle(client, { schema, mode: 'default' });
 
 export async function clearDenmaMabesadInventory() {
 	await db.transaction(async (tx) => {
