@@ -1,5 +1,8 @@
 import Redis from 'ioredis';
 import { env } from '$env/dynamic/private';
+import { db } from '$lib/server/db';
+import { organization } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 
 const redisUrl = env.REDIS_URL || process.env.REDIS_URL || 'redis://redis:6379';
 
@@ -159,16 +162,37 @@ export const CacheTTL = {
 export async function invalidateOrgInventoryCache(orgId: string): Promise<void> {
 	if (!orgId) return;
 
-	// Kita gunakan Promise.allSettled agar jika satu gagal tidak menghentikan yang lain,
-	// meskipun setiap fungsi di atas sudah diproteksi try-catch.
-	await Promise.allSettled([
+	let orgSlug = '';
+	try {
+		const org = await db.query.organization.findFirst({
+			where: eq(organization.id, orgId)
+		});
+		if (org) {
+			orgSlug = org.slug;
+		}
+	} catch (err) {
+		console.error(`[Redis Error] Failed to fetch organization slug for invalidation:`, err);
+	}
+
+	const promises: Promise<any>[] = [
 		invalidateCachePattern(`dashboard:${orgId}:*`),
 		invalidateCache(CacheKeys.gudangBalkir(orgId)),
 		invalidateCache(CacheKeys.gudangKomunity(orgId)),
 		invalidateCache(CacheKeys.gudangTransito(orgId)),
 		invalidateCachePattern(`equipment:list:${orgId}:*`),
-		invalidateCache(CacheKeys.itemConsumable(orgId))
-	]);
+		invalidateCache(CacheKeys.itemConsumable(orgId)),
+		invalidateCachePattern(`category:list:org_${orgId}:*`)
+	];
+
+	if (orgSlug) {
+		promises.push(invalidateCachePattern(`report:btk-16:${orgSlug}:*`));
+		promises.push(invalidateCachePattern(`report:pernika-lek:${orgSlug}:*`));
+		promises.push(invalidateCache(`report:pernika-lek:${orgSlug}`));
+	}
+
+	// Kita gunakan Promise.allSettled agar jika satu gagal tidak menghentikan yang lain,
+	// meskipun setiap fungsi di atas sudah diproteksi try-catch.
+	await Promise.allSettled(promises);
 }
 
 export async function unitsCacheKey(orgId: string) {

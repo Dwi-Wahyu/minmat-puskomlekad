@@ -1,12 +1,13 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { itemCategory, item, equipment } from '$lib/server/db/schema';
+import { itemCategory, item, equipment, organization } from '$lib/server/db/schema';
 import { eq, and, like, sql, or, isNull, inArray } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
-import { getOrSetCache, CacheKeys } from '$lib/server/redis';
+import { getOrSetCache } from '$lib/server/redis';
 
 const categoryQuerySchema = v.object({
+	orgSlug: v.string(),
 	q: v.optional(v.string(), ''),
 	page: v.optional(v.number(), 1),
 	limit: v.optional(v.number(), 10)
@@ -39,12 +40,23 @@ export type CategoryListData = {
 export const getCategoryData = query(categoryQuerySchema, async (args): Promise<CategoryListData> => {
 	requireAuth();
 
-	const { q = '', page = 1, limit = 10 } = args;
+	const { orgSlug, q = '', page = 1, limit = 10 } = args;
 	const offset = (page - 1) * limit;
 
+	// Resolve organization ID from slug
+	const org = await db.query.organization.findFirst({
+		where: eq(organization.slug, orgSlug)
+	});
+
+	if (!org) {
+		throw new Error('Organisasi tidak ditemukan');
+	}
+
+	const orgId = org.id;
+
 	// Use cache to store computed hierarchy results.
-	// Since categories are global, cache key is based on search query, page and limit.
-	const cacheKey = `category:list:q_${q}:p_${page}:l_${limit}`;
+	// Since equipment counts are organization-specific, cache key is scoped by orgId.
+	const cacheKey = `category:list:org_${orgId}:q_${q}:p_${page}:l_${limit}`;
 	const CATEGORY_CACHE_TTL = 86400; // 24 hours
 
 	return getOrSetCache(cacheKey, async () => {
@@ -112,7 +124,10 @@ export const getCategoryData = query(categoryQuerySchema, async (args): Promise<
 					.select({ count: sql<number>`count(*)` })
 					.from(equipment)
 					.innerJoin(item, eq(equipment.itemId, item.id))
-					.where(eq(item.categoryId, p.id));
+					.where(and(
+						eq(item.categoryId, p.id),
+						eq(equipment.organizationId, orgId)
+					));
 				parentEquipCount = eqResult[0]?.count ?? 0;
 			}
 
@@ -122,7 +137,10 @@ export const getCategoryData = query(categoryQuerySchema, async (args): Promise<
 					.select({ count: sql<number>`count(*)` })
 					.from(equipment)
 					.innerJoin(item, eq(equipment.itemId, item.id))
-					.where(eq(item.categoryId, s.id));
+					.where(and(
+						eq(item.categoryId, s.id),
+						eq(equipment.organizationId, orgId)
+					));
 				
 				subCategoriesData.push({
 					id: s.id,

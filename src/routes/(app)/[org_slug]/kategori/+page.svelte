@@ -30,6 +30,7 @@
 	// Derived remote query
 	const categoryQuery = $derived(
 		getCategoryData({
+			orgSlug: page.params.org_slug || '',
 			q,
 			page: currentPage,
 			limit
