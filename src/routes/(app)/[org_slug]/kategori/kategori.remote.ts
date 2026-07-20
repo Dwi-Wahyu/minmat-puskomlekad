@@ -18,6 +18,7 @@ export type SubCategoryData = {
 	name: string;
 	order: number;
 	equipmentCount: number;
+	isVirtual?: boolean;
 };
 
 export type ParentCategoryData = {
@@ -117,19 +118,16 @@ export const getCategoryData = query(categoryQuerySchema, async (args): Promise<
 				.where(eq(itemCategory.parentId, p.id))
 				.orderBy(itemCategory.order, itemCategory.name);
 
-			// Count equipment for parent itself (if no subcategories)
-			let parentEquipCount = 0;
-			if (subs.length === 0) {
-				const eqResult = await db
-					.select({ count: sql<number>`count(*)` })
-					.from(equipment)
-					.innerJoin(item, eq(equipment.itemId, item.id))
-					.where(and(
-						eq(item.categoryId, p.id),
-						eq(equipment.organizationId, orgId)
-					));
-				parentEquipCount = eqResult[0]?.count ?? 0;
-			}
+			// Count equipment directly assigned to parent category itself
+			const parentEqResult = await db
+				.select({ count: sql<number>`count(*)` })
+				.from(equipment)
+				.innerJoin(item, eq(equipment.itemId, item.id))
+				.where(and(
+					eq(item.categoryId, p.id),
+					eq(equipment.organizationId, orgId)
+				));
+			const parentEquipCount = parentEqResult[0]?.count ?? 0;
 
 			const subCategoriesData: SubCategoryData[] = [];
 			for (const s of subs) {

@@ -6,7 +6,9 @@ import type { PageServerLoad, Actions } from './$types';
 import { v4 as uuidv4 } from 'uuid';
 import { invalidateCachePattern } from '$lib/server/redis';
 
-export const load: PageServerLoad = async ({ locals }) => {
+import { getCategoryData } from './kategori.remote';
+
+export const load: PageServerLoad = async ({ locals, url, params }) => {
 	const { user } = locals;
 	if (!user) throw redirect(302, '/');
 
@@ -18,6 +20,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const canCreate = isCentral && (isKakomlek || isSuperAdmin);
 	const canEdit = isCentral && (isKakomlek || isSuperAdmin);
 	const canDelete = isCentral && isSuperAdmin;
+
+	const q = url.searchParams.get('q') || '';
+	const pageNum = Number(url.searchParams.get('page')) || 1;
+	const limitNum = Number(url.searchParams.get('limit')) || 10;
+
+	// Streaming promise for lazy loading category data with {#await}
+	const categoryDataPromise = getCategoryData({
+		orgSlug: params.org_slug,
+		q,
+		page: pageNum,
+		limit: limitNum
+	});
 
 	// Get parent categories for the select dropdown in form modal (level 1 / parentId is null)
 	const parentCategories = await db
@@ -33,7 +47,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 		parentCategories,
 		canCreate,
 		canEdit,
-		canDelete
+		canDelete,
+		categoryDataPromise,
+		filters: {
+			q,
+			page: pageNum,
+			limit: limitNum
+		}
 	};
 };
 
