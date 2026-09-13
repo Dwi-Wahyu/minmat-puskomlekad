@@ -1,7 +1,7 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
-import { equipment, item, warehouse, movement, organization } from '$lib/server/db/schema';
-import { eq, and, like, sql, desc, inArray } from 'drizzle-orm';
+import { equipment, item, warehouse, movement, organization, itemCategory } from '$lib/server/db/schema';
+import { eq, and, like, sql, desc, inArray, isNull } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
 
@@ -9,7 +9,11 @@ const alatSchema = v.object({
 	orgSlug: v.string(),
 	type: v.string(),
 	q: v.optional(v.string(), ''),
-	page: v.optional(v.number(), 1)
+	page: v.optional(v.number(), 1),
+	categoryId: v.optional(v.string(), ''),
+	condition: v.optional(v.string(), ''),
+	warehouseId: v.optional(v.string(), ''),
+	status: v.optional(v.string(), '')
 });
 
 export type AlatListData = {
@@ -35,7 +39,15 @@ export const getAlatData = query(alatSchema, async (args): Promise<AlatListData>
 
 	const orgId = org.id;
 
-	const { type, q: searchQuery, page = 1 } = args;
+	const {
+		type,
+		q: searchQuery,
+		page = 1,
+		categoryId,
+		condition,
+		warehouseId,
+		status
+	} = args;
 	const limit = 10;
 	const offset = (page - 1) * limit;
 
@@ -47,6 +59,35 @@ export const getAlatData = query(alatSchema, async (args): Promise<AlatListData>
 		filters.push(
 			sql`(${like(equipment.serialNumber, `%${searchQuery}%`)} OR ${like(item.name, `%${searchQuery}%`)} OR ${like(equipment.brand, `%${searchQuery}%`)})`
 		);
+	}
+
+	if (condition) {
+		filters.push(eq(equipment.condition, condition as any));
+	}
+
+	if (status) {
+		filters.push(eq(equipment.status, status as any));
+	}
+
+	if (warehouseId) {
+		if (warehouseId === 'none' || warehouseId === 'null') {
+			filters.push(isNull(equipment.warehouseId));
+		} else {
+			filters.push(eq(equipment.warehouseId, warehouseId));
+		}
+	}
+
+	if (categoryId) {
+		if (categoryId === 'none' || categoryId === 'null') {
+			filters.push(isNull(item.categoryId));
+		} else {
+			const children = await db
+				.select({ id: itemCategory.id })
+				.from(itemCategory)
+				.where(eq(itemCategory.parentId, categoryId));
+			const targetCategoryIds = [categoryId, ...children.map((c) => c.id)];
+			filters.push(inArray(item.categoryId, targetCategoryIds));
+		}
 	}
 
 	const [dataRaw, totalCountResult] = await Promise.all([

@@ -31,7 +31,7 @@
 	});
 </script>
 
-<div class="space-y-4 p-4 text-foreground md:space-y-6 md:p-6">
+<div class="space-y-4 p-4 custom-scrollbar text-foreground md:space-y-6 md:p-6">
 	{#if data.returnReminders && data.returnReminders.length > 0}
 		<ReturnReminderDialog
 			bind:open={reminderOpen}

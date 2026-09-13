@@ -160,6 +160,7 @@ export const equipment = mysqlTable(
 		itemId: varchar('item_id', { length: 36 })
 			.notNull()
 			.references(() => item.id),
+		isSet: boolean('is_set').default(false).notNull(),
 		condition: mysqlEnum('condition', ['BAIK', 'RUSAK_RINGAN', 'RUSAK_BERAT', 'RUSAK_TOTAL'])
 			.default('BAIK')
 			.notNull(),
@@ -175,7 +176,37 @@ export const equipment = mysqlTable(
 	(table) => [
 		index('equipment_condition_idx').on(table.condition),
 		index('equipment_item_id_idx').on(table.itemId),
-		index('equipment_classification_idx').on(table.classification)
+		index('equipment_classification_idx').on(table.classification),
+		index('equipment_is_set_idx').on(table.isSet)
+	]
+);
+
+export const equipmentComponentConditionEnum = mysqlEnum('equipment_component_condition', [
+	'BAIK',
+	'RUSAK_RINGAN',
+	'RUSAK_BERAT',
+	'RUSAK_TOTAL'
+]);
+
+export const equipmentComponent = mysqlTable(
+	'equipment_component',
+	{
+		id: varchar('id', { length: 36 })
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		equipmentId: varchar('equipment_id', { length: 36 })
+			.notNull()
+			.references(() => equipment.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 255 }).notNull(),
+		brand: varchar('brand', { length: 100 }),
+		condition: equipmentComponentConditionEnum.default('BAIK').notNull(),
+		isRequired: boolean('is_required').default(true).notNull(),
+		notes: text('notes'),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at').defaultNow().onUpdateNow()
+	},
+	(table) => [
+		index('equipment_component_eq_idx').on(table.equipmentId)
 	]
 );
 
@@ -282,6 +313,11 @@ export const movement = mysqlTable(
 		picId: varchar('pic_id', { length: 36 }).references(() => user.id),
 		referenceType: movementReferenceTypeEnum,
 		referenceId: varchar('reference_id', { length: 36 }),
+		conditionAtArrival: mysqlEnum('condition_at_arrival', [
+			'BAIK',
+			'RUSAK_RINGAN',
+			'RUSAK_BERAT'
+		]),
 		createdAt: timestamp('created_at').defaultNow().notNull()
 	},
 	(table) => [
@@ -587,9 +623,17 @@ export const equipmentRelations = relations(equipment, ({ many, one }) => ({
 		fields: [equipment.organizationId],
 		references: [organization.id]
 	}),
+	components: many(equipmentComponent),
 	maintenances: many(maintenance),
 	lendingItems: many(lendingItem),
 	movements: many(movement)
+}));
+
+export const equipmentComponentRelations = relations(equipmentComponent, ({ one }) => ({
+	equipment: one(equipment, {
+		fields: [equipmentComponent.equipmentId],
+		references: [equipment.id]
+	})
 }));
 
 export const maintenanceRelations = relations(maintenance, ({ one }) => ({
@@ -849,3 +893,5 @@ export type Notification = InferSelectModel<typeof notification>;
 export type NewNotification = InferInsertModel<typeof notification>;
 export type ItemCategory = InferSelectModel<typeof itemCategory>;
 export type NewItemCategory = InferInsertModel<typeof itemCategory>;
+export type EquipmentComponent = InferSelectModel<typeof equipmentComponent>;
+export type NewEquipmentComponent = InferInsertModel<typeof equipmentComponent>;

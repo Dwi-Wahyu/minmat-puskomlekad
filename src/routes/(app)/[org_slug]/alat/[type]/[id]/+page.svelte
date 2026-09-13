@@ -28,7 +28,8 @@
 		Wrench,
 		ShieldCheck,
 		CalendarIcon,
-		X
+		X,
+		Layers
 	} from '@lucide/svelte';
 	import {
 		equipmentConditionColor,
@@ -142,8 +143,16 @@
 			<Card.Content class="space-y-4">
 				<div class="flex items-start justify-between">
 					<div>
-						<Card.Title class="text-2xl">{data.equipment.item.name}</Card.Title>
-						<Card.Description>{data.equipment.serialNumber || '-'}</Card.Description>
+						<div class="flex items-center gap-2">
+							<Card.Title class="text-2xl">{data.equipment.item.name}</Card.Title>
+							{#if data.equipment.isSet}
+								<Badge variant="secondary" class="border-primary/20 bg-primary/10 text-primary font-bold text-xs gap-1">
+									<Layers class="size-3" />
+									SET
+								</Badge>
+							{/if}
+						</div>
+						<Card.Description class="font-mono">{data.equipment.serialNumber || '-'}</Card.Description>
 					</div>
 				</div>
 
@@ -217,6 +226,34 @@
 							{data.equipment.item.description || 'Tidak ada deskripsi.'}
 						</p>
 					</div>
+
+					{#if data.equipment.isSet}
+						<Separator />
+						<div class="space-y-3 pt-2">
+							<div class="flex items-center justify-between">
+								<Label class="font-bold text-foreground">Rincian Kelengkapan Set ({data.equipment.components?.length || 0} Komponen)</Label>
+							</div>
+							{#if !data.equipment.components || data.equipment.components.length === 0}
+								<p class="text-xs text-muted-foreground italic">Belum ada rincian komponen yang terdaftar.</p>
+							{:else}
+								<div class="space-y-2">
+									{#each data.equipment.components as comp (comp.id)}
+										<div class="flex items-center justify-between rounded-lg border bg-muted/20 p-2.5 text-xs">
+											<div class="space-y-0.5">
+												<span class="font-semibold text-foreground">{comp.name}</span>
+												{#if comp.brand}
+													<span class="text-muted-foreground">({comp.brand})</span>
+												{/if}
+											</div>
+											<Badge variant="outline" class={equipmentConditionColor[comp.condition]}>
+												{equipmentConditionLabel[comp.condition]}
+											</Badge>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/if}
 				</div>
 			</Card.Content>
 		</Card.Root>

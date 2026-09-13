@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
-import { equipment } from '$lib/server/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { equipment, warehouse, organization, itemCategory } from '$lib/server/db/schema';
+import { eq, sql, asc } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
 import { invalidateOrgInventoryCache } from '$lib/server/redis';
@@ -14,8 +14,22 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (!org) throw fail(404, { message: 'Organisasi tidak ditemukan' });
 
+	const [warehouses, categories] = await Promise.all([
+		db
+			.select({ id: warehouse.id, name: warehouse.name })
+			.from(warehouse)
+			.where(eq(warehouse.organizationId, org.id))
+			.orderBy(asc(warehouse.name)),
+		db.query.itemCategory.findMany({
+			with: { parent: true },
+			orderBy: [asc(itemCategory.name)]
+		})
+	]);
+
 	return {
-		type
+		type,
+		warehouses,
+		categories
 	};
 };
 

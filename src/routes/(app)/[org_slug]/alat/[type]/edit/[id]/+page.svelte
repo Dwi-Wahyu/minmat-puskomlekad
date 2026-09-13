@@ -6,7 +6,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
-	import { ChevronLeft, Save, Loader2 } from '@lucide/svelte';
+	import { ChevronLeft, Save, Loader2, Trash2, Plus, Layers } from '@lucide/svelte';
 	import { superForm } from 'sveltekit-superforms';
 	import { yupClient } from 'sveltekit-superforms/adapters';
 	import { equipmentSchema } from '$lib/schemas/equipment-schema';
@@ -25,6 +25,7 @@
 		untrack(() => data.form),
 		{
 			validators: yupClient(equipmentSchema),
+			dataType: 'json',
 			onUpdated: ({ form }) => {
 				if (form.valid) {
 					notificationMsg = $message || 'Data alat berhasil diperbarui';
@@ -202,13 +203,48 @@
 			{/if}
 		</div>
 
+		<!-- TOGGLE ALAT BERUPA SET -->
+		<div class="flex items-center justify-between rounded-lg border bg-muted/30 p-4 shadow-sm">
+			<div class="space-y-0.5">
+				<div class="flex items-center gap-2">
+					<Layers class="size-4 text-primary" />
+					<Label for="isSetToggleEdit" class="text-sm font-bold cursor-pointer">Alat Berupa Set / Kit</Label>
+				</div>
+				<p class="text-xs text-muted-foreground">
+					Aktifkan jika alat ini terdiri dari beberapa komponen/subset fisik (misal: Antena Satelit, Adaptor, dll.).
+				</p>
+			</div>
+			<div class="flex items-center">
+				<input
+					type="checkbox"
+					id="isSetToggleEdit"
+					class="h-5 w-5 rounded border-input text-primary focus:ring-primary cursor-pointer"
+					bind:checked={$form.isSet}
+					onchange={() => {
+						if ($form.isSet) {
+							$form.baseUnit = 'SET';
+							if (!$form.components || $form.components.length === 0) {
+								$form.components = [
+									{ name: '', brand: '', condition: 'BAIK', isRequired: true }
+								];
+							}
+						} else {
+							$form.baseUnit = 'UNIT';
+						}
+					}}
+				/>
+				<input type="hidden" name="isSet" value={$form.isSet ? 'true' : 'false'} />
+				<input type="hidden" name="baseUnit" value={$form.baseUnit || ($form.isSet ? 'SET' : 'UNIT')} />
+			</div>
+		</div>
+
 		<div class="grid gap-6 md:grid-cols-2">
 			<div class="space-y-2">
 				<Label for="itemName" class={$errors.itemName ? 'text-destructive' : ''}>Nama Alat</Label>
 				<Input
 					name="itemName"
 					id="itemName"
-					placeholder="Contoh: Radio HT, Jammer..."
+					placeholder="Contoh: Radio HT, Jammer, Starlink..."
 					aria-invalid={$errors.itemName ? 'true' : undefined}
 					bind:value={$form.itemName}
 				/>
@@ -218,13 +254,13 @@
 			</div>
 
 			<div class="space-y-2">
-				<Label for="serialNumber" class={$errors.serialNumber ? 'text-destructive' : ''}
-					>Serial Number (SN)</Label
-				>
+				<Label for="serialNumber" class={$errors.serialNumber ? 'text-destructive' : ''}>
+					{$form.isSet ? 'Serial Number (SN) Set Utama' : 'Serial Number (SN)'}
+				</Label>
 				<Input
 					name="serialNumber"
 					id="serialNumber"
-					placeholder="Contoh: SN-12345678"
+					placeholder={$form.isSet ? 'Contoh: SN-SET-001' : 'Contoh: SN-12345678'}
 					aria-invalid={$errors.serialNumber ? 'true' : undefined}
 					bind:value={$form.serialNumber}
 				/>
@@ -304,6 +340,100 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- SECTION RINCIAN KOMPONEN SET -->
+		{#if $form.isSet}
+			<div class="space-y-4">
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<h3 class="text-base font-bold text-foreground">Rincian Subset Alat</h3>
+						<p class="text-xs text-muted-foreground">
+							Daftarkan sub-komponen fisik beserta kondisinya masing-masing.
+						</p>
+					</div>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						class="gap-1.5 text-xs font-semibold bg-background"
+						onclick={() => {
+							$form.components = [
+								...($form.components || []),
+								{ name: '', brand: '', condition: 'BAIK', isRequired: true }
+							];
+						}}
+					>
+						<Plus class="size-3.5" />
+						Tambah Komponen
+					</Button>
+				</div>
+
+				{#if !$form.components || $form.components.length === 0}
+					<div class="rounded-md border border-dashed bg-background p-6 text-center">
+						<p class="text-xs text-muted-foreground italic">
+							Belum ada komponen yang ditambahkan. Klik tombol "+ Tambah Komponen" di atas untuk menambahkan rincian subset alat.
+						</p>
+					</div>
+				{:else}
+					<div class="space-y-3">
+						{#each $form.components as component, idx (idx)}
+							<div class="grid gap-3 rounded-lg border bg-card p-4 shadow-sm sm:grid-cols-12 items-end">
+								{#if component.id}
+									<input type="hidden" name="components[{idx}].id" value={component.id} />
+								{/if}
+								<div class="sm:col-span-7 space-y-1.5">
+									<Label class="text-xs font-semibold">Nama Komponen <span class="text-destructive">*</span></Label>
+									<Input
+										name="components[{idx}].name"
+										placeholder="Contoh: Adaptor, Antena Satelit"
+										class="h-9 text-xs"
+										bind:value={component.name}
+									/>
+								</div>
+								<div class="sm:col-span-4 space-y-1.5">
+									<Label class="text-xs font-semibold">Kondisi</Label>
+									<Select.Root
+										type="single"
+										value={component.condition || 'BAIK'}
+										onValueChange={(v) => {
+											if (v) {
+												const condition = v as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
+												$form.components[idx].condition = condition;
+												component.condition = condition;
+											}
+										}}
+									>
+										<Select.Trigger class="h-9 w-full bg-background text-xs">
+											{equipmentConditionLabel[component.condition] || 'Pilih Kondisi'}
+										</Select.Trigger>
+										<Select.Content>
+											<Select.Item value="BAIK">Baik</Select.Item>
+											<Select.Item value="RUSAK_RINGAN">Rusak Ringan</Select.Item>
+											<Select.Item value="RUSAK_BERAT">Rusak Berat</Select.Item>
+											<Select.Item value="RUSAK_TOTAL">Rusak Total</Select.Item>
+										</Select.Content>
+									</Select.Root>
+									<input type="hidden" name="components[{idx}].condition" value={component.condition} />
+								</div>
+								<div class="sm:col-span-1 flex justify-end">
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										class="text-destructive hover:bg-destructive/10 size-9"
+										onclick={() => {
+											$form.components = $form.components.filter((_, i) => i !== idx);
+										}}
+									>
+										<Trash2 class="size-4" />
+									</Button>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="flex justify-end gap-3">
 			<Button variant="outline" href="/{page.params.org_slug}/alat/{data.type}" disabled={$delayed}>

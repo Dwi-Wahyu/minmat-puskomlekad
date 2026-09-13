@@ -5,7 +5,8 @@ import {
 	warehouse,
 	organization,
 	movement,
-	itemCategory
+	itemCategory,
+	equipmentComponent
 } from '$lib/server/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
@@ -54,6 +55,8 @@ export const actions: Actions = {
 
 		const {
 			itemName,
+			baseUnit,
+			isSet,
 			serialNumber,
 			brand,
 			warehouseId,
@@ -63,9 +66,12 @@ export const actions: Actions = {
 			categoryId,
 			newCategoryName,
 			parentCategoryId,
-			categoryMode
+			categoryMode,
+			components
 		} = form.data as {
 			itemName: string;
+			baseUnit?: string;
+			isSet?: boolean;
 			serialNumber: string | null;
 			brand: string | null;
 			warehouseId: string | null;
@@ -76,10 +82,53 @@ export const actions: Actions = {
 			newCategoryName: string | null;
 			parentCategoryId: string | null;
 			categoryMode: 'select' | 'new';
+			components?: Array<{
+				id?: string;
+				name: string;
+				serialNumber?: string | null;
+				brand?: string | null;
+				condition?: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
+				isRequired?: boolean;
+			}>;
 		};
 
+		// Parse components: use form.data.components if present, or parse from formData
+		let finalComponents =
+			Array.isArray(components) && components.length > 0 ? [...components] : [];
+
+		if (finalComponents.length === 0) {
+			const parsedComps: Array<{
+				id?: string;
+				name: string;
+				condition: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
+				brand?: string | null;
+				isRequired?: boolean;
+			}> = [];
+			for (const [key, value] of formData.entries()) {
+				const match = key.match(/^components\[(\d+)\]\.(id|name|condition|brand)$/);
+				if (match) {
+					const index = parseInt(match[1], 10);
+					const field = match[2];
+					if (!parsedComps[index]) {
+						parsedComps[index] = { name: '', condition: 'BAIK', brand: null, isRequired: true };
+					}
+					if (field === 'id') parsedComps[index].id = value.toString();
+					else if (field === 'name') parsedComps[index].name = value.toString();
+					else if (field === 'condition') parsedComps[index].condition = value.toString() as any;
+					else if (field === 'brand') parsedComps[index].brand = value.toString();
+				}
+			}
+			finalComponents = parsedComps.filter((c) => c && c.name && c.name.trim());
+		}
+
+		const isSetBool =
+			isSet === true ||
+			String(isSet) === 'true' ||
+			formData.get('isSet') === 'true' ||
+			finalComponents.length > 0;
+
 		// Get the raw form data for the image file
-		const imageFile = formData.get('image') as File;
+		const imageFile = (formData.get('image') as File) || (form.data.image as File);
 
 		// Upload image if exists
 		const { fileName, error: uploadError } = await uploadFile(imageFile, 'item');
@@ -134,12 +183,15 @@ export const actions: Actions = {
 					.where(and(eq(item.name, itemName), eq(item.equipmentType, equipmentType)))
 					.limit(1);
 
+				const finalBaseUnit = isSetBool ? 'SET' : (baseUnit || 'UNIT');
+
 				if (existingItemResults.length > 0) {
 					itemId = existingItemResults[0].id;
-					// Update image or categoryId if new details provided
+					// Update image or categoryId or baseUnit if new details provided
 					const updateData: any = {};
 					if (fileName) updateData.imagePath = fileName;
 					if (finalCategoryId) updateData.categoryId = finalCategoryId;
+					if (isSetBool) updateData.baseUnit = 'SET';
 
 					if (Object.keys(updateData).length > 0) {
 						await tx.update(item).set(updateData).where(eq(item.id, itemId));
@@ -151,7 +203,7 @@ export const actions: Actions = {
 						name: itemName,
 						type: 'ASSET',
 						equipmentType: equipmentType,
-						baseUnit: 'UNIT',
+						baseUnit: finalBaseUnit,
 						categoryId: finalCategoryId,
 						imagePath: fileName,
 						createdAt: new Date()
@@ -162,14 +214,32 @@ export const actions: Actions = {
 				await tx.insert(equipment).values({
 					id: equipmentId,
 					itemId,
+					isSet: isSetBool,
 					serialNumber: serialNumber || null,
 					brand: brand || null,
 					warehouseId: warehouseId || null,
 					organizationId: org.id,
-					condition: (condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT') || 'BAIK',
-					status: (status as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE') || 'READY',
+					condition: (condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL') || 'BAIK',
+					status: (status as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE' | 'DISPOSED') || 'READY',
 					createdAt: new Date()
 				});
+
+				// Insert components if isSet is true
+				if (isSetBool && Array.isArray(finalComponents)) {
+					for (const comp of finalComponents) {
+						if (comp && comp.name && comp.name.trim()) {
+							await tx.insert(equipmentComponent).values({
+								id: comp.id || crypto.randomUUID(),
+								equipmentId,
+								name: comp.name.trim(),
+								brand: comp.brand ? comp.brand.trim() : null,
+								condition: comp.condition || 'BAIK',
+								isRequired: comp.isRequired ?? true,
+								createdAt: new Date()
+							});
+						}
+					}
+				}
 
 				// Create movement record if classification is provided
 				if (classification) {

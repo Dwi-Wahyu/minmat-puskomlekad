@@ -1,5 +1,12 @@
 import { db } from '$lib/server/db';
-import { equipment, item, warehouse, organization, movement } from '$lib/server/db/schema';
+import {
+	equipment,
+	item,
+	warehouse,
+	organization,
+	movement,
+	equipmentComponent
+} from '$lib/server/db/schema';
 import { eq, desc, and, gte, lte } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/mysql-core';
 import { error } from '@sveltejs/kit';
@@ -16,19 +23,25 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const toWarehouse = alias(warehouse, 'to_warehouse');
 
 	// Use explicit select with joins to avoid LEFT JOIN LATERAL issues on some MySQL/MariaDB versions
-	const results = await db
-		.select({
-			equipment: equipment,
-			item: item,
-			warehouse: warehouse,
-			organization: organization
-		})
-		.from(equipment)
-		.innerJoin(item, eq(equipment.itemId, item.id))
-		.leftJoin(warehouse, eq(equipment.warehouseId, warehouse.id))
-		.leftJoin(organization, eq(warehouse.organizationId, organization.id))
-		.where(eq(equipment.id, id))
-		.limit(1);
+	const [results, components] = await Promise.all([
+		db
+			.select({
+				equipment: equipment,
+				item: item,
+				warehouse: warehouse,
+				organization: organization
+			})
+			.from(equipment)
+			.innerJoin(item, eq(equipment.itemId, item.id))
+			.leftJoin(warehouse, eq(equipment.warehouseId, warehouse.id))
+			.leftJoin(organization, eq(warehouse.organizationId, organization.id))
+			.where(eq(equipment.id, id))
+			.limit(1),
+		db
+			.select()
+			.from(equipmentComponent)
+			.where(eq(equipmentComponent.equipmentId, id))
+	]);
 
 	if (results.length === 0) throw error(404, 'Alat tidak ditemukan');
 
@@ -36,6 +49,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const detail = {
 		...row.equipment,
 		item: row.item,
+		components: components || [],
 		warehouse: row.warehouse
 			? {
 					...row.warehouse,

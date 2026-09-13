@@ -1,5 +1,12 @@
 import { db } from '$lib/server/db';
-import { equipment, item, warehouse, organization, itemCategory } from '$lib/server/db/schema';
+import {
+	equipment,
+	item,
+	warehouse,
+	organization,
+	itemCategory,
+	equipmentComponent
+} from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { fail, error } from '@sveltejs/kit';
@@ -18,38 +25,42 @@ export const load: PageServerLoad = async ({ params }) => {
 			.from(warehouse)
 			.innerJoin(organization, eq(warehouse.organizationId, organization.id))
 			.where(eq(organization.slug, org_slug)),
-		db
-			.select({
-				equipment: equipment,
-				item: item
-			})
-			.from(equipment)
-			.innerJoin(item, eq(equipment.itemId, item.id))
-			.where(eq(equipment.id, id))
-			.limit(1),
+		db.query.equipment.findFirst({
+			where: eq(equipment.id, id),
+			with: {
+				item: true,
+				components: true
+			}
+		}),
 		db.query.itemCategory.findMany({
 			with: { parent: true }
 		})
 	]);
 
-	if (currentEquipmentResults.length === 0) {
+	if (!currentEquipmentResults) {
 		throw error(404, 'Alat tidak ditemukan');
 	}
 
-	const currentEquipment = {
-		...currentEquipmentResults[0].equipment,
-		item: currentEquipmentResults[0].item
-	};
+	const currentEquipment = currentEquipmentResults;
 
 	const form = await superValidate(
 		{
 			itemName: currentEquipment.item.name,
+			baseUnit: currentEquipment.item.baseUnit ?? (currentEquipment.isSet ? 'SET' : 'UNIT'),
+			isSet: currentEquipment.isSet,
 			serialNumber: currentEquipment.serialNumber ?? undefined,
 			brand: currentEquipment.brand ?? undefined,
 			warehouseId: currentEquipment.warehouseId ?? undefined,
 			condition: currentEquipment.condition,
 			status: currentEquipment.status ?? undefined,
-			categoryId: currentEquipment.item.categoryId ?? undefined
+			categoryId: currentEquipment.item.categoryId ?? undefined,
+			components: (currentEquipment.components || []).map((c) => ({
+				id: c.id,
+				name: c.name,
+				brand: c.brand ?? null,
+				condition: c.condition,
+				isRequired: c.isRequired
+			}))
 		},
 		yup(equipmentSchema)
 	);
@@ -75,6 +86,8 @@ export const actions: Actions = {
 
 		const {
 			itemName,
+			baseUnit,
+			isSet,
 			serialNumber,
 			brand,
 			warehouseId,
@@ -83,9 +96,12 @@ export const actions: Actions = {
 			categoryId,
 			newCategoryName,
 			parentCategoryId,
-			categoryMode
+			categoryMode,
+			components
 		} = form.data as {
 			itemName: string;
+			baseUnit?: string;
+			isSet?: boolean;
 			serialNumber: string | null;
 			brand: string | null;
 			warehouseId: string | null;
@@ -95,8 +111,50 @@ export const actions: Actions = {
 			newCategoryName: string | null;
 			parentCategoryId: string | null;
 			categoryMode: 'select' | 'new';
+			components?: Array<{
+				id?: string;
+				name: string;
+				serialNumber?: string | null;
+				brand?: string | null;
+				condition?: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
+				isRequired?: boolean;
+			}>;
 		};
 
+		// Parse components: use form.data.components if present, or parse from formData
+		let finalComponents =
+			Array.isArray(components) && components.length > 0 ? [...components] : [];
+
+		if (finalComponents.length === 0) {
+			const parsedComps: Array<{
+				id?: string;
+				name: string;
+				condition: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
+				brand?: string | null;
+				isRequired?: boolean;
+			}> = [];
+			for (const [key, value] of formData.entries()) {
+				const match = key.match(/^components\[(\d+)\]\.(id|name|condition|brand)$/);
+				if (match) {
+					const index = parseInt(match[1], 10);
+					const field = match[2];
+					if (!parsedComps[index]) {
+						parsedComps[index] = { name: '', condition: 'BAIK', brand: null, isRequired: true };
+					}
+					if (field === 'id') parsedComps[index].id = value.toString();
+					else if (field === 'name') parsedComps[index].name = value.toString();
+					else if (field === 'condition') parsedComps[index].condition = value.toString() as any;
+					else if (field === 'brand') parsedComps[index].brand = value.toString();
+				}
+			}
+			finalComponents = parsedComps.filter((c) => c && c.name && c.name.trim());
+		}
+
+		const isSetBool =
+			isSet === true ||
+			String(isSet) === 'true' ||
+			formData.get('isSet') === 'true' ||
+			finalComponents.length > 0;
 		const finalStatus = condition === 'RUSAK_TOTAL' ? 'DISPOSED' : status;
 
 		// Map URL type to database equipmentType
@@ -121,7 +179,7 @@ export const actions: Actions = {
 				const current = currentResults[0];
 
 				// Get image file
-				const imageFile = formData.get('image') as File;
+				const imageFile = (formData.get('image') as File) || (form.data.image as File);
 				let imagePath = current.item.imagePath;
 
 				// Upload new image if exists
@@ -168,12 +226,15 @@ export const actions: Actions = {
 					.where(and(eq(item.name, itemName), eq(item.equipmentType, equipmentType)))
 					.limit(1);
 
+				const finalBaseUnit = isSetBool ? 'SET' : (baseUnit || 'UNIT');
+
 				if (existingItemResults.length > 0) {
 					itemId = existingItemResults[0].id;
 					// Update existing item details
 					const updateData: any = {};
 					if (imageFile && imageFile.size > 0) updateData.imagePath = imagePath;
 					if (finalCategoryId) updateData.categoryId = finalCategoryId;
+					if (isSetBool) updateData.baseUnit = 'SET';
 
 					if (Object.keys(updateData).length > 0) {
 						await tx.update(item).set(updateData).where(eq(item.id, itemId));
@@ -185,7 +246,7 @@ export const actions: Actions = {
 						name: itemName,
 						type: 'ASSET',
 						equipmentType: equipmentType,
-						baseUnit: 'UNIT',
+						baseUnit: finalBaseUnit,
 						categoryId: finalCategoryId,
 						imagePath: imagePath,
 						createdAt: new Date()
@@ -196,16 +257,36 @@ export const actions: Actions = {
 					.update(equipment)
 					.set({
 						itemId,
+						isSet: isSetBool,
 						serialNumber: serialNumber || null,
 						brand: brand || null,
 						warehouseId: warehouseId || null,
-						condition: (condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT') || 'BAIK',
+						condition: (condition as 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL') || 'BAIK',
 						status:
 							(finalStatus as 'READY' | 'IN_USE' | 'TRANSIT' | 'MAINTENANCE' | 'DISPOSED') ||
 							'READY',
 						updatedAt: new Date()
 					})
 					.where(eq(equipment.id, id));
+
+				// Sinkronisasi komponen
+				await tx.delete(equipmentComponent).where(eq(equipmentComponent.equipmentId, id));
+
+				if (isSetBool && Array.isArray(finalComponents)) {
+					for (const comp of finalComponents) {
+						if (comp && comp.name && comp.name.trim()) {
+							await tx.insert(equipmentComponent).values({
+								id: comp.id || crypto.randomUUID(),
+								equipmentId: id,
+								name: comp.name.trim(),
+								brand: comp.brand ? comp.brand.trim() : null,
+								condition: comp.condition || 'BAIK',
+								isRequired: comp.isRequired ?? true,
+								createdAt: new Date()
+							});
+						}
+					}
+				}
 
 				return current.equipment.organizationId!;
 			});

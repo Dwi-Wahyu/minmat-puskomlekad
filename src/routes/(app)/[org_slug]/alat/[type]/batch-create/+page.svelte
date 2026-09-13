@@ -19,7 +19,11 @@
 		Sparkles,
 		AlertTriangle,
 		Search,
-		Info
+		Info,
+		Layers,
+		Plus,
+		CheckCircle2,
+		ListChecks
 	} from '@lucide/svelte';
 	import NotificationDialog from '$lib/components/NotificationDialog.svelte';
 	import {
@@ -39,6 +43,8 @@
 	let selectedItemName = $state('');
 	let newItemName = $state('');
 	let brand = $state('');
+	let isSet = $state(false);
+	let batchComponentNames = $state<string[]>(['Antena Satelit', 'Adaptor']);
 
 	// Category on-the-fly State
 	let categoryMode = $state<'select' | 'new'>('select');
@@ -51,6 +57,11 @@
 	let totalTransito = $state(0);
 
 	// Dynamic Rows State
+	interface RowComponent {
+		name: string;
+		condition: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
+	}
+
 	interface Row {
 		index: number;
 		serialNumber: string;
@@ -58,6 +69,7 @@
 		condition: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
 		subUnitId: string | undefined;
 		subUnitName: string | null;
+		components?: RowComponent[];
 	}
 	let rows = $state<Row[]>([]);
 
@@ -72,6 +84,11 @@
 	let lendingDialogOpen = $state(false);
 	let activeRowIndex = $state<number | null>(null);
 	let tempSubUnitId = $state<string | undefined>(undefined);
+
+	// Components Dialog State
+	let componentsDialogOpen = $state(false);
+	let activeComponentRowIndex = $state<number | null>(null);
+	let tempRowComponents = $state<RowComponent[]>([]);
 
 	// Submit Loading & Notifications
 	let isSubmitting = $state(false);
@@ -98,12 +115,49 @@
 		data.warehouseHeadType === null && totalBalkir > totalKomunity
 	);
 
+	function getRowComponents(existingRow?: Row): RowComponent[] {
+		if (!isSet) return [];
+		const existing = existingRow?.components || [];
+		return batchComponentNames.filter(Boolean).map((name) => {
+			const found = existing.find((c) => c.name === name);
+			return {
+				name,
+				condition: found?.condition || 'BAIK'
+			};
+		});
+	}
+
+	function openComponentsDialog(index: number) {
+		activeComponentRowIndex = index;
+		const row = rows[index];
+		const existingComps = row.components || [];
+
+		tempRowComponents = batchComponentNames.filter(Boolean).map((name) => {
+			const found = existingComps.find((c) => c.name === name);
+			return {
+				name,
+				condition: found?.condition || 'BAIK'
+			};
+		});
+
+		componentsDialogOpen = true;
+	}
+
+	function saveComponents() {
+		if (activeComponentRowIndex !== null && rows[activeComponentRowIndex]) {
+			rows[activeComponentRowIndex].components = JSON.parse(JSON.stringify(tempRowComponents));
+		}
+		componentsDialogOpen = false;
+	}
+
 	// Auto-assign values when total or type changes
 	$effect(() => {
 		const headType = data.warehouseHeadType;
 		const currentTotalBalkir = totalBalkir;
 		const currentTotalTransito = totalTransito;
 		const currentTotalKomunity = totalKomunity;
+		const currentIsSet = isSet;
+		const currentBatchComponents = batchComponentNames;
 
 		untrack(() => {
 			let count = 0;
@@ -118,7 +172,8 @@
 						classification: 'BALKIR',
 						condition: 'RUSAK_BERAT',
 						subUnitId: rows[i]?.subUnitId || undefined,
-						subUnitName: rows[i]?.subUnitName || null
+						subUnitName: rows[i]?.subUnitName || null,
+						components: getRowComponents(rows[i])
 					});
 				}
 			} else if (headType === 'TRANSITO') {
@@ -130,7 +185,8 @@
 						classification: 'TRANSITO',
 						condition: 'BAIK',
 						subUnitId: rows[i]?.subUnitId || undefined,
-						subUnitName: rows[i]?.subUnitName || null
+						subUnitName: rows[i]?.subUnitName || null,
+						components: getRowComponents(rows[i])
 					});
 				}
 			} else if (headType === 'KOMUNITY') {
@@ -142,7 +198,8 @@
 						classification: 'KOMUNITY',
 						condition: 'BAIK',
 						subUnitId: rows[i]?.subUnitId || undefined,
-						subUnitName: rows[i]?.subUnitName || null
+						subUnitName: rows[i]?.subUnitName || null,
+						components: getRowComponents(rows[i])
 					});
 				}
 			} else {
@@ -158,7 +215,8 @@
 							classification: isBalkir ? 'BALKIR' : 'KOMUNITY',
 							condition: isBalkir ? 'RUSAK_BERAT' : 'BAIK',
 							subUnitId: rows[i]?.subUnitId || undefined,
-							subUnitName: rows[i]?.subUnitName || null
+							subUnitName: rows[i]?.subUnitName || null,
+							components: getRowComponents(rows[i])
 						});
 					}
 				}
@@ -232,7 +290,7 @@
 	});
 </script>
 
-<div class="mx-auto flex max-w-5xl flex-col gap-6 p-4 text-foreground">
+<div class="mx-auto flex max-w-5xl flex-col gap-6 p-4 custom-scrollbar text-foreground">
 	<header class="flex items-center gap-4">
 		<Button size="icon" href="/{page.params.org_slug}/alat/{data.type}" variant="outline">
 			<ArrowLeft class="size-4" />
@@ -412,6 +470,71 @@
 					<Input id="brand" bind:value={brand} placeholder="Contoh: Motorola, Kenwood" />
 				</div>
 
+				<!-- Toggle Alat Berupa Set -->
+				<div class="flex items-center justify-between rounded-lg border bg-muted/40 p-3 shadow-xs">
+					<div class="space-y-0.5">
+						<div class="flex items-center gap-1.5">
+							<Layers class="size-3.5 text-primary" />
+							<Label for="batchIsSetToggle" class="text-xs font-bold cursor-pointer">Alat Berupa Set / Kit</Label>
+						</div>
+						<p class="text-[10px] text-muted-foreground">
+							Aktifkan jika alat dalam batch ini memiliki kelengkapan sub-komponen berseri.
+						</p>
+					</div>
+					<input
+						type="checkbox"
+						id="batchIsSetToggle"
+						class="h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer"
+						bind:checked={isSet}
+					/>
+				</div>
+
+				{#if isSet}
+					<div class="space-y-2.5 rounded-lg border border-primary/20 bg-primary/5 p-3">
+						<div class="flex items-center justify-between">
+							<Label class="text-xs font-bold text-foreground">Kelengkapan Set Standar</Label>
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								class="h-6 text-[10px] font-semibold text-primary px-1.5 hover:bg-primary/10"
+								onclick={() => {
+									batchComponentNames = [...batchComponentNames, ''];
+								}}
+							>
+								<Plus class="size-3 mr-0.5" />
+								Komponen
+							</Button>
+						</div>
+						<p class="text-[10px] text-muted-foreground">
+							Tentukan sub-komponen fisik yang ada di setiap unit set.
+						</p>
+						<div class="space-y-1.5">
+							{#each batchComponentNames as compName, cIdx (cIdx)}
+								<div class="flex items-center gap-1.5">
+									<Input
+										class="h-7 text-xs bg-background"
+										placeholder="Contoh: Adaptor, Antena..."
+										bind:value={batchComponentNames[cIdx]}
+									/>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										class="size-7 text-destructive hover:bg-destructive/10 shrink-0"
+										disabled={batchComponentNames.length <= 1}
+										onclick={() => {
+											batchComponentNames = batchComponentNames.filter((_, i) => i !== cIdx);
+										}}
+									>
+										<Trash2 class="size-3" />
+									</Button>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
 				<hr class="my-2 border-border" />
 
 				<!-- Render based on warehouseHeadType -->
@@ -506,7 +629,7 @@
 							: 'Masukkan serial number dan kelola pinjaman untuk setiap alat.'}
 					</Card.Description>
 				</Card.Header>
-				<Card.Content class="max-h-[60vh] overflow-y-auto p-0">
+				<Card.Content class="max-h-[60vh] custom-scrollbar overflow-y-auto p-0">
 					{#if rows.length === 0}
 						<div
 							class="flex flex-col items-center justify-center gap-2 py-16 text-center text-muted-foreground"
@@ -524,7 +647,10 @@
 								<Table.Row>
 									<Table.Head class="w-12 text-center">No</Table.Head>
 									<Table.Head class="w-44">Klasifikasi</Table.Head>
-									<Table.Head>Serial Number</Table.Head>
+									<Table.Head>{isSet ? 'Serial Number (Set)' : 'Serial Number'}</Table.Head>
+									{#if isSet}
+										<Table.Head class="w-48">Kelengkapan Set</Table.Head>
+									{/if}
 									<Table.Head class="w-24 text-right"
 										>{isHeadTransito ? 'Satuan Tujuan' : 'Pinjamkan'}</Table.Head
 									>
@@ -559,7 +685,7 @@
 											<div class="space-y-1">
 												<Input
 													bind:value={row.serialNumber}
-													placeholder="Masukkan SN Alat..."
+													placeholder={isSet ? 'SN Set Utama...' : 'Masukkan SN Alat...'}
 													class="h-9 font-mono uppercase"
 													required
 												/>
@@ -583,6 +709,27 @@
 												{/if}
 											</div>
 										</Table.Cell>
+										{#if isSet}
+											<Table.Cell>
+												{@const filledCount = row.components?.filter(c => c.name?.trim())?.length || 0}
+												{@const totalCount = row.components?.length || 0}
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													class="h-8 text-xs gap-1.5 w-full justify-between font-normal {filledCount === totalCount && totalCount > 0 ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20' : 'text-muted-foreground'}"
+													onclick={() => openComponentsDialog(i)}
+												>
+													<span class="flex items-center gap-1 truncate">
+														<ListChecks class="size-3.5 shrink-0" />
+														<span>{filledCount}/{totalCount} Komponen</span>
+													</span>
+													{#if filledCount === totalCount && totalCount > 0}
+														<CheckCircle2 class="size-3.5 text-emerald-600 shrink-0" />
+													{/if}
+												</Button>
+											</Table.Cell>
+										{/if}
 										<Table.Cell class="text-right">
 											<Button
 												type="button"
@@ -631,6 +778,7 @@
 							<input type="hidden" name="itemId" value={selectedItemId} />
 							<input type="hidden" name="newItemName" value={newItemName} />
 							<input type="hidden" name="brand" value={brand} />
+							<input type="hidden" name="isSet" value={isSet ? 'true' : 'false'} />
 							<input type="hidden" name="rows" value={JSON.stringify(rows)} />
 							<input type="hidden" name="categoryId" value={categoryId} />
 							<input type="hidden" name="newCategoryName" value={newCategoryName} />
@@ -697,7 +845,7 @@
 				{:else}
 					{#each modalItemsList as item (item.id)}
 						<div
-							class="flex items-center justify-between rounded-lg border border-border p-2.5 transition-colors hover:bg-muted/30"
+							class="flex items-center justify-between custom-scrollbar rounded-lg border border-border p-2.5 transition-colors hover:bg-muted/30"
 						>
 							<div class="flex flex-col">
 								<span class="text-sm font-medium text-foreground">{item.name}</span>
@@ -769,6 +917,80 @@
 			<Button type="button" onclick={saveLending} disabled={data.subUnits.length === 0}
 				>Simpan Pilihan</Button
 			>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- EDIT ROW COMPONENTS DIALOG -->
+<Dialog.Root bind:open={componentsDialogOpen}>
+	<Dialog.Content class="border-border bg-card text-foreground sm:max-w-xl">
+		<Dialog.Header>
+			<Dialog.Title class="flex items-center gap-2">
+				<Layers class="size-4 text-primary" />
+				<span>Kelengkapan Sub-Komponen (Baris #{activeComponentRowIndex !== null ? activeComponentRowIndex + 1 : 1})</span>
+			</Dialog.Title>
+			<Dialog.Description>
+				Periksa kelengkapan dan kondisi masing-masing komponen untuk unit alat ini.
+			</Dialog.Description>
+		</Dialog.Header>
+
+		<div class="space-y-3 py-4 max-h-[50vh] overflow-y-auto pr-1">
+			{#if tempRowComponents.length === 0}
+				<div class="rounded-lg border border-dashed p-6 text-center text-xs text-muted-foreground">
+					Tidak ada komponen standar yang ditentukan pada panel samping.
+				</div>
+			{:else}
+				{#each tempRowComponents as comp, cIdx (cIdx)}
+					<div class="grid gap-3 rounded-lg border bg-muted/20 p-3.5 sm:grid-cols-12 items-end">
+						<div class="sm:col-span-7 space-y-1">
+							<Label class="text-xs font-semibold">Nama Komponen</Label>
+							<Input
+								class="h-8 text-xs bg-background"
+								bind:value={comp.name}
+								placeholder="Nama komponen..."
+							/>
+						</div>
+						<div class="sm:col-span-5 space-y-1">
+							<Label class="text-xs font-semibold">Kondisi</Label>
+							<select
+								class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+								bind:value={comp.condition}
+							>
+								<option value="BAIK">Baik</option>
+								<option value="RUSAK_RINGAN">Rusak Ringan</option>
+								<option value="RUSAK_BERAT">Rusak Berat</option>
+								<option value="RUSAK_TOTAL">Rusak Total</option>
+							</select>
+						</div>
+					</div>
+				{/each}
+			{/if}
+		</div>
+
+		<Dialog.Footer class="flex justify-between sm:justify-between items-center">
+			<Button
+				type="button"
+				variant="ghost"
+				size="sm"
+				class="text-xs gap-1"
+				onclick={() => {
+					tempRowComponents = [
+						...tempRowComponents,
+						{ name: '', condition: 'BAIK' }
+					];
+				}}
+			>
+				<Plus class="size-3.5" />
+				Tambah Komponen Khusus Baris Ini
+			</Button>
+			<div class="flex gap-2">
+				<Button type="button" variant="outline" size="sm" onclick={() => (componentsDialogOpen = false)}>
+					Batal
+				</Button>
+				<Button type="button" size="sm" onclick={saveComponents}>
+					Simpan Kelengkapan
+				</Button>
+			</div>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

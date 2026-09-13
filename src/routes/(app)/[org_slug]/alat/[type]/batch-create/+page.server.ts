@@ -10,7 +10,8 @@ import {
 	distribution,
 	distributionEquipment,
 	auditLog,
-	itemCategory
+	itemCategory,
+	equipmentComponent
 } from '$lib/server/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { error, fail, redirect } from '@sveltejs/kit';
@@ -85,6 +86,7 @@ export const actions: Actions = {
 		const newItemName = formData.get('newItemName') as string;
 		const brand = formData.get('brand') as string;
 		const rawRows = formData.get('rows') as string;
+		const isSet = formData.get('isSet') === 'true';
 		const categoryId = formData.get('categoryId') as string;
 		const newCategoryName = formData.get('newCategoryName') as string;
 		const parentCategoryId = formData.get('parentCategoryId') as string;
@@ -103,6 +105,12 @@ export const actions: Actions = {
 			condition: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
 			subUnitId: string | null;
 			subUnitName: string | null;
+			components?: Array<{
+				name: string;
+				serialNumber?: string | null;
+				brand?: string | null;
+				condition?: 'BAIK' | 'RUSAK_RINGAN' | 'RUSAK_BERAT' | 'RUSAK_TOTAL';
+			}>;
 		}>;
 
 		try {
@@ -185,7 +193,7 @@ export const actions: Actions = {
 						if (finalCategoryId && !existingItem.categoryId) {
 							await tx
 								.update(item)
-								.set({ categoryId: finalCategoryId })
+								.set({ categoryId: finalCategoryId, baseUnit: isSet ? 'SET' : 'UNIT' })
 								.where(eq(item.id, finalItemId));
 						}
 					} else {
@@ -195,7 +203,7 @@ export const actions: Actions = {
 							name: newItemName,
 							type: 'ASSET',
 							equipmentType: equipmentType,
-							baseUnit: 'UNIT',
+							baseUnit: isSet ? 'SET' : 'UNIT',
 							categoryId: finalCategoryId || null,
 							createdAt: new Date()
 						});
@@ -226,6 +234,7 @@ export const actions: Actions = {
 						id: equipmentId,
 						serialNumber,
 						brand: brand || null,
+						isSet,
 						warehouseId: defaultWarehouse.id,
 						organizationId: currentOrg.id,
 						itemId: finalItemId,
@@ -234,6 +243,23 @@ export const actions: Actions = {
 						classification: row.classification,
 						createdAt: new Date()
 					});
+
+					// 4.2 Insert komponen jika isSet
+					if (isSet && Array.isArray(row.components)) {
+						for (const comp of row.components) {
+							if (comp && comp.name && comp.name.trim()) {
+								await tx.insert(equipmentComponent).values({
+									id: crypto.randomUUID(),
+									equipmentId,
+									name: comp.name.trim(),
+									brand: comp.brand ? comp.brand.trim() : null,
+									condition: comp.condition || 'BAIK',
+									isRequired: true,
+									createdAt: new Date()
+								});
+							}
+						}
+					}
 
 					// 4.3 Record Histori ke tabel movement: event RECEIVE
 					await tx.insert(movement).values({
