@@ -399,8 +399,19 @@ async function seedItems(categoryNameToId: Map<string, string>): Promise<Map<str
 		db
 			.insert(schema.item)
 			.values(batch)
-			.onDuplicateKeyUpdate({ set: { id: sql`id` } })
+			.onDuplicateKeyUpdate({ set: { categoryId: sql`VALUES(category_id)` } })
 	);
+
+	// Update categoryId untuk item yang sudah ada agar selalu sinkron dengan items.csv
+	for (const r of rows) {
+		const catId = categoryNameToId.get(r.category.trim().toUpperCase());
+		if (catId) {
+			await db
+				.update(schema.item)
+				.set({ categoryId: catId })
+				.where(eq(schema.item.name, r.name.trim()));
+		}
+	}
 
 	const allItems = await db.query.item.findMany({ columns: { id: true, name: true } });
 	return new Map(allItems.map((i) => [i.name, i.id]));
