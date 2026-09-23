@@ -5,6 +5,8 @@ import { eq, and, like, desc, sql, inArray } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
 
+import { getOrgAndSubordinateIds } from '$lib/server/org.utils';
+
 const barangSchema = v.object({
 	orgSlug: v.string(),
 	name: v.optional(v.string(), ''),
@@ -32,6 +34,7 @@ export const getBarangData = query(barangSchema, async (args): Promise<BarangDat
 	}
 
 	const organizationId = org.id;
+	const orgIds = await getOrgAndSubordinateIds(organizationId);
 
 	const searchQuery = args.name || '';
 	const page = args.page || 1;
@@ -45,7 +48,7 @@ export const getBarangData = query(barangSchema, async (args): Promise<BarangDat
 		})
 		.from(stock)
 		.innerJoin(warehouse, eq(stock.warehouseId, warehouse.id))
-		.where(eq(warehouse.organizationId, organizationId))
+		.where(inArray(warehouse.organizationId, orgIds))
 		.groupBy(stock.itemId)
 		.as('sa');
 
@@ -73,7 +76,7 @@ export const getBarangData = query(barangSchema, async (args): Promise<BarangDat
 			.innerJoin(stockAgg, eq(item.id, stockAgg.itemId))
 			.where(and(...filters)),
 		db.query.warehouse.findMany({
-			where: eq(warehouse.organizationId, organizationId)
+			where: inArray(warehouse.organizationId, orgIds)
 		})
 	]);
 

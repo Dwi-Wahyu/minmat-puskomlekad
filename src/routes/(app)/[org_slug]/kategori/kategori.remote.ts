@@ -1,8 +1,9 @@
 import { query } from '$app/server';
 import { db } from '$lib/server/db';
 import { itemCategory, item, equipment, organization } from '$lib/server/db/schema';
-import { eq, and, like, sql, or, isNull, inArray } from 'drizzle-orm';
+import { eq, and, like, sql, or, isNull, isNotNull, inArray } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
+import { getOrgAndSubordinateIds } from '$lib/server/org.utils';
 import * as v from 'valibot';
 import { getOrSetCache } from '$lib/server/redis';
 
@@ -56,6 +57,7 @@ export const getCategoryData = query(
 		}
 
 		const orgId = org.id;
+		const orgIds = await getOrgAndSubordinateIds(orgId);
 
 		// Use cache to store computed hierarchy results.
 		// Since equipment counts are organization-specific, cache key is scoped by orgId.
@@ -70,60 +72,57 @@ export const getCategoryData = query(
 				let parentFilter = isNull(itemCategory.parentId);
 
 				if (q) {
-					// Find subcategories matching query first to get their parent IDs
-					const matchingSubCats = await db
+					// Find subcategory IDs that match search
+					const matchingSubCatParentIds = await db
 						.select({ parentId: itemCategory.parentId })
 						.from(itemCategory)
-						.where(and(like(itemCategory.name, `%${q}%`), sql`parent_id IS NOT NULL`));
-					const matchingParentIds = matchingSubCats
-						.map((sc) => sc.parentId)
-						.filter(Boolean) as string[];
+						.where(and(like(itemCategory.name, `%${q}%`), isNotNull(itemCategory.parentId)));
 
-					if (matchingParentIds.length > 0) {
+					const parentIdsFromSubs = matchingSubCatParentIds
+						.map((sc) => sc.parentId)
+						.filter((id): id is string => id !== null);
+
+					if (parentIdsFromSubs.length > 0) {
 						parentFilter = and(
 							isNull(itemCategory.parentId),
-							or(like(itemCategory.name, `%${q}%`), inArray(itemCategory.id, matchingParentIds))
-						) as any;
+							or(like(itemCategory.name, `%${q}%`), inArray(itemCategory.id, parentIdsFromSubs))
+						)!;
 					} else {
-						parentFilter = and(
-							isNull(itemCategory.parentId),
-							like(itemCategory.name, `%${q}%`)
-						) as any;
+						parentFilter = and(isNull(itemCategory.parentId), like(itemCategory.name, `%${q}%`))!;
 					}
 				}
 
-				// Count total parents matching filter
-				const countResult = await db
+				// 2. Fetch paginated parent categories
+				const parentCategories = await db.query.itemCategory.findMany({
+					where: parentFilter,
+					limit: limit,
+					offset: offset,
+					orderBy: (itemCategory, { asc }) => [asc(itemCategory.order), asc(itemCategory.name)]
+				});
+
+				// Count total matching parent categories
+				const totalParentsResult = await db
 					.select({ count: sql<number>`count(*)` })
 					.from(itemCategory)
 					.where(parentFilter);
-				const totalItems = countResult[0]?.count ?? 0;
+				const totalParents = totalParentsResult[0]?.count ?? 0;
 
-				// Fetch parent categories paginated
-				const parents = await db
-					.select()
-					.from(itemCategory)
-					.where(parentFilter)
-					.limit(limit)
-					.offset(offset)
-					.orderBy(itemCategory.order, itemCategory.name);
+				// 3. For each parent category, fetch its subcategories and compute equipment counts
+				const data: ParentCategoryData[] = [];
 
-				const result: ParentCategoryData[] = [];
-
-				for (const p of parents) {
-					// Fetch subcategories
-					const subs = await db
-						.select()
-						.from(itemCategory)
-						.where(eq(itemCategory.parentId, p.id))
-						.orderBy(itemCategory.order, itemCategory.name);
+				for (const p of parentCategories) {
+					// Fetch subcategories of this parent
+					const subs = await db.query.itemCategory.findMany({
+						where: eq(itemCategory.parentId, p.id),
+						orderBy: (itemCategory, { asc }) => [asc(itemCategory.order), asc(itemCategory.name)]
+					});
 
 					// Count equipment directly assigned to parent category itself
 					const parentEqResult = await db
 						.select({ count: sql<number>`count(*)` })
 						.from(equipment)
 						.innerJoin(item, eq(equipment.itemId, item.id))
-						.where(and(eq(item.categoryId, p.id), eq(equipment.organizationId, orgId)));
+						.where(and(eq(item.categoryId, p.id), inArray(equipment.organizationId, orgIds)));
 					const parentEquipCount = parentEqResult[0]?.count ?? 0;
 
 					const subCategoriesData: SubCategoryData[] = [];
@@ -132,7 +131,7 @@ export const getCategoryData = query(
 							.select({ count: sql<number>`count(*)` })
 							.from(equipment)
 							.innerJoin(item, eq(equipment.itemId, item.id))
-							.where(and(eq(item.categoryId, s.id), eq(equipment.organizationId, orgId)));
+							.where(and(eq(item.categoryId, s.id), inArray(equipment.organizationId, orgIds)));
 
 						subCategoriesData.push({
 							id: s.id,
@@ -142,7 +141,7 @@ export const getCategoryData = query(
 						});
 					}
 
-					result.push({
+					data.push({
 						id: p.id,
 						name: p.name,
 						order: p.order ?? 0,
@@ -152,11 +151,11 @@ export const getCategoryData = query(
 				}
 
 				return {
-					categories: result,
+					categories: data,
 					pagination: {
 						currentPage: page,
-						totalPages: Math.ceil(totalItems / limit),
-						totalItems
+						totalPages: Math.ceil(totalParents / limit),
+						totalItems: totalParents
 					}
 				};
 			},

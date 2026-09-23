@@ -16,6 +16,7 @@ import {
 import { eq, and, count, sum, gte, desc, sql, inArray, ne, or } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getOrSetCache, CacheTTL } from '$lib/server/redis';
+import { getOrgAndSubordinateIds } from '$lib/server/org.utils';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user) {
@@ -35,6 +36,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 
 	const org = orgResult[0];
 	const orgId = org.id;
+	const orgIds = await getOrgAndSubordinateIds(orgId);
 
 	const isSatuanBawahan = locals.user?.organization?.parentId !== null;
 	const REMINDER_ROLES = ['kepalaGudang', 'operatorPusatDanDaerah', 'operatorBinmatDanBekharrah'];
@@ -142,20 +144,20 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		const [transitCount] = await db
 			.select({ count: count() })
 			.from(equipment)
-			.where(and(eq(equipment.organizationId, orgId), eq(equipment.status, 'TRANSIT')));
+			.where(and(inArray(equipment.organizationId, orgIds), eq(equipment.status, 'TRANSIT')));
 
 		// Hitung mutasi bulan ini yang dibuat oleh org ini
 		const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 		const [myMovementsCount] = await db
 			.select({ count: count() })
 			.from(movement)
-			.where(and(eq(movement.organizationId, orgId), gte(movement.createdAt, startOfMonth)));
+			.where(and(inArray(movement.organizationId, orgIds), gte(movement.createdAt, startOfMonth)));
 
 		// Hitung alat kondisi tidak baik
 		const [damagedCount] = await db
 			.select({ count: count() })
 			.from(equipment)
-			.where(and(eq(equipment.organizationId, orgId), ne(equipment.condition, 'BAIK')));
+			.where(and(inArray(equipment.organizationId, orgIds), ne(equipment.condition, 'BAIK')));
 
 		// Cek apakah org ini adalah org induk (Puskomlekad = tidak punya parentId)
 		const orgData = await db.query.organization.findFirst({
@@ -494,13 +496,13 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.select({ count: count() })
 				.from(equipment)
 				.innerJoin(item, eq(equipment.itemId, item.id))
-				.where(and(and(eq(equipment.organizationId, orgId), equipmentTypeFilter)));
+				.where(and(and(inArray(equipment.organizationId, orgIds), equipmentTypeFilter)));
 
 			const [warehouseStockSum] = await db
 				.select({ total: sum(stock.qty) })
 				.from(stock)
 				.innerJoin(warehouse, eq(stock.warehouseId, warehouse.id))
-				.where(eq(warehouse.organizationId, orgId));
+				.where(inArray(warehouse.organizationId, orgIds));
 
 			const [damagedItemsCount] = await db
 				.select({ count: count() })
@@ -509,7 +511,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.where(
 					and(
 						and(
-							eq(equipment.organizationId, orgId),
+							inArray(equipment.organizationId, orgIds),
 							sql`${equipment.condition} != 'BAIK'`,
 							equipmentTypeFilter
 						)
@@ -519,7 +521,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			const [monthlyMovementsCount] = await db
 				.select({ count: count() })
 				.from(movement)
-				.where(and(eq(movement.organizationId, orgId), gte(movement.createdAt, startDate)));
+				.where(and(inArray(movement.organizationId, orgIds), gte(movement.createdAt, startDate)));
 
 			// Transito Stats
 			const [transitoCount] = await db
@@ -528,7 +530,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
+						inArray(equipment.organizationId, orgIds),
 						or(eq(equipment.classification, 'TRANSITO'), eq(equipment.status, 'TRANSIT')),
 						equipmentTypeFilter
 					)
@@ -541,7 +543,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
+						inArray(equipment.organizationId, orgIds),
 						or(eq(equipment.classification, 'KOMUNITY'), eq(equipment.status, 'IN_USE')),
 						equipmentTypeFilter
 					)
@@ -554,7 +556,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				.innerJoin(item, eq(equipment.itemId, item.id))
 				.where(
 					and(
-						eq(equipment.organizationId, orgId),
+						inArray(equipment.organizationId, orgIds),
 						eq(equipment.classification, 'BALKIR'),
 						equipmentTypeFilter
 					)
@@ -568,7 +570,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 				})
 				.from(equipment)
 				.innerJoin(item, eq(equipment.itemId, item.id))
-				.where(and(and(eq(equipment.organizationId, orgId), equipmentTypeFilter)))
+				.where(and(and(inArray(equipment.organizationId, orgIds), equipmentTypeFilter)))
 				.limit(5)
 				.orderBy(desc(equipment.createdAt));
 

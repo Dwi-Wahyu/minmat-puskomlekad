@@ -5,6 +5,8 @@ import { eq, and, like, sql, desc, inArray, isNull } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import * as v from 'valibot';
 
+import { getOrgAndSubordinateIds } from '$lib/server/org.utils';
+
 const alatSchema = v.object({
 	orgSlug: v.string(),
 	type: v.string(),
@@ -53,7 +55,9 @@ export const getAlatData = query(alatSchema, async (args): Promise<AlatListData>
 
 	const equipmentType = type.toUpperCase() === 'ALPERNIKA' ? 'PERNIKA_LEK' : 'ALKOMLEK';
 
-	const filters = [eq(item.equipmentType, equipmentType), eq(equipment.organizationId, orgId)];
+	const orgIds = await getOrgAndSubordinateIds(org.id);
+
+	const filters = [eq(item.equipmentType, equipmentType), inArray(equipment.organizationId, orgIds)];
 
 	if (searchQuery) {
 		filters.push(

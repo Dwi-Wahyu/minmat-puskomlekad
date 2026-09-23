@@ -4,6 +4,7 @@ import { equipment, stock, movement, warehouse, item, organization } from '$lib/
 import { eq, and, count, sum, gte, desc, sql, inArray, or } from 'drizzle-orm';
 import { requireAuth } from '$lib/server/auth.utils';
 import { getOrSetCache, CacheTTL } from '$lib/server/redis';
+import { getOrgAndSubordinateIds } from '$lib/server/org.utils';
 
 export type DashboardData = {
 	org_slug: string;
@@ -57,6 +58,7 @@ export const getDashboardData = query(
 		}
 
 		const orgId = org.id;
+		const orgIds = await getOrgAndSubordinateIds(orgId);
 
 		const period = args?.period || 'this_month';
 		const equipmentType = args?.equipmentType || 'ALL';
@@ -95,13 +97,13 @@ export const getDashboardData = query(
 					.select({ count: count() })
 					.from(equipment)
 					.innerJoin(item, eq(equipment.itemId, item.id))
-					.where(and(eq(equipment.organizationId, orgId), equipmentTypeFilter));
+					.where(and(inArray(equipment.organizationId, orgIds), equipmentTypeFilter));
 
 				const [warehouseStockSum] = await db
 					.select({ total: sum(stock.qty) })
 					.from(stock)
 					.innerJoin(warehouse, eq(stock.warehouseId, warehouse.id))
-					.where(eq(warehouse.organizationId, orgId));
+					.where(inArray(warehouse.organizationId, orgIds));
 
 				const [damagedItemsCount] = await db
 					.select({ count: count() })
@@ -109,7 +111,7 @@ export const getDashboardData = query(
 					.innerJoin(item, eq(equipment.itemId, item.id))
 					.where(
 						and(
-							eq(equipment.organizationId, orgId),
+							inArray(equipment.organizationId, orgIds),
 							sql`${equipment.condition} != 'BAIK'`,
 							equipmentTypeFilter
 						)
@@ -118,7 +120,7 @@ export const getDashboardData = query(
 				const [monthlyMovementsCount] = await db
 					.select({ count: count() })
 					.from(movement)
-					.where(and(eq(movement.organizationId, orgId), gte(movement.createdAt, startDate)));
+					.where(and(inArray(movement.organizationId, orgIds), gte(movement.createdAt, startDate)));
 
 				const [transitoCount] = await db
 					.select({ count: count() })
@@ -126,7 +128,7 @@ export const getDashboardData = query(
 					.innerJoin(item, eq(equipment.itemId, item.id))
 					.where(
 						and(
-							eq(equipment.organizationId, orgId),
+							inArray(equipment.organizationId, orgIds),
 							or(eq(equipment.classification, 'TRANSITO'), eq(equipment.status, 'TRANSIT')),
 							equipmentTypeFilter
 						)
@@ -138,7 +140,7 @@ export const getDashboardData = query(
 					.innerJoin(item, eq(equipment.itemId, item.id))
 					.where(
 						and(
-							eq(equipment.organizationId, orgId),
+							inArray(equipment.organizationId, orgIds),
 							or(eq(equipment.classification, 'KOMUNITY'), eq(equipment.status, 'IN_USE')),
 							equipmentTypeFilter
 						)
@@ -150,7 +152,7 @@ export const getDashboardData = query(
 					.innerJoin(item, eq(equipment.itemId, item.id))
 					.where(
 						and(
-							eq(equipment.organizationId, orgId),
+							inArray(equipment.organizationId, orgIds),
 							eq(equipment.classification, 'BALKIR'),
 							equipmentTypeFilter
 						)
@@ -163,7 +165,7 @@ export const getDashboardData = query(
 					})
 					.from(equipment)
 					.innerJoin(item, eq(equipment.itemId, item.id))
-					.where(and(eq(equipment.organizationId, orgId), equipmentTypeFilter))
+					.where(and(inArray(equipment.organizationId, orgIds), equipmentTypeFilter))
 					.limit(5)
 					.orderBy(desc(equipment.createdAt));
 
