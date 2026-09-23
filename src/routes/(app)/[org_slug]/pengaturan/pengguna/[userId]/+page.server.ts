@@ -11,25 +11,36 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	if (!currentUser) throw redirect(302, '/');
 
-	// Cek role superadmin
-	if (currentUser.role !== 'superadmin') {
-		throw error(403, 'Anda tidak memiliki akses ke halaman ini.');
-	}
+	const isSuperAdmin = currentUser.role === 'superadmin';
+	const userOrgId = currentUser.organization?.id;
 
-	const orgId = currentUser.organization?.id;
-	if (!orgId) throw error(400, 'Organisasi tidak ditemukan.');
-
-	// Verifikasi bahwa user yang dicari berada dalam organisasi yang sama
+	// Ambil data member user ini beserta organisasinya
 	const memberData = await db.query.member.findFirst({
-		where: (member, { eq, and }) =>
-			and(eq(member.userId, userId), eq(member.organizationId, orgId)),
+		where: (member, { eq }) => eq(member.userId, userId),
 		with: {
-			user: true
+			user: true,
+			organization: true
 		}
 	});
 
-	if (!memberData) {
-		throw error(404, 'Pengguna tidak ditemukan di organisasi ini.');
+	// Jika bukan Superadmin, cegah akses ke pengguna dari kesatuan/organisasi lain
+	if (!isSuperAdmin) {
+		if (!memberData || memberData.organizationId !== userOrgId) {
+			throw error(403, 'Anda tidak memiliki akses ke pengguna dari kesatuan lain.');
+		}
+	}
+
+	let targetUser = memberData?.user || null;
+
+	if (!targetUser) {
+		targetUser =
+			(await db.query.user.findFirst({
+				where: (u, { eq }) => eq(u.id, userId)
+			})) || null;
+	}
+
+	if (!targetUser) {
+		throw error(404, 'Pengguna tidak ditemukan.');
 	}
 
 	// Ambil sesi aktif untuk user ini
@@ -47,13 +58,22 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	});
 
 	return {
-		targetUser: memberData.user,
-		targetMember: memberData,
+		targetUser,
+		targetMember: memberData || {
+			id: '',
+			role: 'user',
+			organizationId: '',
+			userId: targetUser.id,
+			warehouseHeadType: null,
+			createdAt: new Date(),
+			organization: null
+		},
 		sessions: activeSessions,
 		loginHistory: loginHistory.map((log) => ({
 			...log,
 			data: log.newValue ? JSON.parse(log.newValue) : {}
 		})),
+		isSuperAdmin,
 		orgSlug: org_slug
 	};
 };
@@ -61,7 +81,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 export const actions: Actions = {
 	revokeSession: async ({ request, locals }) => {
 		const currentUser = locals.user;
-		if (currentUser?.role !== 'superadmin') return fail(403, { message: 'Forbidden' });
+		if (!currentUser) return fail(401, { message: 'Unauthorized' });
 
 		const formData = await request.formData();
 		const token = formData.get('token')?.toString();
@@ -69,7 +89,7 @@ export const actions: Actions = {
 		if (!token) return fail(400, { message: 'Token tidak ditemukan' });
 
 		try {
-			// Superadmin menghapus sesi langsung dari database menggunakan token
+			// Hapus sesi langsung dari database menggunakan token
 			await db.delete(session).where(eq(session.token, token));
 
 			// Jika admin menghapus sesinya sendiri, arahkan ke login
@@ -85,9 +105,9 @@ export const actions: Actions = {
 		}
 	},
 
-	changePassword: async ({ request, locals, params }) => {
+	changePassword: async ({ request, locals }) => {
 		const currentUser = locals.user;
-		if (currentUser?.role !== 'superadmin') return fail(403, { message: 'Forbidden' });
+		if (!currentUser) return fail(401, { message: 'Unauthorized' });
 
 		const formData = await request.formData();
 		const currentPassword = formData.get('currentPassword')?.toString();
@@ -106,8 +126,7 @@ export const actions: Actions = {
 			return fail(400, { message: 'Konfirmasi password tidak cocok' });
 		}
 		try {
-			// Admin password reset (menggunakan plugin admin agar bisa overwrite password lama)
-			const result = await auth.api.changePassword({
+			await auth.api.changePassword({
 				body: {
 					currentPassword,
 					newPassword

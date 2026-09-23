@@ -18,7 +18,8 @@
 		Lock,
 		Trash2,
 		ArrowLeft,
-		History
+		History,
+		Building2
 	} from '@lucide/svelte';
 	import { enhance } from '$app/forms';
 
@@ -91,7 +92,7 @@
 					{/if}
 				</div>
 				<Card.Title>{data.targetUser!.name}</Card.Title>
-				<Card.Description>{data.targetMember.role.toUpperCase()}</Card.Description>
+				<Card.Description>{(data.targetMember?.role || 'user').toUpperCase()}</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-4 border-t pt-4">
 				<div class="space-y-1">
@@ -99,6 +100,13 @@
 					<div class="flex items-center gap-2 text-sm">
 						<Mail class="h-4 w-4 text-muted-foreground" />
 						{data.targetUser!.email}
+					</div>
+				</div>
+				<div class="space-y-1">
+					<Label class="text-xs text-muted-foreground uppercase">Kesatuan / Organisasi</Label>
+					<div class="flex items-center gap-2 text-sm font-medium">
+						<Building2 class="h-4 w-4 text-muted-foreground" />
+						{data.targetMember?.organization?.name || 'Tanpa Kesatuan'}
 					</div>
 				</div>
 				<div class="space-y-1">

@@ -34,7 +34,8 @@
 		"db:seed-units": "bun run src/lib/server/db/seed/units.ts",
 		"db:seed-category": "bun run src/lib/server/db/seed/categories.ts",
 		"db:clean-mabesad": "bun run src/lib/server/db/scripts/clean-mabesad-inventory.ts",
-		"db:clean-radin-inten": "bun run scripts/clean-radin-inten-inventory.ts",
+		"db:clean-radin-inten": "bun run src/lib/server/db/scripts/clean-radin-inten-inventory.ts",
+		"db:clean-merdeka": "bun run src/lib/server/db/scripts/clean-merdeka-inventory.ts",
 		"db:seed-test-org": "bun run src/lib/server/db/seed/test-org.ts",
 		"db:change-password": "bun run src/lib/server/db/seed/change-password.ts",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"

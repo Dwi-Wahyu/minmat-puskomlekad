@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
-import { member, user } from '$lib/server/db/auth.schema';
-import { eq, and } from 'drizzle-orm';
+import { member } from '$lib/server/db/auth.schema';
+import { eq } from 'drizzle-orm';
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -11,42 +11,93 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		throw redirect(302, '/');
 	}
 
-	// Cek role superadmin
-	if (currentUser.role !== 'superadmin') {
-		throw error(403, 'Anda tidak memiliki akses ke halaman ini.');
-	}
-
+	const isSuperAdmin = currentUser.role === 'superadmin';
 	const orgId = currentUser.organization?.id;
 
-	if (!orgId) {
+	if (!isSuperAdmin && !orgId) {
 		throw error(400, 'Organisasi tidak ditemukan pada sesi Anda.');
 	}
 
-	// Ambil daftar user yang tergabung dalam organisasi yang sama
-	const members = await db.query.member.findMany({
-		where: eq(member.organizationId, orgId),
-		with: {
-			user: {
-				with: {
-					sessions: {
-						orderBy: (session, { desc }) => [desc(session.createdAt)],
-						limit: 1
+	let allUsers: any[] = [];
+	let allOrganizations: any[] = [];
+
+	if (isSuperAdmin) {
+		// Superadmin: Ambil semua organisasi & seluruh pengguna di semua kesatuan
+		allOrganizations = await db.query.organization.findMany({
+			orderBy: (org, { asc }) => [asc(org.name)]
+		});
+
+		allUsers = await db.query.user.findMany({
+			orderBy: (u, { asc }) => [asc(u.name)],
+			with: {
+				members: {
+					with: {
+						organization: true
 					}
+				},
+				sessions: {
+					orderBy: (s, { desc }) => [desc(s.createdAt)],
+					limit: 1
 				}
 			}
-		}
-	});
+		});
+	} else {
+		// Non-Superadmin: Ambil HANYA pengguna yang tergabung dalam kesatuan yang sama
+		const members = await db.query.member.findMany({
+			where: eq(member.organizationId, orgId!),
+			with: {
+				user: {
+					with: {
+						sessions: {
+							orderBy: (s, { desc }) => [desc(s.createdAt)],
+							limit: 1
+						}
+					}
+				},
+				organization: true
+			}
+		});
 
-	// Filter out global.superadmin@gmail.com and own user
-	const filteredMembers = members.filter((m) => {
-		return m.user?.email !== 'global.superadmin@gmail.com' && m.userId !== currentUser.id;
+		allUsers = members
+			.filter((m) => m.user !== null)
+			.map((m) => ({
+				...m.user,
+				members: [m],
+				sessions: m.user?.sessions || []
+			}));
+	}
+
+	const formattedUsers = allUsers.map((u) => {
+		const primaryMember = u.members?.[0] || null;
+		return {
+			id: u.id,
+			name: u.name,
+			username: u.username,
+			displayUsername: u.displayUsername,
+			email: u.email,
+			image: u.image,
+			createdAt: u.createdAt,
+			role: primaryMember?.role || 'user',
+			warehouseHeadType: primaryMember?.warehouseHeadType || null,
+			organizationId: primaryMember?.organizationId || null,
+			organizationName: primaryMember?.organization?.name || currentUser.organization?.name || 'Tanpa Kesatuan',
+			organizationSlug: primaryMember?.organization?.slug || null,
+			lastLogin: u.sessions?.[0]?.createdAt || null,
+			isCurrentUser: u.id === currentUser.id
+		};
 	});
 
 	return {
-		members: filteredMembers.map((m) => ({
-			...m,
-			lastLogin: m.user?.sessions?.[0]?.createdAt || null
+		users: formattedUsers,
+		organizations: allOrganizations.map((o) => ({
+			id: o.id,
+			name: o.name,
+			slug: o.slug,
+			displayName: o.displayName
 		})),
-		orgSlug: params.org_slug
+		currentUser,
+		isSuperAdmin,
+		orgSlug: params.org_slug,
+		orgName: currentUser.organization?.name || 'Organisasi Anda'
 	};
 };

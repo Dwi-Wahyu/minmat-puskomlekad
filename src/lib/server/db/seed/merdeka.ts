@@ -5,7 +5,7 @@ import mysql from 'mysql2/promise';
 import * as schema from '../schema';
 import * as authSchema from '../auth.schema';
 import { drizzle } from 'drizzle-orm/mysql2';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
 import { betterAuth } from 'better-auth';
@@ -176,16 +176,28 @@ interface MovementRow {
  * yang sama dengan seed/missing-satuan.ts & seed/index.ts.
  */
 async function seedSatuan(): Promise<Map<string, { orgId: string; warehouseId: string }>> {
-	console.log('\n🪖 Step 1: Membuat satuan bawahan Iskandar Muda...');
+	console.log('\n🪖 Step 1: Membuat satuan bawahan Merdeka...');
 	const rows = readCsv<SatuanRow>('satuan.csv');
 
-	const rootOrg = await db.query.organization.findFirst({
-		where: eq(authSchema.organization.slug, ROOT_ORG_SLUG)
+	let rootOrg = await db.query.organization.findFirst({
+		where: or(
+			eq(authSchema.organization.slug, ROOT_ORG_SLUG),
+			eq(authSchema.organization.slug, 'merdrka'),
+			eq(authSchema.organization.name, 'MERDEKA'),
+			eq(authSchema.organization.name, 'MERDRKA')
+		)
 	});
 	if (!rootOrg) {
 		throw new Error(
-			`Organisasi induk ISKDR MDA (slug: ${ROOT_ORG_SLUG}) belum ditemukan. Jalankan seed utama (seed/index.ts) terlebih dahulu.`
+			`Organisasi induk MERDEKA (slug: ${ROOT_ORG_SLUG}) belum ditemukan. Jalankan seed utama (seed/index.ts) terlebih dahulu.`
 		);
+	}
+	if (rootOrg.name === 'MERDRKA' || rootOrg.slug === 'merdrka') {
+		await db
+			.update(authSchema.organization)
+			.set({ name: 'MERDEKA', slug: ROOT_ORG_SLUG })
+			.where(eq(authSchema.organization.id, rootOrg.id));
+		rootOrg = { ...rootOrg, name: 'MERDEKA', slug: ROOT_ORG_SLUG };
 	}
 
 	const globalSuperadmin = await db.query.user.findFirst({
@@ -533,12 +545,12 @@ async function seedMovements(
 	);
 }
 
-// ─── Cleanup: hanya data milik subtree Iskandar Muda ──────────────────────────
-async function cleanupIskandarMuda(slugToOrg: Map<string, { orgId: string; warehouseId: string }>) {
+// ─── Cleanup: hanya data milik subtree Merdeka ────────────────────────────────
+async function cleanupMerdeka(slugToOrg: Map<string, { orgId: string; warehouseId: string }>) {
 	const orgIds = [...slugToOrg.values()].map((o) => o.orgId).filter(Boolean);
 	if (orgIds.length === 0) return;
 
-	console.log('\n🧹 Step 0: Membersihkan data equipment/movement Iskandar Muda lama...');
+	console.log('\n🧹 Step 0: Membersihkan data equipment/movement Merdeka lama...');
 	await db.delete(schema.movement).where(inArray(schema.movement.organizationId, orgIds));
 	await db.delete(schema.equipment).where(inArray(schema.equipment.organizationId, orgIds));
 	console.log(
@@ -549,7 +561,7 @@ async function cleanupIskandarMuda(slugToOrg: Map<string, { orgId: string; wareh
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
 	console.log('════════════════════════════════════════════════════');
-	console.log('  🪖  SEEDING DATA KESATUAN ISKANDAR MUDA');
+	console.log('  🪖  SEEDING DATA KESATUAN KODAM XIII/MERDEKA');
 	console.log('════════════════════════════════════════════════════');
 	console.log(`  Database : ${process.env.DATABASE_URL?.split('@')[1] ?? '(tersembunyi)'}`);
 	console.log(`  CSV Dir  : ${CSV_DIR}`);
@@ -568,11 +580,11 @@ async function main() {
 		}
 	}
 
-	// 1) Satuan bawahan (buat jika belum ada, parentId berjenjang ke ISKDR MDA)
+	// 1) Satuan bawahan (buat jika belum ada, parentId berjenjang ke MERDEKA)
 	const slugToOrg = await seedSatuan();
 
-	// 0) Bersihkan data lama khusus subtree Iskandar Muda (aman untuk re-run)
-	await cleanupIskandarMuda(slugToOrg);
+	// 0) Bersihkan data lama khusus subtree Merdeka (aman untuk re-run)
+	await cleanupMerdeka(slugToOrg);
 
 	// 2) Kategori equipment (upsert, sadar level)
 	const categoryNameToId = await seedCategories();
@@ -587,7 +599,7 @@ async function main() {
 	await seedMovements(itemNameToId, slugToOrg, insertedEquipmentIds);
 
 	console.log('\n════════════════════════════════════════════════════');
-	console.log('  ✅  Seeding Iskandar Muda selesai!');
+	console.log('  ✅  Seeding KODAM XIII/MERDEKA selesai!');
 	console.log('════════════════════════════════════════════════════\n');
 	process.exit(0);
 }
