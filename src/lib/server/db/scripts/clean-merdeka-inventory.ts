@@ -74,6 +74,23 @@ export async function cleanMerdekaInventory() {
 
 	console.log(`📍 Root Organization: ${rootOrg.name} (${rootOrg.id}) [slug: ${rootOrg.slug}]`);
 
+	// 1.b Hapus organisasi duplikat "komlekdam-xiii-merdeka" jika ada
+	const duplicateOrg = await db.query.organization.findFirst({
+		where: eq(authSchema.organization.slug, 'komlekdam-xiii-merdeka')
+	});
+	if (duplicateOrg) {
+		console.log(`🔧 Memindahkan anak organisasi dari ${duplicateOrg.name} (${duplicateOrg.id}) ke ${rootOrg.name} (${rootOrg.id})...`);
+		await db
+			.update(authSchema.organization)
+			.set({ parentId: rootOrg.id })
+			.where(eq(authSchema.organization.parentId, duplicateOrg.id));
+
+		console.log(`🗑️ Menghapus organisasi duplikat ${duplicateOrg.name}...`);
+		await db.delete(authSchema.member).where(eq(authSchema.member.organizationId, duplicateOrg.id));
+		await db.delete(authSchema.organization).where(eq(authSchema.organization.id, duplicateOrg.id));
+		console.log('  ✅ Organisasi duplikat berhasil dihapus.');
+	}
+
 	// 2. Kumpulkan semua ID organisasi Merdeka (root + bawahan)
 	const orgIds = await getAllMerdekaOrgIds(rootOrg.id);
 	console.log(`🏢 Total Organisasi Terkait: ${orgIds.length}`);

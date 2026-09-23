@@ -200,6 +200,19 @@ async function seedSatuan(): Promise<Map<string, { orgId: string; warehouseId: s
 		rootOrg = { ...rootOrg, name: 'MERDEKA', slug: ROOT_ORG_SLUG };
 	}
 
+	// Hapus organisasi duplikat komlekdam-xiii-merdeka jika ada
+	const dupOrg = await db.query.organization.findFirst({
+		where: eq(authSchema.organization.slug, 'komlekdam-xiii-merdeka')
+	});
+	if (dupOrg) {
+		await db
+			.update(authSchema.organization)
+			.set({ parentId: rootOrg.id })
+			.where(eq(authSchema.organization.parentId, dupOrg.id));
+		await db.delete(authSchema.member).where(eq(authSchema.member.organizationId, dupOrg.id));
+		await db.delete(authSchema.organization).where(eq(authSchema.organization.id, dupOrg.id));
+	}
+
 	const globalSuperadmin = await db.query.user.findFirst({
 		where: eq(authSchema.user.username, 'global.superadmin')
 	});

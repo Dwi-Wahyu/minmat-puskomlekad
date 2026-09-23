@@ -61,7 +61,7 @@ const VALID_UNITS = new Set([
 ]);
 
 const L0_MAP: Record<string, { name: string; slug: string }> = {
-	I: { name: 'KOMLEKDAM XIII/MERDEKA', slug: 'komlekdam-xiii-merdeka' },
+	I: { name: 'MERDEKA', slug: 'merdeka' },
 	II: { name: 'KOREM 131/SANTIAGO', slug: 'korem-131-santiago' },
 	III: { name: 'KOREM 133/NANI WARTABONE', slug: 'korem-133-nani-wartabone' },
 	IV: { name: 'BRIGIF-22/OTAMANASA', slug: 'brigif-22-otamanasa' },
@@ -126,7 +126,7 @@ for (let i = 9; i < rows.length; i++) {
 	if (L0_MAP[col0]) {
 		currentL0 = L0_MAP[col0];
 		currentL1 = null;
-		if (!satuanSet.has(currentL0.slug)) {
+		if (currentL0.slug !== 'merdeka' && !satuanSet.has(currentL0.slug)) {
 			satuanSet.add(currentL0.slug);
 			satuanList.push({
 				level: 'L0',
